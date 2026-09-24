@@ -24,10 +24,10 @@ function graph(config: Record<string, string>) {
 
 const fixtures: string[] = [];
 
-function run(schemaText: string, env: Record<string, string> = {}) {
+function run(schemaText: string | null, env: Record<string, string> = {}) {
   const root = mkdtempSync(join(tmpdir(), "check-env-keys-"));
   fixtures.push(root);
-  writeFileSync(join(root, ".env.schema"), schemaText);
+  if (schemaText !== null) writeFileSync(join(root, ".env.schema"), schemaText);
   const { __VARLOCK_ENV: _ignored, ...parentEnv } = process.env;
   const result = spawnSync(process.execPath, [script], {
     cwd: root,
@@ -85,6 +85,16 @@ describe("check-env-keys", () => {
 
     expect(result.status).toBe(1);
     expect(result.text).toContain("nothing to compare against");
+  });
+
+  it("fails with its own message when there is no schema", () => {
+    const result = run(null, {
+      __VARLOCK_ENV: graph({ DATABASE_PATH: "x" }),
+    });
+
+    expect(result.status).toBe(1);
+    expect(result.text).toContain("no .env.schema");
+    expect(result.text).not.toContain("ENOENT");
   });
 
   it("fails outside varlock run", () => {

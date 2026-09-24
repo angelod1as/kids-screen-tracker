@@ -15,8 +15,15 @@ if (!process.env.__VARLOCK_ENV) {
   );
 }
 
+let schema;
+try {
+  schema = readFileSync(".env.schema", "utf8");
+} catch {
+  fail("no .env.schema — nothing to compare against.");
+}
+
 const declared = new Set(
-  readFileSync(".env.schema", "utf8")
+  schema
     .split("\n")
     .map((line) => line.match(/^([A-Za-z_][A-Za-z0-9_]*)\s*=/)?.[1])
     .filter(Boolean),
