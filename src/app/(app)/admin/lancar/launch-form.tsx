@@ -30,38 +30,15 @@ import { launchEntryAction, previewEntryAction } from "../../../actions/admin";
 import type { Kid } from "../../../actions/people";
 
 /**
- * Launching an activity for a boy (#22).
- *
- * **The value is on screen before anything is written**, which is the criterion
- * and also the reason the screen has two taps at the end instead of one:
- * *Ver quanto vale* asks the server what it would pay, and *Confirmar* writes
- * it. The number in between is a preview and is never what gets written — the
- * server computes it again inside the transaction that writes the row, so two
- * entries launched onto the same day pay the second out of the bucket the first
- * one filled. See `src/db/admin.ts`.
- *
- * It is also the screen's only honest way to say no *before* the tap. One rule
- * can refuse a launch — a pending entry that has to be decided first (D32) —
- * and it is an answer about the database rather than about the form, so no
- * amount of validation here could find it. It comes back with the preview, in
- * words, and takes the confirm button away.
- *
- * A launch onto a past day is never refused for what it would change, because
- * under D34 it changes nothing: it is frozen last, so it reads what the days
- * around it have already spent and pays the reduced rate itself.
- *
- * Nothing here calculates. The engine runs on the server for this screen (the
- * boy's calculator runs it in his browser, which is #17's own argument), so
- * there is exactly one number and one explanation, and they came from the same
- * place the ledger row will.
+ * *Ver quanto vale* previews, *Confirmar* writes, and the server recomputes in
+ * the write's transaction. The preview is also where a D32 refusal arrives
+ * before the tap. A past day is never refused: D34 freezes it last.
  */
 
-/** The lengths on offer, the same nine the boy's calculator has. */
 const DURATION_CHOICES: readonly Choice[] = [
   15, 30, 45, 60, 90, 120, 180, 240, 360,
 ].map((minutes) => ({ value: minutes, label: formatDuration(minutes) }));
 
-/** The five grades of the schema's CHECK, and of the engine's `QUALITY_GRADES`. */
 const QUALITY_CHOICES: readonly Choice[] = [0, 0.3, 0.5, 0.7, 1].map(
   (grade) => ({
     value: grade,
@@ -73,18 +50,8 @@ const DEFAULT_DURATION_MINUTES = 60;
 const DEFAULT_QUALITY = 1;
 
 /**
- * The entry the form describes, or null while it does not describe one yet.
- *
- * Exported for the same reason `canApprove` is in the queue's screen: it is a
- * rule and not layout, the sabotage matrix mutates it, and a button that is
- * enabled over an incomplete form is a round trip that ends in the generic
- * failure sentence above.
- *
- * The three optional inputs are attached **by the chosen activity's mode**, not
- * by whether they happen to hold a value: a duration sent along with a `fixed`
- * activity is a number the engine ignores and the row would store anyway, and a
- * `free` value that has not been typed is the one case where the form is
- * genuinely not finished.
+ * Exported: the sabotage matrix mutates it. Optional inputs are attached by the
+ * activity's mode, not by whether they hold a value.
  */
 export function entryOf(
   form: {
@@ -119,7 +86,7 @@ export function entryOf(
   };
 }
 
-/** Whether the preview says this launch may be written (#22, D32). */
+/** D32. */
 export function canConfirm(preview: EntryPreview | null): boolean {
   if (preview === null) return false;
 
@@ -159,13 +126,7 @@ export function LaunchForm({ data, kids }: { data: LaunchData; kids: Kid[] }) {
     activity,
   );
 
-  /**
-   * Every field clears the preview, and that is the point of the two taps.
-   *
-   * A preview left on screen under a changed duration is a number about an
-   * entry nobody is launching any more, and it is the number the adult would be
-   * reading when he taps *Confirmar*.
-   */
+  /** Every field clears the preview, so *Confirmar* never reads a stale number. */
   function change(apply: () => void) {
     apply();
     setPreview(null);
@@ -218,12 +179,7 @@ export function LaunchForm({ data, kids }: { data: LaunchData; kids: Kid[] }) {
 
       {done === null ? null : (
         <section className="flex flex-col gap-3">
-          {/*
-            The explanation of the number that was *written*, not of the one the
-            preview showed. The two can differ — a second entry onto the same
-            day is paid out of the first one's bucket — and D9's "a soma tem que
-            fechar" is about the number on the screen now.
-          */}
+          {/* The written number's explanation: it may differ from the preview's. */}
           <Result
             calculation={done.calculation}
             heading={`Lançado para ${kid?.displayName ?? "o menino"}`}
@@ -259,11 +215,7 @@ export function LaunchForm({ data, kids }: { data: LaunchData; kids: Kid[] }) {
         ))}
       </Select>
 
-      {/*
-        A native date input: one tap opens the OS picker, and `max` keeps the
-        common mistake off the screen. The endpoint refuses a future day
-        whatever the browser allows (D33's lesson, applied to a date).
-      */}
+      {/* `max` keeps the common mistake off screen; the endpoint refuses a future day anyway (D33). */}
       <Field
         id="dia"
         label="Dia"
@@ -291,12 +243,7 @@ export function LaunchForm({ data, kids }: { data: LaunchData; kids: Kid[] }) {
         />
       ) : null}
 
-      {/*
-        D11 and D12: a `free` activity has no value in the table, and the adult
-        types it here. It is the escape hatch for the case the table did not
-        foresee, so the field is hours of screen time outright rather than a
-        rate to be multiplied by something.
-      */}
+      {/* D11, D12: a `free` activity's value is typed here, in hours outright. */}
       {activity.calcMode === "free" ? (
         <Field
           id="valor"
@@ -349,14 +296,7 @@ export function LaunchForm({ data, kids }: { data: LaunchData; kids: Kid[] }) {
   );
 }
 
-/**
- * The activities under their categories, in the order the pickers use.
- *
- * A `<select>` of thirty-two options with no grouping is a hunt on a phone; the
- * boy's calculator groups them the same way. Built from the list rather than
- * from a second query, so a category with nothing live under it cannot appear
- * as a heading over nothing (D14).
- */
+/** Grouped from the list, so a category with nothing live under it has no heading (D14). */
 export function groupByCategory(activities: readonly LaunchActivity[]): {
   categoryId: number;
   categoryName: string;

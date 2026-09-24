@@ -10,13 +10,7 @@ export const metadata: Metadata = {
   title: "Entrar — Quanto Tempo Vale?",
 };
 
-/**
- * The only page reachable without a session.
- *
- * Someone who already has one is sent to their own home instead of being shown
- * a form they do not need — the cookie lasts 30 days and the usual way back
- * into the app is a bookmark, so this is the common case, not the edge one.
- */
+/** The only page without a session. A logged-in visitor goes home: the cookie lasts 30 days. */
 export default async function LoginPage() {
   const session = await currentSession();
   if (session !== null) {

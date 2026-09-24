@@ -3,15 +3,7 @@
 import { Button } from "../ui/button";
 import { BORDER_CLASS, SHELL_CLASS } from "../ui/style";
 
-/**
- * The last resort: a crash in the root layout itself, where `error.tsx` cannot
- * help because the layout that would have wrapped it is the thing that broke.
- *
- * This one renders its own `<html>` and `<body>`, which is why `lang="pt-BR"`
- * is repeated here — Next replaces the root layout entirely, so the attribute
- * set there does not reach this screen, and the English default page is exactly
- * what #14 rules out.
- */
+/** Next replaces the root layout here, so `lang="pt-BR"` must be repeated (#14). */
 export default function GlobalError({ reset }: { reset: () => void }) {
   return (
     <html lang="pt-BR">

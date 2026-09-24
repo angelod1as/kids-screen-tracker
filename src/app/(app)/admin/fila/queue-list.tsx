@@ -23,37 +23,9 @@ import {
 } from "../../../actions/queue";
 
 /**
- * The approval queue (#20).
- *
- * **One tap approves.** *Aprovar* is the first control of every card and it
- * sends the entry exactly as the boy proposed it; the correction and the
- * refusal are behind a second tap each, because they are the rarer half. The
- * design rule is "mais de dois toques é desenho errado", and the ordinary
- * afternoon — the boy read for an hour, that is what happened — costs one.
- *
- * What each card shows before the tap is what approving would credit, computed
- * by the engine on the day the entry happened (D8). It is a preview and never
- * an input: the approval recomputes inside its own transaction, so approving
- * two entries of the same day pays the second one out of the bucket the first
- * one filled. See `src/db/queue.ts`.
- *
- * **One panel, one rule between entries** (#74). The queue is a work list: the
- * adult reads down it, decides, and the row disappears. So it is drawn as one
- * instrument face with a 2 px rule between entries rather than as a stack of
- * floating cards, the count of what is waiting sits in the band in the pendency
- * colour, and each entry carries what approving it would credit on the right,
- * in the monospace face, where the same number sits on every entry.
- *
- * It stays one column on a wide screen. The order is load-bearing — see below —
- * and two columns would mean deciding whether the queue reads down the left and
- * then down the right, or across.
- *
- * **The order is part of the arithmetic.** The list is oldest first, and an
- * entry whose value depends on one still waiting above it says so and cannot be
- * approved until that one is decided — approving out of order used to pay the
- * full rate twice for the same afternoon. *Recusar* stays open on it: a refusal
- * credits nothing and counts for nothing (D19), so it is one of the two ways to
- * clear the way.
+ * One tap approves; correction and refusal cost a second. The preview is never
+ * the input: approval recomputes in its own transaction. Oldest first, and an
+ * entry blocked by one above cannot be approved (D32), so it stays one column.
  */
 
 export function QueueList({ initial }: { initial: QueueData }) {
@@ -67,11 +39,8 @@ export function QueueList({ initial }: { initial: QueueData }) {
         setData(await call());
         setFailed(null);
       } catch (error) {
-        // The queue changes under the adult: the other adult decides an entry,
-        // the boy sends another, and an approval whose answer was lost may
-        // already be frozen. So a failure reads the queue again, and the
-        // refreshed cards carry the reason themselves — D32's "Aprove antes",
-        // an entry that is gone, an activity the picker no longer offers.
+        // The queue changes under the adult, and a lost approval may already be
+        // frozen: read it again, and the refreshed cards carry the reason.
         try {
           setData(await fetchQueueAction());
           setFailed(RESYNCED_TEXT);
@@ -133,16 +102,7 @@ export function QueueList({ initial }: { initial: QueueData }) {
   );
 }
 
-/**
- * Whether *Aprovar* is a tap the adult can make.
- *
- * Two rules and no layout, which is why it is a function rather than an
- * expression in the middle of the button. An entry whose value depends on one
- * still waiting above it cannot be frozen at all (D8), and a correction that
- * has been opened has to carry a duration the database would take — the same
- * whole minute `requireDuration` insists on, said here so the button is off
- * before the round trip rather than after it.
- */
+/** A rule, not layout: an entry blocked by one above cannot be frozen (D32), and a correction needs a valid duration. */
 export function canApprove(
   entry: Pick<QueueEntry, "blockedBy" | "qualityGraded" | "quality">,
   editing: boolean,
@@ -151,37 +111,23 @@ export function canApprove(
 ): boolean {
   if (entry.blockedBy !== null) return false;
 
-  // An entry whose activity wants a grade cannot be frozen without one — the
-  // engine has no rule for it, and the stopwatch never supplies one. So the
-  // adult has to open the correction and choose, and Approve is off until he
-  // does. Before this the row could only be refused or moved somewhere else,
-  // which is the harm D37 cites to reject stamping the price onto the entry.
+  // The stopwatch never grades, so a graded activity waits for the adult's grade (D37).
   const graded = entry.qualityGraded && (grade ?? entry.quality) === null;
 
   if (!editing) return !graded;
 
   const typed = Number(minutes);
 
-  // A ceiling as well as a floor, and it was missing: this field validated only
-  // `Number.isInteger && >= 1`, so a correction could carry any number the
-  // column would take — up to a million minutes, or 694 days. `requireDuration`
-  // on the server has the same bound; this is the same rule said before the
-  // round trip, which is what the rest of this screen already does.
+  // The same ceiling `requireDuration` enforces, said before the round trip.
   return (
     !graded && Number.isInteger(typed) && typed >= 1 && typed <= MAX_MINUTES
   );
 }
 
 /**
- * The longest a corrected session may be, in minutes.
- *
- * The ceiling `activity_logs_duration_minutes_check` puts on the column, and
- * the one `requireDuration` enforces on the server. A million minutes is 694
- * days; a day is 1.440, and D31 already stops a session crossing midnight.
- */
+/** The column's CHECK ceiling, as `requireDuration` enforces it. */
 const MAX_MINUTES = 1_000_000;
 
-/** The five grades of the schema's CHECK, and of the engine's `QUALITY_GRADES`. */
 const QUALITY_CHOICES: readonly Choice[] = [0, 0.3, 0.5, 0.7, 1].map(
   (grade) => ({
     value: grade,
@@ -247,17 +193,8 @@ function Card({
 
       {entry.preview !== null ? null : (
         /*
-          An entry the engine has no rule for, which #26 and #27 made reachable:
-          an activity that gained a quality grade, or became `free`, while a
-          session was running under it. This used to take the whole queue down
-          with an HTTP 500 — for both boys, with no way in the app to see it or
-          undo it, and the one screen that can refuse it (D19) was the screen
-          that had stopped existing.
-
-          So it is a row with a sentence, and the two things an adult can still
-          do with it are both right here: correct it onto another activity, or
-          refuse it. No colour: this is not a pendency or a negative balance,
-          and CLAUDE.md spends colour on exactly those two.
+          An entry the engine cannot price is a row with a sentence, not a
+          queue-wide 500: correct it or refuse it (D19). No colour: not a pendency.
         */
         <p className="break-words text-base font-bold text-black">
           Não dá para calcular esta entrada com a configuração de agora:{" "}
@@ -268,14 +205,7 @@ function Card({
       {editing ? (
         <div className="flex flex-col gap-3">
           {entry.qualityGraded ? (
-            /*
-              Only for an activity that wants one. The stopwatch never supplies
-              a grade, so an activity that gains one leaves entries the engine
-              cannot price — and until this existed the adult's only exits were
-              to refuse the boy's real afternoon or to move it onto some other
-              activity that happened to be priced right, which is word for word
-              the harm D37 cites to reject stamping the price onto the entry.
-            */
+            /* The stopwatch never grades, so the correction can (D37). */
             <ChoiceGroup
               legend="Nota"
               onSelect={setGrade}
@@ -336,11 +266,7 @@ function Card({
         </p>
       )}
 
-      {/*
-        Stacked on a phone, because a row of three would put each of them under
-        48 px at 320; side by side from `lg`, because a 600 px wide *Aprovar* is
-        a control nobody believes is a button.
-      */}
+      {/* Stacked on a phone: three in a row would fall under 48 px at 320. */}
       <div className="flex flex-col gap-2 lg:flex-row lg:gap-3">
         <div className="lg:flex-1">
           <Button

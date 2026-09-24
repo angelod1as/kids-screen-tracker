@@ -13,33 +13,15 @@ import { refundHoursAction } from "../../../actions/ledger";
 import type { Kid } from "../../../actions/people";
 
 /**
- * Giving hours back (#24).
- *
- * A refund adds to the balance exactly as an entry does — `kind` carries the
- * sign, and `signedHours` reads it the same way for both — and the extract on
- * the boy's screen names it "Estorno", which is how he tells one from the
- * other.
- *
- * It carries a date, and that is the difference from a release. A release is
- * the adult saying what he is doing now, at the device; a refund is about
- * something that already happened — the console was down all Saturday — so the
- * day it is credited to is Saturday's, not today's (D13).
- *
- * The reason is required. It is the only thing on the row that explains it: a
- * movement in the ledger that nobody can account for is worth less than no
- * movement at all, and this is the one an adult will be asked about.
+ * Dated, unlike a release: a refund is about something that already happened,
+ * so it is credited to that day (D13). The reason is required: it is the only
+ * thing that explains the row.
  */
 
 /** Almost every refund is this one (#106); the field stays editable. */
 export const DEFAULT_REFUND_REASON = "Não usou";
 
-/**
- * Whether the form describes a refund yet.
- *
- * A rule and not layout: the hours have to parse and the reason has to say
- * something, and the endpoint refuses both anyway (`src/db/admin.ts`). The
- * button is off before the round trip rather than after it.
- */
+/** A rule, not layout; the endpoint refuses both anyway. */
 export function canRefund(hours: string, reason: string): boolean {
   return parseTypedHours(hours) !== null && reason.trim() !== "";
 }

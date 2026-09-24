@@ -5,11 +5,8 @@ import { plexMono, plexSans } from "./fonts";
 import "./globals.css";
 import { ServiceWorker } from "./service-worker";
 
-// D22: better-sqlite3 is a native module, so the app must run on Node.
-// This sets the default runtime that every segment below inherits — pages,
-// layouts and route handlers alike. It is a default, not a lock: a child can
-// still override it with `export const runtime = "edge"` and the build will
-// accept it. The enforceable guard belongs in CI (#4).
+// D22: better-sqlite3 is native. A default, not a lock: a segment can still
+// export `runtime = "edge"` and the build accepts it.
 export const runtime = "nodejs";
 
 export const metadata: Metadata = {
@@ -25,9 +22,7 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  // Native controls (password inputs, selects, date pickers, scrollbars,
-  // Chrome autofill) follow the OS palette unless told otherwise. The page is
-  // black on white, so a dark-mode phone would paint them grey on white.
+  // Or a dark-mode phone paints native controls grey on this white page.
   colorScheme: "light",
 };
 
