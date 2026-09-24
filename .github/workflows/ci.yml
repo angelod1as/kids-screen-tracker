@@ -5,18 +5,23 @@ name: CI
 #
 # It runs on main as well, because the deploy hangs off this run: `deploy.yml`
 # only fires when this workflow finishes green on main (D43).
-#
-# No path filter: the ruleset on main requires these two checks by name, and a
-# filtered-out workflow reports nothing at all — a documentation-only pull
-# request would wait for a check that never comes. Measured on the first pull
-# request of the public repository, which had no file changes and so matched no
-# path. The cost of running the pipeline over a typo fix is minutes; the cost of
-# a gate that silently never closes is the gate.
+# A docs-only merge skips CI and so the deploy: the code in production is the
+# same. The ruleset on main requires these two checks by name, so a pull request
+# the filter excludes reports nothing and stays blocked — measured on the first
+# pull request of the public repository, which changed no file at all. That is
+# accepted: the owner merges those by bypassing the ruleset, and paying five
+# minutes of pipeline for a typo is the worse trade.
 on:
   pull_request:
     branches: [main]
+    paths-ignore:
+      - "docs/**"
+      - "**/*.md"
   push:
     branches: [main]
+    paths-ignore:
+      - "docs/**"
+      - "**/*.md"
 
 # Per sha on main: a run deploy.yml waits on is never cancelled or queued.
 concurrency:
