@@ -9,22 +9,9 @@ import {
 } from "./style";
 
 /**
- * A labelled `<select>`, at the same 48 px minimum as every other target.
- *
- * The calculator has thirty-one activities to choose from (#17), and a native
- * select is the one control that turns that into a single tap on Android: the
- * system opens a full-screen list of its own, sized by the OS, in the OS's own
- * typeface. A custom list of thirty-one buttons is a scroll and a hunt, and
- * "mais de dois toques" is the design rule it would break.
- *
- * As with `Button` and `Field`, `className` is not a prop, and the label is a
- * real `<label htmlFor>` rather than a first option reading "Escolha uma
- * atividade" — a disabled first option is grey by construction in every
- * browser's default sheet.
- *
- * `onChange` hands over the raw string: an option's value is a string in the
- * DOM whatever was written in JSX, and a component that pretends otherwise
- * moves the parse somewhere it is easier to get wrong.
+ * Native, for thirty-one activities (#17): Android opens its own full-screen list
+ * in one tap. A real `<label>`, not a disabled first option, which is grey by
+ * default. `onChange` hands over the raw string, as the DOM has it.
  */
 export function Select({
   children,

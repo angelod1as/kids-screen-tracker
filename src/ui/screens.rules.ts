@@ -6,20 +6,8 @@ import type { QueueEntry } from "../db/queue";
 import type { TimerSettlement } from "../db/timers";
 
 /**
- * The rules of the screens that are pure decisions rather than layout, written
- * out one case at a time.
- *
- * Same shape and same reason as `src/auth/access.rules.ts`: two files run this
- * table. `screens.test.tsx` asserts the real implementations answer every case,
- * and `screens.sabotage.test.ts` rewrites their source one clause at a time and
- * asserts each mutant gets at least one case wrong. A rule with no case sharp
- * enough to tell it apart from its own absence is not being tested, and the
- * only way to find out which rules those are is to break each one and watch.
- *
- * Each is here because it is a decision the acceptance criteria state and the
- * screen cannot restate — **the sign of an entry** (#16), for instance, is the
- * only thing separating what a boy earned from what he spent, on a screen
- * where colour is not allowed to.
+ * The screens' pure decisions, one case at a time, run by `screens.test.ts` and
+ * `screens.sabotage.test.ts` as in `src/auth/access.rules.ts`.
  */
 
 export type ScreenRules = {
@@ -50,14 +38,12 @@ export type ScreenRules = {
 };
 
 export type ScreenCase = {
-  /** Which acceptance criterion this case belongs to. */
   rule: string;
   name: string;
   run: (rules: ScreenRules) => unknown;
   expected: unknown;
 };
 
-/** A session of "Ler livro" running with half an hour on it. */
 const RUNNING: OpenSessionView = {
   activityId: 5,
   activityName: "Ler livro",
@@ -70,10 +56,8 @@ const RUNNING: OpenSessionView = {
 
 const PAUSED: OpenSessionView = { ...RUNNING, status: "paused" };
 
-/** The same session, one second short of its two-hour limit. */
 const NEARLY_DONE: OpenSessionView = { ...RUNNING, activeSeconds: 7199 };
 
-/** The launch form, filled in for an hour of reading on the day it happened. */
 const FORM = {
   userId: 3,
   activityId: 5,
@@ -91,7 +75,6 @@ const DURATION_ACTIVITY = {
 const GRADED_ACTIVITY = { calcMode: "delivery", qualityGraded: true } as const;
 const FREE_ACTIVITY = { calcMode: "free", qualityGraded: false } as const;
 
-/** A preview with nothing standing in the way of the launch. */
 const PREVIEW: EntryPreview = {
   calculation: { hours: 3, lines: [] },
   blockedBy: null,
@@ -107,9 +90,7 @@ export const SCREEN_CASES: readonly ScreenCase[] = [
   {
     rule: "approving is one tap, when it is a tap that can be taken",
     name: "a correction longer than the column takes is not offered",
-    // The field had a floor and no ceiling, so a correction could carry any
-    // number the column would accept — a million minutes, or 694 days. The
-    // server refuses it; this is the same rule said before the round trip.
+    // The server refuses it too; this says so before the round trip.
     run: (rules) =>
       rules.canApprove(
         { blockedBy: null, qualityGraded: false, quality: null },
@@ -132,10 +113,7 @@ export const SCREEN_CASES: readonly ScreenCase[] = [
   {
     rule: "approving is one tap, when it is a tap that can be taken",
     name: "an entry that wants a grade is not approvable without one",
-    // The stopwatch never supplies a grade, so an activity that gains one
-    // leaves entries the engine cannot price. Approve stays off until the adult
-    // opens the correction and chooses — which is the exit that keeps the boy's
-    // afternoon from being refused.
+    // The stopwatch never grades, so the adult grades in the correction (D37).
     run: (rules) =>
       rules.canApprove(
         { blockedBy: null, qualityGraded: true, quality: null },
@@ -147,10 +125,7 @@ export const SCREEN_CASES: readonly ScreenCase[] = [
   {
     rule: "approving is one tap, when it is a tap that can be taken",
     name: "opening the correction does not make an ungraded entry approvable",
-    // `canApprove` answers on two branches — with the correction open and with
-    // it shut — and the grade has to hold on both. Without this case the
-    // editing branch could drop the check entirely and nothing noticed, because
-    // every other graded case here goes through the shut branch.
+    // The only graded case through the open branch of `canApprove`.
     run: (rules) =>
       rules.canApprove(
         { blockedBy: null, qualityGraded: true, quality: null },
@@ -174,8 +149,6 @@ export const SCREEN_CASES: readonly ScreenCase[] = [
   {
     rule: "approving is one tap, when it is a tap that can be taken",
     name: "a grade of zero counts as chosen (D10)",
-    // D10 makes zero a real, legitimate answer — a delivery graded zero is an
-    // approved log worth 0h — so it must not read as "nothing chosen".
     run: (rules) =>
       rules.canApprove(
         { blockedBy: null, qualityGraded: true, quality: null },
@@ -186,7 +159,6 @@ export const SCREEN_CASES: readonly ScreenCase[] = [
     expected: true,
   },
 
-  // --- #18: os dígitos contam a partir do que o servidor disse
   {
     rule: "the digits count on from what the server said",
     name: "a running session adds the seconds the browser watched",
@@ -222,7 +194,6 @@ export const SCREEN_CASES: readonly ScreenCase[] = [
     expected: 1800,
   },
 
-  // --- #19: o menino é dito o que aconteceu com a sessão que acabou sem ele
   {
     rule: "the boy is told which rule ended his session",
     name: "the limit",
@@ -251,8 +222,7 @@ export const SCREEN_CASES: readonly ScreenCase[] = [
   },
   {
     rule: "the boy is told which rule ended his session",
-    // #71: the owner decided a session of zero minutes may not be filed at all,
-    // so the boy has to be told the threshold rather than left guessing.
+    // #71: a zero-minute session is never filed, so the boy is told why.
     name: "the session under the threshold, which is not sent and says it",
     run: (rules) =>
       rules.settlementText({
@@ -292,7 +262,6 @@ export const SCREEN_CASES: readonly ScreenCase[] = [
       "A sessão de Ler livro ficou pausada por mais de 12 horas e foi descartada. Nenhum registro foi criado.",
   },
 
-  // --- #20: aprovar é um toque, quando é um toque que pode ser dado
   {
     rule: "approving is one tap, when it is a tap that can be taken",
     name: "an entry nothing stands in front of",
@@ -379,7 +348,6 @@ export const SCREEN_CASES: readonly ScreenCase[] = [
     expected: false,
   },
 
-  // --- #16: cada linha mostra as horas, e ganho e gasto vão em direções opostas
   {
     rule: "an entry moves the balance the way its kind says",
     name: "an earn adds",
@@ -398,7 +366,6 @@ export const SCREEN_CASES: readonly ScreenCase[] = [
     run: (rules) => rules.signedHours({ hours: 0.25, kind: "refund" }),
     expected: 0.25,
   },
-  // --- #22, #23, #24: um número de horas como um adulto digita
   {
     rule: "a typed number of hours is read the way it was typed",
     name: "a comma is the decimal separator, as it is everywhere else",
@@ -448,7 +415,6 @@ export const SCREEN_CASES: readonly ScreenCase[] = [
     expected: null,
   },
 
-  // --- #22: o formulário descreve um lançamento antes de mandá-lo
   {
     rule: "the form describes an entry before it is sent",
     name: "a duration activity carries its duration and nothing else",
@@ -498,7 +464,6 @@ export const SCREEN_CASES: readonly ScreenCase[] = [
       "3/5 on 2026-09-10 · 60 min · nota null · avulso null · leu no carro",
   },
 
-  // --- #22: confirmar só quando o preview deixa
   {
     rule: "the launch is confirmed only when the preview allows it",
     name: "nothing has been asked yet",
@@ -526,7 +491,6 @@ export const SCREEN_CASES: readonly ScreenCase[] = [
     expected: false,
   },
 
-  // --- #24: um estorno diz quanto e por quê
   {
     rule: "a refund says how much and why",
     name: "both filled in",
@@ -553,7 +517,7 @@ export const SCREEN_CASES: readonly ScreenCase[] = [
   },
 ];
 
-/** The cases `rules` gets wrong. Empty means it agrees with the criteria. */
+/** Empty means `rules` agrees with the criteria. */
 export function failingScreenCases(rules: ScreenRules): ScreenCase[] {
   return SCREEN_CASES.filter(
     (screenCase) => screenCase.run(rules) !== screenCase.expected,

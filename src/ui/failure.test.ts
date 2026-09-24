@@ -11,15 +11,9 @@ import {
 } from "./failure";
 
 /**
- * What a failed server action says (#29: "erro de server action vira mensagem
- * que diz o que aconteceu e o que fazer").
- *
- * The errors below are the shapes a browser actually receives. A production
- * Next build rejects a server action that threw with an `Error` whose message
- * is replaced and which carries a `digest`; that is the only one the server
- * certainly answered. Everything else — `fetch`'s `TypeError`, Safari's
- * `AbortError`, the plain `Error` Next's client makes of a proxy's 502 page —
- * may have arrived after the write was committed.
+ * The shapes a browser actually receives: only Next's `digest` error is certainly
+ * the server's answer; `fetch`'s `TypeError`, Safari's `AbortError` and a proxy's
+ * 502 may come after the write was committed.
  */
 
 const NETWORK = new TypeError("Failed to fetch");

@@ -8,17 +8,12 @@ describe("a calendar date on screen (D13)", () => {
   });
 
   it("keeps the day the column holds, whatever the machine's time zone", () => {
-    // The bug this function exists to avoid: `new Date("2026-01-01")` is
-    // midnight UTC, and formatting it in São Paulo is 21:00 on 31 December —
-    // every entry in the history reading as the day before. Nothing here parses
-    // a date, so the boundary cases are just string slices.
+    // `new Date("2026-01-01")` formatted in São Paulo is 31 December (D13).
     expect(formatDay("2026-01-01")).toBe("01/01/2026");
     expect(formatDay("2025-12-31")).toBe("31/12/2025");
   });
 
   it("refuses anything that is not YYYY-MM-DD", () => {
-    // A malformed date reaching the screen as "undefined/undefined" is a bug
-    // that looks like a styling problem.
     expect(() => formatDay("02/09/2026")).toThrow();
     expect(() => formatDay("2026-9-2")).toThrow();
     expect(() => formatDay("")).toThrow();
@@ -32,8 +27,6 @@ describe("hours with their sign (#16)", () => {
   });
 
   it("puts a real minus sign in front of what was spent", () => {
-    // U+2212, not a hyphen: at this size a hyphen beside a digit disappears,
-    // and the direction is the whole point of the line.
     expect(formatSignedHours(-1.5)).toBe("−1h30");
     expect(formatSignedHours(-1.5).charCodeAt(0)).toBe(0x2212);
   });
@@ -44,9 +37,7 @@ describe("hours with their sign (#16)", () => {
   });
 
   it("treats zero as a plus rather than as a minus", () => {
-    // D10 keeps a zero out of the ledger, so this is a case nothing produces
-    // today. "−0 min" would still be the wrong thing to draw the day
-    // something does.
+    // Nothing produces a zero today (D10); "−0 min" would still be wrong.
     expect(formatSignedHours(0)).toBe("+0 min");
     expect(formatSignedHours(-0.001)).toBe("+0 min");
   });

@@ -88,20 +88,8 @@ describe("a duration on a button (#17)", () => {
   });
 });
 
-/**
- * A duration the stopwatch measured (D17, amended by #71).
- *
- * The threshold this function switches units at has to be the engine's, and
- * that is what is actually asserted below: the seconds are shown only where
- * nothing is recorded, and from the first second that rounds to a minute the
- * screen says the minute that is charged. Round 1 of the review caught the
- * version that compared against sixty instead — 45 seconds read as `45s` on the
- * queue while crediting a whole minute, which is the gap #71 exists to close.
- */
 describe("a duration the stopwatch measured (#71)", () => {
   it("says the seconds while there is no minute to say", () => {
-    // Nothing under the threshold is ever filed (`stopTimer`), so these are the
-    // live clock and the "too short to send" notice, never a record.
     expect(formatRecordedDuration(0)).toBe("0s");
     expect(formatRecordedDuration(9)).toBe("9s");
     expect(formatRecordedDuration(29)).toBe("29s");
@@ -113,8 +101,6 @@ describe("a duration the stopwatch measured (#71)", () => {
   });
 
   it("says the minute that is charged, not the seconds that were measured", () => {
-    // The whole finding of round 1: every one of these is filed as one minute
-    // and paid as one minute, so every one of them has to read as one minute.
     expect(formatRecordedDuration(30)).toBe("1 min");
     expect(formatRecordedDuration(45)).toBe("1 min");
     expect(formatRecordedDuration(59)).toBe("1 min");
@@ -124,8 +110,7 @@ describe("a duration the stopwatch measured (#71)", () => {
   });
 
   it("agrees with the engine at every second of the first five minutes", () => {
-    // Stated as the property rather than as a list, because the list is what
-    // let the two thresholds drift apart in the first place.
+    // A property, not a list: a list is what let the two thresholds drift apart.
     for (let seconds = 0; seconds <= 300; seconds += 1) {
       const minutes = durationMinutes(seconds);
 
@@ -147,19 +132,10 @@ describe("a duration the stopwatch measured (#71)", () => {
   });
 
   it("is not the running clock", () => {
-    // `formatClock` is the number the boy watches move, with its digits held in
-    // place; this one is a label on a record that has stopped moving.
     expect(formatRecordedDuration(69)).not.toBe(formatClock(69));
   });
 });
 
-/**
- * The stopwatch on the boy's timer (#18).
- *
- * It is the one number in this app that moves, so the digits have to hold their
- * places: a reading that jumps between `9:59` and `10:00` widths on a phone is
- * a number that looks broken while it is working.
- */
 describe("a running clock", () => {
   it("reads as minutes and seconds under an hour", () => {
     expect(formatClock(0)).toBe("00:00");

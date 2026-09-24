@@ -8,12 +8,7 @@ import { parseTypedHours } from "./hours";
 import type { ScreenRules } from "./screens.rules";
 import { failingScreenCases, SCREEN_CASES } from "./screens.rules";
 
-/**
- * The two screens of Phase 4 import their own server actions, and a
- * `"use server"` module reaches `varlock/env` and the database file the moment
- * it is imported. Replacing the two of them is what lets a mutant of a screen
- * be loaded at all; nothing in this file calls one.
- */
+/** A `"use server"` module reaches `varlock/env` and the database on import. */
 vi.mock("../app/actions/timer", () => ({
   fetchTimerScreenAction: async () => null,
   startTimerAction: async () => null,
@@ -49,44 +44,20 @@ const { canConfirm, entryOf } = await import(
 const { canRefund } = await import("../app/(app)/admin/estornar/refund-form");
 
 /**
- * The sabotage matrix for the Phase 3 rules, in the shape
- * `access.sabotage.test.ts` established.
- *
- * The suite going green is evidence about the code as written, not evidence
- * that any of it is load-bearing: an assertion that passes with the rule
- * deleted protects nothing, and this project has shipped four pull requests
- * with tests of exactly that kind. So each mutation below takes the real
- * source, replaces one clause with a broken one, compiles the result and runs
- * the whole `SCREEN_CASES` table against it. Every mutant has to fail at least
- * one case, and the last case computes which rules the matrix actually
- * protects rather than claiming a number.
- *
- * The needles are asserted present before they are replaced, so a rewrite that
- * renames a clause fails here instead of quietly mutating nothing.
+ * The sabotage matrix for the screen rules, in `access.sabotage.test.ts`'s shape:
+ * each mutation breaks one clause and some case must fail. Needles are asserted
+ * present, so a rewrite that renames a clause fails instead of mutating nothing.
  */
 
 const UI_DIR = import.meta.dirname;
 
-/**
- * Where the mutants are written: one directory above `src/`, for the reasons
- * `access.sabotage.test.ts` gives — `design.test.ts` and `guarded.test.ts` both
- * walk `src/`, and a mutant sitting there while one of them ran would be read
- * as application source.
- */
+/** Outside `src/`, which `design.test.ts` and `guarded.test.ts` walk. */
 const MUTANT_DIR = join(UI_DIR, "..", "..", ".sabotage-screens");
 
-/**
- * The two screens of Phase 4, as paths relative to `src/ui/`.
- *
- * The matrix used to live entirely inside `src/ui/`; the rules of the timer and
- * of the queue's one-tap approval live in the screens themselves, and a matrix
- * that stops at a directory boundary protects whatever happens to be on its
- * side of it.
- */
+/** Rules that live in the screens themselves, outside `src/ui/`. */
 const TIMER_SCREEN = "../app/(app)/menino/cronometro/timer-screen.tsx";
 const QUEUE_LIST = "../app/(app)/admin/fila/queue-list.tsx";
 
-/** The two screens of Phase 5 that carry a rule of their own, and `hours.ts`. */
 const LAUNCH_FORM = "../app/(app)/admin/lancar/launch-form.tsx";
 const REFUND_FORM = "../app/(app)/admin/estornar/refund-form.tsx";
 
@@ -101,7 +72,6 @@ type Mutation = {
 };
 
 const MUTATIONS: readonly Mutation[] = [
-  // --- the sign of a ledger entry (#16) -------------------------------------
   {
     name: "a spend reads as a credit",
     file: "entries.tsx",
@@ -121,7 +91,6 @@ const MUTATIONS: readonly Mutation[] = [
     replace: 'return entry.kind === "earn" ? entry.hours : -entry.hours;',
   },
 
-  // --- the digits of the boy's timer (#18) ----------------------------------
   {
     name: "the digits keep counting while the session is paused",
     file: TIMER_SCREEN,
@@ -153,7 +122,6 @@ const MUTATIONS: readonly Mutation[] = [
     replace: "  return Math.min(counted, limit ?? 0);",
   },
 
-  // --- what the boy is told about a session that ended without him (#19) ----
   {
     name: "the turn of the day is announced as the limit",
     file: TIMER_SCREEN,
@@ -167,7 +135,6 @@ const MUTATIONS: readonly Mutation[] = [
     replace: '    case "never":',
   },
 
-  // --- when approving is a tap that can be taken (#20) ----------------------
   {
     name: "an entry with an undecided one before it can be approved anyway",
     file: QUEUE_LIST,
@@ -212,7 +179,6 @@ const MUTATIONS: readonly Mutation[] = [
       "    Number.isInteger(typed) && typed >= 1 && typed <= MAX_MINUTES",
   },
 
-  // --- um número de horas como um adulto digita (#22, #23, #24) ------------
   {
     name: "a blank field is read as zero hours",
     file: "hours.ts",
@@ -232,7 +198,6 @@ const MUTATIONS: readonly Mutation[] = [
     replace: "  if (!/\\d/.test(typed)) return null;",
   },
 
-  // --- o formulário do lançamento (#22) ------------------------------------
   {
     name: "a duration is sent whatever the activity is",
     file: LAUNCH_FORM,
@@ -270,7 +235,6 @@ const MUTATIONS: readonly Mutation[] = [
     replace: "  return true;",
   },
 
-  // --- o estorno (#24) ------------------------------------------------------
   {
     name: "a refund with no reason is offered",
     file: REFUND_FORM,
@@ -299,13 +263,8 @@ afterAll(() => {
 });
 
 /**
- * Rewrites every relative import so the mutant, sitting outside `src/`, still
- * reaches what the original reached.
- *
- * Resolving each specifier against the *original* file's directory and then
- * making it relative to `MUTANT_DIR` is what keeps this working for `./hours`
- * and `../engine/calculate` alike — a `replaceAll('from "./', …)` handles the
- * first and silently breaks the second.
+ * Resolves each specifier against the original file, so `./hours` and
+ * `../engine/calculate` both survive the move; a plain `replaceAll` breaks the second.
  */
 function rehome(source: string, file: string): string {
   const fromDir = dirname(join(UI_DIR, file));
@@ -317,14 +276,7 @@ function rehome(source: string, file: string): string {
   );
 }
 
-/**
- * Writes one mutant of `file` and loads the rules from it.
- *
- * Only the mutated module is replaced: the other rules come from the real
- * source, so a mutation of `entries.tsx` cannot accidentally be caught by a
- * case belonging to another screen, and the coverage computation at the bottom
- * stays honest.
- */
+/** Only the mutated module is replaced, so no other screen's case can catch its mutant. */
 async function loadMutant(
   index: number,
   file: string,
@@ -357,7 +309,6 @@ describe("the rules as written", () => {
   });
 
   it("have a table with something in it", () => {
-    // A matrix run against an empty table proves nothing, loudly.
     expect(SCREEN_CASES.length).toBeGreaterThan(10);
   });
 });
@@ -367,8 +318,6 @@ describe("a rule broken on purpose", () => {
     "is caught when $name",
     async ({ file, find, index, replace }) => {
       const source = sources.get(file);
-      // If this fails the mutation no longer applies: the file was rewritten
-      // and this matrix is testing nothing. Fix the needle.
       expect(
         source?.includes(find),
         `the mutation target is no longer in ${file}:\n${find}`,
@@ -389,7 +338,6 @@ describe("a rule broken on purpose", () => {
   );
 
   it("covers every rule of the screens with at least one mutation", async () => {
-    // Which rules the matrix actually protects, computed rather than claimed.
     const caught = new Set<string>();
 
     for (const [index, mutation] of MUTATIONS.entries()) {
