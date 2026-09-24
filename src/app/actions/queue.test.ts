@@ -33,17 +33,7 @@ import {
   rejectLogAction,
 } from "./queue";
 
-/**
- * The approval queue, end to end (#20).
- *
- * Two halves. The first runs `queue.rules.ts` against the real module, which is
- * where the rules of the approval live; the second is about the endpoints —
- * who may call them, whose id ends up in `reviewed_by`, and what survives a
- * write that fails half way.
- *
- * Only the cookie is replaced. The engine, the transaction and every CHECK
- * constraint of the schema run for real.
- */
+/** `queue.rules.ts` against the real module, then the endpoints. Only the cookie is replaced. */
 
 const mocked = vi.hoisted(() => ({
   username: null as string | null,
@@ -73,7 +63,6 @@ const REAL: QueueModule = {
 const roots: string[] = [];
 const opened: Connection[] = [];
 
-/** A migrated, seeded database of its own, cleaned up after the test. */
 function freshConnection(): Connection {
   const root = mkdtempSync(join(tmpdir(), "kids-screen-tracker-queue-"));
   const databasePath = join(root, "data", "kids.db");
@@ -116,7 +105,7 @@ describe("the queue as written", () => {
   });
 
   it("has a table with something in it", () => {
-    // A matrix run against an empty table proves nothing, loudly.
+    // An empty matrix proves nothing, loudly.
     expect(QUEUE_CASES.length).toBeGreaterThan(15);
   });
 
@@ -169,28 +158,13 @@ describe("approving is one tap (#20)", () => {
   });
 });
 
-/**
- * "Congela `computed_hours` e grava a linha do ledger **na mesma transação**".
- *
- * The claim is not that both writes happen; it is that neither happens without
- * the other. So the ledger insert is made to fail, after the entry has already
- * been updated, and the entry has to come back out still pending with no value
- * frozen on it.
- */
+/** Neither write happens without the other: the ledger insert fails after the entry was updated. */
 describe("the value and the ledger row are one write (#20)", () => {
   it("leaves the entry pending when the ledger row cannot be written", () => {
     const id = world.addPending({ activity: BOOK });
 
-    // The ledger insert is made to fail where it happens — after the entry has
-    // already been updated to `approved` with its value frozen on it. If the
-    // two writes were not one transaction, the entry would come back approved,
-    // worth three hours, with nothing in the ledger: hours a boy can see and
-    // cannot spend, and no way to notice.
-    //
-    // A trigger rather than a duplicate row, because `ledger_owner_guard_insert`
-    // already refuses to credit a log that is not yet approved — the two ways
-    // of provoking the failure are the same failure, and only this one can be
-    // set up while the entry is still pending.
+    // A trigger, not a duplicate row: `ledger_owner_guard_insert` already refuses
+    // a log not yet approved, and only this can be set up while it is pending.
     world.connection.sqlite.exec(
       "create trigger probe_block_ledger before insert on ledger " +
         "begin select raise(abort, 'probe: no ledger row today'); end;",
@@ -218,15 +192,7 @@ describe("the value and the ledger row are one write (#20)", () => {
     expect(world.ledgerRows()[0]?.activityLogId).toBe(id);
   });
 
-  /**
-   * The trap this module was written around: a value computed before the
-   * transaction is a value computed against a bucket that has since moved.
-   *
-   * The preview is read first, exactly as the screen reads it, and then another
-   * entry of the same day is approved before the adult taps. What is credited
-   * has to be the number the bucket says at that moment, not the one the screen
-   * was showing.
-   */
+  /** The preview is read, another entry of the same day is approved, then the tap (the stale-bucket trap). */
   it("recomputes at the approval, never from the preview the screen drew", () => {
     const first = world.addPending({ activity: BOOK });
     const second = world.addPending({ activity: BOOK });
@@ -278,7 +244,6 @@ describe("rejecting creates nothing (D19)", () => {
     await rejectLogAction(refusedLog);
     await approveLogAction(kept);
 
-    // The refused hour did not fill the bucket.
     expect(world.logRow(kept).computedHours).toBe(1.5);
   });
 });
@@ -344,10 +309,8 @@ describe("only an admin reaches the queue (#13)", () => {
 
 describe("counting what is waiting (#21)", () => {
   it("counts the pending entries and nothing else", () => {
-    // Against a database, not a mock. Every consumer of this number stubs the
-    // action, so without this the `where` is asserted by nothing: counting
-    // approved and rejected rows too would put a permanent yellow badge on the
-    // admin's home screen with nothing waiting, and no test would notice.
+    // Every consumer stubs the action, so only this pins the `where`: counting
+    // decided rows would leave a permanent yellow badge.
     world.addPending({ activity: BOOK });
     world.addPending({ activity: BOOK });
     world.addApproved({ activity: BOOK });

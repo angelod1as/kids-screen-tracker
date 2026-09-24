@@ -25,18 +25,8 @@ import {
 } from "./timer";
 
 /**
- * The timer, end to end (#18, #19).
- *
- * Only two things are replaced: the cookie, the same two modules
- * `balance.test.ts` replaces and for the same reason, and the clock, which is
- * replaced with a controlled one. Everything else runs for real — the guard,
- * the reconciliation, the transaction, the CHECK constraints of the schema.
- *
- * The clock matters here in a way it does not in `timer.test.ts`: the engine
- * takes `now` as an argument, but the *actions* read it, and #19's criterion is
- * about what the app does when it is opened late. So the tests below move the
- * system clock forward by hours and days without waiting, and the assertion is
- * always about a row in the database rather than about a return value.
+ * Only the cookie and the clock are replaced. The actions read the clock
+ * themselves, so these cases move it by hours and days and assert on rows.
  */
 
 const mocked = vi.hoisted(() => ({
@@ -86,8 +76,7 @@ beforeEach(() => {
       .map((row) => [row.username, row.id] as const),
   );
 
-  // Only `Date` is faked: the timers vitest would otherwise replace are the
-  // ones `await` runs on.
+  // Only `Date`: the other timers are the ones `await` runs on.
   vi.useFakeTimers({ toFake: ["Date"] });
   vi.setSystemTime(START);
 });
@@ -119,9 +108,7 @@ function activityId(name: string): number {
   return row.id;
 }
 
-/** "Ler livro": Mente, two hours a session. */
 const BOOK = "Ler livro";
-/** "Sair com os amigos": Convívio, `fixed`, nothing to time. */
 const FRIENDS = "Sair com os amigos";
 
 function pass(ms: number): void {
@@ -149,7 +136,6 @@ describe("the state lives on the server (#18)", () => {
     await startTimerAction(idOf("kid1"), activityId(BOOK));
     pass(90 * SECOND);
 
-    // A second tab: a fresh call that shares nothing with the first.
     const screen = await fetchTimerScreenAction(idOf("kid1"));
 
     expect(screen.open?.activityName).toBe(BOOK);
@@ -177,8 +163,7 @@ describe("the state lives on the server (#18)", () => {
   });
 
   it("refuses an activity that is not measured by time", async () => {
-    // D5: "Sair com os amigos" pays three hours whether the afternoon lasted
-    // two or six, so there is nothing for a stopwatch to measure.
+    // D5: a `fixed` activity pays the same however long it lasted.
     await expect(
       startTimerAction(idOf("kid1"), activityId(FRIENDS)),
     ).rejects.toThrow(/measured by duration/);
@@ -199,8 +184,7 @@ describe("the state lives on the server (#18)", () => {
       .where(eq(categories.id, category ?? 0))
       .run();
 
-    // The picker stops offering it, and the endpoint has to agree: an id is
-    // not a permission.
+    // An id is not a permission (D33).
     expect(
       (await fetchTimerScreenAction(idOf("kid1"))).activities.map(
         (activity) => activity.name,
@@ -257,9 +241,8 @@ describe("pausing does not count time (#18)", () => {
   });
 
   it("does not pay a rounded second for every tap of Pausar", async () => {
-    // `Math.round` on the banked seconds broke every tie upward, and the boy
-    // decides how many ties there are: measured, two hundred taps of half a
-    // second — a hundred seconds of reading — were banked as three minutes.
+    // `Math.round` on banked seconds broke every tie upward: two hundred
+    // half-second taps were banked as three minutes.
     await startTimerAction(idOf("kid1"), activityId(BOOK));
 
     for (let cycle = 0; cycle < 200; cycle += 1) {
@@ -270,13 +253,7 @@ describe("pausing does not count time (#18)", () => {
 
     await stopTimerAction(idOf("kid1"), "");
 
-    // A hundred seconds of wall clock, and one minute forty is two minutes.
-    //
-    // Since #71 nothing is filed here at all: each half-second stretch banks
-    // zero *whole* seconds, so the session never reaches the minute a record
-    // now requires. The guard this case exists for is the other direction —
-    // the boy must not be able to manufacture minutes by tapping Pausar, and
-    // three minutes is what he used to get.
+    // Since #71 nothing is filed at all: each stretch banks zero whole seconds.
     expect(logsOf("kid1")[0]?.durationMinutes ?? 0).toBeLessThanOrEqual(2);
   });
 
@@ -289,8 +266,7 @@ describe("pausing does not count time (#18)", () => {
     pass(HOUR);
     await pauseTimerAction(idOf("kid1"));
 
-    // The twelve hours of D16 are counted from the pause, so a second tap that
-    // moved the stamp would hand out another twelve hours for free.
+    // D16's twelve hours count from the pause; moving the stamp would restart them.
     expect(timerRows("kid1")[0]?.pausedAt).toEqual(first);
     expect(timerRows("kid1")[0]?.accumulatedSeconds).toBe(5 * 60);
   });
@@ -327,9 +303,7 @@ describe("stopping proposes a record (#18)", () => {
     pass(10 * SECOND);
     const screen = await stopTimerAction(idOf("kid1"), "");
 
-    // The case that opened #71: the owner ran the stopwatch for ten seconds and
-    // the queue received a one-minute session. It now receives nothing at all —
-    // the owner's call, over the issue's own suggested default.
+    // Ten seconds used to reach the queue as a one-minute session.
     expect(logsOf("kid1")).toEqual([]);
     expect(screen.proposed).toBeNull();
     expect(screen.settlement).toEqual({
@@ -339,7 +313,6 @@ describe("stopping proposes a record (#18)", () => {
       durationSeconds: 10,
       minSessionMinutes: 5,
     });
-    // The session is closed either way: the boy asked for it to end.
     expect(screen.open).toBeNull();
     expect(timerRows("kid1")[0]?.status).toBe("stopped");
   });
@@ -430,8 +403,6 @@ describe("stopping proposes a record (#18)", () => {
     pass(20 * SECOND);
     await stopTimerAction(idOf("kid1"), "");
 
-    // Three hours of wall clock, five minutes of activity. The pause is nowhere
-    // in the record.
     expect(logsOf("kid1")[0]?.durationSeconds).toBe(300);
     expect(logsOf("kid1")[0]?.durationMinutes).toBe(5);
   });
@@ -440,7 +411,6 @@ describe("stopping proposes a record (#18)", () => {
     await startTimerAction(idOf("kid1"), activityId(BOOK));
     const screen = await stopTimerAction(idOf("kid1"), "");
 
-    // A double tap. It used to be worth a minute, because of D17's floor.
     expect(logsOf("kid1")).toEqual([]);
     expect(screen.settlement?.kind).toBe("tooShort");
   });
@@ -460,8 +430,7 @@ describe("stopping proposes a record (#18)", () => {
   });
 
   it("takes the record's day from the start and not from the stop (D13)", async () => {
-    // 23:50 in São Paulo, which is 02:50Z the next day. He reads for twenty
-    // minutes and stops after midnight.
+    // 23:50 in São Paulo, stopped after midnight.
     vi.setSystemTime(new Date("2026-09-02T02:50:00.000Z"));
     await startTimerAction(idOf("kid1"), activityId(BOOK));
     pass(20 * MINUTE);
@@ -546,7 +515,6 @@ describe("the automatic stop (#19, D16)", () => {
     pass(6 * HOUR);
     await resumeTimerAction(idOf("kid1"));
 
-    // One hour banked, so there is one hour left of the two.
     pass(59 * MINUTE);
     expect((await fetchTimerScreenAction(idOf("kid1"))).open).not.toBeNull();
 
@@ -556,15 +524,7 @@ describe("the automatic stop (#19, D16)", () => {
   });
 });
 
-/**
- * #19's headline criterion, at the level where it can actually go wrong.
- *
- * The engine takes `now` as a parameter and `timer.test.ts` proves the
- * arithmetic; what this proves is that nothing between the action and the row
- * quietly substitutes the moment of the read — the record written by an app
- * opened one second late and the one written by an app opened forty days late
- * are the same record, field for field.
- */
+/** Nothing between the action and the row substitutes the moment of the read. */
 describe("the record does not depend on when the app was opened (#19)", () => {
   async function recordReadAfter(after: number) {
     await startTimerAction(idOf("kid1"), activityId(BOOK));
@@ -585,7 +545,6 @@ describe("the record does not depend on when the app was opened (#19)", () => {
   it("is the same record a second late and forty days late", async () => {
     const prompt = await recordReadAfter(2 * HOUR + SECOND);
 
-    // A second boy, a second database state, the same session.
     connection.db.delete(activityLogs).run();
     connection.db.delete(timers).run();
     vi.setSystemTime(START);
@@ -600,13 +559,7 @@ describe("the record does not depend on when the app was opened (#19)", () => {
 });
 
 describe("an abandoned session (#19, D16)", () => {
-  /**
-   * Eight in the morning in São Paulo, and not the afternoon `START` is.
-   *
-   * A session ends when its day does, so a pause that begins after midday is
-   * closed by the calendar before the twelve hours are up: the abandonment is
-   * a rule about the morning, and these cases have to start in one to reach it.
-   */
+  /** Morning: a pause begun after midday is closed by the day before twelve hours pass (D31). */
   const MORNING = new Date("2026-09-01T11:00:00.000Z");
 
   beforeEach(() => {
@@ -657,16 +610,6 @@ describe("an abandoned session (#19, D16)", () => {
   });
 });
 
-/**
- * D3's bucket has an edge, and this is it (#19).
- *
- * The day decides what an hour is worth and the record's day is the day the
- * session began, so a session still open after midnight is one whose hours are
- * being counted in a day that is over. Measured before this rule existed: a
- * session started at 23:55 and kept alive by pausing survived 44 hours, and the
- * hour read the next afternoon landed in an empty bucket at the full rate —
- * 5,03 h for the same two hours an honest afternoon pays 4,00 h for.
- */
 describe("a session ends with the day it began on (D3, D13)", () => {
   /** 23:30 in São Paulo, which is 02:30Z the next day. */
   const LATE = new Date("2026-09-02T02:30:00.000Z");
@@ -697,8 +640,7 @@ describe("a session ends with the day it began on (D3, D13)", () => {
   });
 
   it("files nothing when the day turns on a session under a minute (#71)", async () => {
-    // Before #71 this record reached `activity_logs_duration_minutes_check`
-    // with a zero and took the boy's whole screen down with a constraint name.
+    // This used to hit `activity_logs_duration_minutes_check` and take the screen down.
     vi.setSystemTime(new Date("2026-09-02T02:59:50.000Z"));
     await startTimerAction(idOf("kid1"), activityId(BOOK));
     pass(HOUR);
@@ -718,8 +660,7 @@ describe("a session ends with the day it began on (D3, D13)", () => {
   });
 
   it("refuses a session the day cuts under the floor, and lets the boy start again (D44, D31)", async () => {
-    // 23:57: three minutes of reading when the day ends, over a minute and
-    // under the floor.
+    // 23:57: three minutes at midnight, under the floor.
     vi.setSystemTime(new Date("2026-09-02T02:57:00.000Z"));
     await startTimerAction(idOf("kid1"), activityId(BOOK));
     pass(HOUR);
@@ -742,7 +683,6 @@ describe("a session ends with the day it began on (D3, D13)", () => {
   });
 
   it("still files the day's record once it reaches the floor (D44)", async () => {
-    // The other side of the same boundary: 23:55 has five minutes at midnight.
     vi.setSystemTime(new Date("2026-09-02T02:55:00.000Z"));
     await startTimerAction(idOf("kid1"), activityId(BOOK));
     pass(HOUR);
@@ -769,15 +709,11 @@ describe("a session ends with the day it began on (D3, D13)", () => {
   });
 
   it("cannot be parked overnight by pausing inside every twelve hours", async () => {
-    // The recipe: 23:55, Começar and Pausar, and the session is still there
-    // tomorrow to pour an hour into yesterday's empty bucket.
     vi.setSystemTime(new Date("2026-09-02T02:50:00.000Z"));
     await startTimerAction(idOf("kid1"), activityId(BOOK));
     pass(5 * MINUTE);
     await pauseTimerAction(idOf("kid1"));
 
-    // The next afternoon, well inside the twelve hours the pause used to
-    // survive.
     pass(11 * HOUR);
     const screen = await resumeTimerAction(idOf("kid1"));
 
@@ -789,9 +725,7 @@ describe("a session ends with the day it began on (D3, D13)", () => {
   });
 
   it("bounds what a session with no limit can accumulate", async () => {
-    // `max_session_minutes` may be empty (D16), and a session that never ends
-    // used to accrue until `timers_accumulated_seconds_check` refused the write
-    // and walled the boy's stopwatch off for good. A day is the bound now.
+    // A session with no limit (D16) used to accrue until a CHECK walled the stopwatch off.
     connection.db
       .update(activities)
       .set({ maxSessionMinutes: null })

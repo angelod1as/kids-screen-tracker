@@ -27,28 +27,11 @@ import {
 import { lockNote } from "./category-list";
 
 /**
- * One category's activities, configured by hand (#27).
- *
- * **The suggestion is here, and the value is the adult's (D11).** When a
- * `duration` activity is created, the category's `base_rate` arrives in the
- * value field already filled in — and that is the whole of what `base_rate`
- * does in this application. It is nullable, three categories declare none, and
- * the engine never reads it: what governs a calculation is `activities.value`,
- * always explicitly, and by the time the form is submitted the value is a
- * number an adult saw and left there.
- *
- * The distinction is not pedantic. A default applied on the *server* would be
- * invisible — most activities are priced at their category's rate anyway, so an
- * activity that quietly fell back to `base_rate` would look right everywhere
- * anyone thought to check, and would then follow the category's rate around
- * forever without anybody having agreed to that. `src/db/activities.ts` cannot
- * do it: `activities.test.ts` fails if the word `baseRate` appears in it.
- *
- * **Changing a rate here changes nothing already credited (D15).** The list
- * writes no ledger row and reads no log.
+ * `base_rate` only prefills the value field on the screen (D11); a server-side
+ * default would follow the category's rate forever unnoticed, and
+ * `activities.test.ts` fails if `baseRate` appears in `src/db/activities.ts`.
  */
 
-/** The four ways of counting, in the words the screen uses for them. */
 const CALC_MODES: readonly { value: ActivityRow["calcMode"]; label: string }[] =
   [
     { value: "duration", label: "Por duração (horas × taxa)" },
@@ -57,13 +40,11 @@ const CALC_MODES: readonly { value: ActivityRow["calcMode"]; label: string }[] =
     { value: "free", label: "Avulsa: o valor é digitado no lançamento" },
   ];
 
-/** The grade flag, as the one pair of buttons it is. */
 const GRADED = [
   { value: 0, label: "Sem nota" },
   { value: 1, label: "Com nota" },
 ] as const;
 
-/** The form of a new activity, or of one being corrected. */
 export type ActivityDraft = {
   name: string;
   calcMode: ActivityRow["calcMode"];
@@ -76,24 +57,12 @@ export type ActivityDraft = {
   sortOrder: string;
 };
 
-/**
- * The category's rate as a field value, or an empty field (D11).
- *
- * Empty for the three categories that declare no rate — Convívio, Casa and
- * Curinga — because there is nothing to suggest, and inventing 2,0 there would
- * put a number in front of an adult that nothing in the data supports.
- */
+/** Empty where the category declares no rate: inventing 2,0 would be a number nothing supports (D11). */
 export function suggestedValue(baseRate: number | null): string {
   return baseRate === null ? "" : String(baseRate).replace(".", ",");
 }
 
-/**
- * The form a new activity starts from, in the category it is being created in.
- *
- * `duration` first, and therefore the suggestion filled in from the start: it
- * is the commonest mode by some way — fifteen of the seed's thirty-two — and it
- * is the only one #27 asks for the suggestion on.
- */
+/** `duration` first: the commonest mode, and the one #27 suggests a value for. */
 export function emptyActivity(baseRate: number | null): ActivityDraft {
   return {
     name: "",
@@ -108,19 +77,8 @@ export function emptyActivity(baseRate: number | null): ActivityDraft {
 }
 
 /**
- * The draft with a different way of counting chosen, and the value field put
- * where that mode leaves it.
- *
- * Two of the four modes say something about the value, and both are D11's or
- * D12's rather than this screen's:
- *
- * - `free` has no stored value at all — the adult types it at launch (D12's
- *   Curinga) — so the field is emptied rather than left carrying a number the
- *   endpoint would refuse;
- * - `duration` is the mode #27 asks for the suggestion on, so an empty field
- *   takes the category's rate. A field an adult has already typed in is left
- *   exactly as he left it: the suggestion is an offer, and overwriting a typed
- *   number with it would make the offer a rule.
+ * `free` empties the value (D12: typed at launch). `duration` takes the
+ * suggestion only into an empty field: an offer, never overwriting what was typed.
  */
 export function withCalcMode(
   draft: ActivityDraft,
@@ -136,25 +94,15 @@ export function withCalcMode(
   return { ...draft, calcMode };
 }
 
-/**
- * The draft as the endpoint takes it, or `null` while it is not an activity
- * yet.
- *
- * One function rather than a `canSave` / `inputOf` pair, for the reason
- * `categoryInputOf` gives: two statements of one rule are two things that have
- * to agree.
- */
+/** One function, not a `canSave`/`inputOf` pair: see `categoryInputOf`. */
 export function activityInputOf(
   draft: ActivityDraft,
   categoryId: number,
 ): ActivityInput | null {
   const name = draft.name.trim();
   const value = draft.calcMode === "free" ? null : parseTypedHours(draft.value);
-  // Scoped to `duration`, exactly as `requireActivity` scopes it: the field is
-  // only drawn for that mode and the endpoint nulls it for every other one.
-  // Unscoped, a limit typed while the mode was `duration` and left behind by a
-  // switch to `fixed` killed the Save button over a field that was no longer on
-  // screen, with nothing anywhere saying why.
+  // Scoped to `duration` as `requireActivity` scopes it, or a limit left behind
+  // by a mode switch kills Save over a field no longer on screen.
   const timed = draft.calcMode === "duration";
   const maxSessionMinutes =
     !timed || draft.maxSessionMinutes.trim() === ""
@@ -212,7 +160,6 @@ export function minSessionWarning(draft: ActivityDraft): string | null {
   return null;
 }
 
-/** One activity, as a form. */
 function draftOf(activity: ActivityRow): ActivityDraft {
   return {
     name: activity.name,
@@ -230,7 +177,6 @@ function draftOf(activity: ActivityRow): ActivityDraft {
   };
 }
 
-/** What an activity says about itself in the list, in one line. */
 export function activitySummary(activity: ActivityRow): string {
   const parts: string[] = [];
 
@@ -281,16 +227,7 @@ export function ActivityList({
   initial: ActivityRow[];
   /** D37: what is waiting or running, so a refusal is never a surprise. */
   locks: Locks;
-  /**
-   * Called after anything here changes, so the categories can be read again.
-   *
-   * The card above this list says how many activities the category has, and
-   * creating one — or moving one out — changes that number. Counting the rows
-   * held here would answer for this category only: a move changes *two* counts,
-   * and the destination's card is on the same screen. So the list says "it
-   * moved" and the screen asks the database again, which is one query on an
-   * action nobody performs twice a day.
-   */
+  /** A move changes two cards' counts, so the screen re-reads the categories. */
   onChanged: () => void;
 }) {
   const [rows, setRows] = useState(initial);
@@ -312,13 +249,12 @@ export function ActivityList({
         setFailed(null);
         onChanged();
       } catch (error) {
-        // `locks` came with the page, and the boy may have started a session
-        // since: D37's refusal is read fresh here, as the category list does.
+        // `locks` came with the page; D37's refusal is read fresh.
         let fresh: Locks | null = null;
         try {
           fresh = await fetchLocksAction();
         } catch {
-          // Nothing to add to a failure that is already on screen.
+          // Nothing to add to a failure already on screen.
         }
         setFailed(configFailureText(error, fresh));
       }
@@ -326,19 +262,8 @@ export function ActivityList({
   }
 
   /**
-   * Whether anything here can be changed.
-   *
-   * A switched-off category takes its activities out of every picker with it,
-   * and the endpoint refuses to create one under it, to move one into it, or to
-   * switch one back on inside it (D33). So the forms are not drawn: an adult
-   * offered a Save button the server is going to refuse has been told something
-   * false by the screen — and the category picker would be worse than that,
-   * because the category he is looking at is not among the live ones it offers,
-   * so it would sit on somebody else's name from the moment it appeared.
-   *
-   * The activities are still *listed*, which is D14: what was there, and what
-   * it was worth, stays readable. To change any of it, switch the category back
-   * on — one tap, on the card directly above this list.
+   * A switched-off category's activities stay listed (D14) but get no forms: the
+   * endpoint refuses every change under it (D33), so a Save button would lie.
    */
   const editable = category.active;
 
@@ -496,14 +421,7 @@ export function ActivityList({
   );
 }
 
-/**
- * The fields an activity has, drawn once per card plus once at the bottom.
- *
- * `onChangeCategory` is only passed on the editing form: a new activity is
- * created in the category whose card it is under, and offering a picker there
- * would be a second way to say a thing the screen has already said. Moving an
- * existing one is a different intention and gets the picker.
- */
+/** `onChangeCategory` only on the editing form: a new activity belongs to the card it is under. */
 function ActivityFields({
   baseRate = null,
   categories,

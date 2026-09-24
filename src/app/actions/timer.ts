@@ -20,54 +20,24 @@ import {
 } from "../../db/timers";
 
 /**
- * The timer's endpoints (#18, #19).
- *
- * Every one of them is guarded with `proposeTimerLog`, including the read. That
- * is not an oversight: D16 makes a read of a timer a write — settling a session
- * that ran past its limit inserts the record — so the kind that names "the one
- * write a kid may make" is the honest one for all five. For a kid the two kinds
- * answer the same anyway (`access.rules.ts`), and for an admin every kind does;
- * what the choice buys is that nothing here claims to be a read that is not.
- *
- * **The clock is read once per request**, at the top of each action, and passed
- * down. Everything below it — the cut, the abandonment, the record's day — is
- * arithmetic over stamps, which is #19's criterion: the answer does not depend
- * on when the app was opened, and `timer.test.ts` proves it by asking at
- * instants a month apart.
- *
- * Each action answers with the whole screen rather than with an acknowledgement,
- * so the boy's page never has to make a second round trip to find out what it
- * now shows. Nothing here revalidates a path: this screen owns its own state
- * and no other screen changes when a timer does.
+ * Even the read is guarded with `proposeTimerLog`: D16 makes a read a write.
+ * The clock is read once per action and passed down, so the answer is
+ * arithmetic over stamps and not when the app was opened (D16).
  */
 
-/** How much text the boy may attach to a record. */
 const MAX_NOTE_LENGTH = 500;
 
-/**
- * How many of his own pending records the boy is shown.
- *
- * An unbounded select is a query whose cost is decided by how long the family
- * keeps using the app. Twenty is more than the queue should ever hold — an
- * admin who has let twenty entries pile up has a different problem.
- */
+/** Bounded: twenty pending entries is already a different problem. */
 const PENDING_LIMIT = 20;
 
-/** An open session, flattened for the browser. */
 export type OpenSessionView = {
   activityId: number;
   activityName: string;
   categoryName: string;
   status: "running" | "paused";
   /**
-   * Active seconds when the server answered (D17: pauses excluded).
-   *
-   * This is the whole of what the browser is told about the clock, and the
-   * screen counts up from it using the *difference* between two readings of its
-   * own `Date.now()` — never the absolute value. A phone whose clock is an hour
-   * out shows the right duration anyway, and the number that ends up in the
-   * record is not this one: it is recomputed from the stamps when the session
-   * stops.
+   * Active seconds when the server answered (D17). The screen counts only the
+   * difference between its own clock readings, so a wrong phone clock is harmless.
    */
   activeSeconds: number;
   /** D16: where this session would stop by itself. Null means it does not. */
@@ -76,14 +46,13 @@ export type OpenSessionView = {
   minSessionMinutes: number;
 };
 
-/** One record the boy has proposed and nobody has reviewed yet. */
 export type PendingProposal = {
   id: number;
   activityName: string;
   /** D13: `YYYY-MM-DD`. */
   occurredOn: string;
   durationMinutes: number | null;
-  /** The seconds measured, which since #71 is what the screen shows. */
+  /** The seconds measured, which is what the screen shows (D17). */
   durationSeconds: number | null;
   autoStopped: boolean;
 };
@@ -151,12 +120,8 @@ export async function resumeTimerAction(
 }
 
 /**
- * Ends the session and proposes the record (#18).
- *
- * The note is the only thing the browser contributes, and it is trimmed to
- * nothing or capped. The duration is never sent: it comes off the stamps in the
- * database, because a client that could name its own minutes could name four
- * hundred of them.
+ * The duration is never sent: it comes off the stamps, because a client that
+ * could name its own minutes could name four hundred of them.
  */
 export async function stopTimerAction(
   targetUserId: number,
@@ -183,12 +148,7 @@ export async function stopTimerAction(
   return screen(targetUserId, written.read, written.proposed);
 }
 
-/**
- * Everything the screen draws, assembled from a settled read.
- *
- * Not exported: a `"use server"` file's every export is an endpoint, and this
- * takes a user id it does not check.
- */
+/** Not exported: every export of a `"use server"` file is an endpoint, and this one trusts its user id. */
 async function screen(
   userId: number,
   read: TimerRead,
@@ -232,14 +192,7 @@ function viewOf(read: TimerRead): OpenSessionView | null {
   };
 }
 
-/**
- * The boy's own records that are still waiting for an adult.
- *
- * It is the screen's only lasting evidence that a session became something: the
- * "sua sessão fechou no limite" notice belongs to the read that settled it and
- * is gone on the next refresh, and a record nobody can see afterwards is a
- * record the boy has no reason to believe in.
- */
+/** The only lasting evidence that a session became something: the settlement notice is gone on refresh. */
 function pendingProposals(userId: number): PendingProposal[] {
   return (
     getDb()
@@ -259,8 +212,7 @@ function pendingProposals(userId: number): PendingProposal[] {
           eq(activityLogs.status, "pending"),
         ),
       )
-      // The reverse of D8's canonical order, like the ledger: newest first, and
-      // never two rows that swap places between two visits.
+      // D8 read backwards, so rows never swap between visits.
       .orderBy(
         desc(activityLogs.occurredOn),
         desc(activityLogs.createdAt),

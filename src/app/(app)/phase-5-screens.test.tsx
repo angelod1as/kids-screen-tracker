@@ -5,16 +5,7 @@ import type { EntryPreview } from "../../db/admin";
 import { NEGATIVE_CLASS, PENDING_BG_CLASS } from "../../ui/style";
 import type { LaunchData } from "../actions/admin";
 
-/**
- * The four screens of Phase 5: what they ask for, and what they draw.
- *
- * The actions are replaced because their own guards have their own suites
- * (`admin.test.ts`, `ledger.test.ts`); what is under test
- * here is what the screens do with what they answer — including the two ids
- * they hand over, which is a different bug from an unguarded endpoint. The
- * sabotage matrix of Phase 3 changed `session.userId` to `session.userId + 1`
- * in a page and 674 tests stayed green.
- */
+/** Actions are replaced; what is under test is what the screens draw and the ids they hand over. */
 
 const mocked = vi.hoisted(() => ({
   kids: [
@@ -80,13 +71,7 @@ vi.mock("../actions/ledger", () => ({
   refundHoursAction: async () => null,
 }));
 
-/**
- * The day these screens are drawn on.
- *
- * Two of them read the clock on the server to decide what "today" is (D13) —
- * the ceiling on a date field. Fixed here so the markup does not change with
- * the machine's calendar.
- */
+/** Fixed, so a date field's ceiling (D13) does not move with the machine's calendar. */
 const LAUNCHED_AT = new Date("2026-09-13T15:00:00.000Z");
 
 beforeEach(() => {
@@ -116,7 +101,6 @@ describe("the admin's home screen (#21)", () => {
     expect(drawn).toContain("Kid2");
     expect(drawn).toContain("−2h15");
     expect(drawn).toContain(NEGATIVE_CLASS);
-    // Side by side is two columns, and the criterion is the arrangement.
     expect(drawn).toContain("grid-cols-2");
   });
 
@@ -166,7 +150,7 @@ describe("launching an activity (#22)", () => {
     expect(drawn).toContain("Ler livro");
     expect(drawn).toContain('label="Mente"');
     expect(drawn).toContain('label="Casa"');
-    // D13: today comes from the server, and is the ceiling on the field.
+    // D13.
     expect(drawn).toContain('value="2026-09-13"');
     expect(drawn).toContain('max="2026-09-13"');
   });
@@ -198,7 +182,6 @@ describe("releasing hours (#23)", () => {
   });
 
   it("says nothing about the devices until something has been released", async () => {
-    // The reminder is what follows a release, not a warning that precedes one.
     expect(await markup(AdminReleasePage)).not.toContain(
       "nos aparelhos: ligue",
     );

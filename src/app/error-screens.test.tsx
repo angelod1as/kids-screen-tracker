@@ -7,19 +7,10 @@ import GlobalError from "./global-error";
 import NotFound from "./not-found";
 
 /**
- * The two screens Next draws when nothing else does, and the criterion of #14
- * they were breaking: **toda a interface em pt-BR**.
- *
- * `GET /naoexiste` answered "This page could not be found." in English, and
- * nothing in the suite could have noticed: `design.test.ts` reads `lang` out of
- * the root layout, and the root layout is not what renders that screen.
- *
- * Nothing is mounted here. A React element is a plain object, so the tree a
- * component returns can be walked without a DOM, a renderer or a jsdom
- * environment — enough to answer what text it renders and with which props.
+ * Without these, Next answers in English (#14), and `design.test.ts` cannot see
+ * it: it reads `lang` from the root layout. Elements are walked as plain objects.
  */
 
-/** Every string in the tree, in order. */
 function textOf(node: ReactNode): string {
   if (typeof node === "string" || typeof node === "number") {
     return String(node);
@@ -36,7 +27,6 @@ function textOf(node: ReactNode): string {
   return "";
 }
 
-/** The first element in the tree with this tag or component type. */
 function find(node: ReactNode, type: unknown): ReactNode | undefined {
   if (Array.isArray(node)) {
     for (const child of node) {
@@ -106,8 +96,6 @@ describe("the page a crash in the root layout gets (#14)", () => {
   const screen = GlobalError({ reset: () => undefined });
 
   it("declares the language itself, because it replaces the root layout", () => {
-    // Next swaps the whole document out for this one, so `lang="pt-BR"` set in
-    // `app/layout.tsx` does not reach it.
     expect((screen as { props: { lang?: string } }).props.lang).toBe("pt-BR");
   });
 
@@ -118,10 +106,7 @@ describe("the page a crash in the root layout gets (#14)", () => {
 
 describe("what an error screen tells the person looking at it", () => {
   it("prints no message from the error itself", () => {
-    // `AccessDeniedError` is thrown rather than returned, so a refusal reaches
-    // a browser through this boundary. Its message was written to name neither
-    // the caller nor the target; every other message in the tree was written
-    // for a server log.
+    // A refusal is thrown, so it reaches the browser here; other messages name internals.
     const shown = textOf(AppError({ reset: () => undefined }));
 
     expect(shown).not.toContain("Acesso negado");

@@ -19,17 +19,9 @@ import { EMPTY_LOGIN_STATE } from "./login-state";
 import { loginAction, logoutAction } from "./session";
 
 /**
- * The login and logout endpoints (#12), and the criterion that has to be tested
- * on purpose because nothing else would notice it: **no password appears in a
- * log, a response or an error message**.
- *
- * A password does not leak because someone printed it. It leaks because
- * someone printed *the input that failed*, which is the natural thing to print,
- * and because a returned error object carries more than the message it was
- * built for. So every password used below is a distinctive marker string, and
- * every value that leaves the action is searched for it.
- *
- * The four passwords are invented, and their hashes are made here (D23, D45).
+ * No password in a log, response or error: it leaks when someone prints the
+ * input that failed. Every password is a marker string searched for in
+ * everything that leaves the action. Invented, hashed here (D23, D45).
  */
 
 const PASSWORD_MARKER = "zzMARKERzz-kid1-password-9f13";
@@ -46,12 +38,7 @@ const mocked = vi.hoisted(() => ({
   accounts: new Map<string, StoredAccount>(),
 }));
 
-/**
- * `../../auth/guard` is the module that opens the database. Replacing it is how
- * a case says "this person's row is `active = false`" without a SQLite file;
- * that the guard reads the row correctly is `guard.test.ts`'s job, against a
- * real migrated and seeded database.
- */
+/** Replaced so a case can say "inactive" without a database; `guard.test.ts` covers the real read. */
 vi.mock("../../auth/guard", () => ({
   findLoginAccount: (username: string) =>
     mocked.deactivated.has(username)
@@ -94,11 +81,7 @@ vi.mock("../../auth/session", () => ({
   },
 }));
 
-/**
- * `redirect` throws a control-flow error inside Next. Replacing it with a
- * throw of our own keeps that shape — the code after it must not run — while
- * making the destination readable.
- */
+/** Throws like Next's `redirect`, so code after it must not run, but readably. */
 class Redirected extends Error {
   constructor(readonly to: string) {
     super(`redirect:${to}`);
@@ -126,7 +109,6 @@ function form(username: string, password: string): FormData {
   return data;
 }
 
-/** Runs `loginAction`, returning either the state or the redirect it threw. */
 async function login(
   username: string,
   password: string,
@@ -234,8 +216,7 @@ describe("no password reaches a response, a log or an error", () => {
       PASSWORD_MARKER.replace("9f13", "0000"),
     );
 
-    // The whole object, not just the message: this value is serialised into
-    // the page, so every field of it is a field the browser receives.
+    // The whole object: it is serialised into the page.
     expect(JSON.stringify(state)).not.toContain("zzMARKERzz");
   });
 
@@ -269,10 +250,7 @@ describe("no password reaches a response, a log or an error", () => {
 });
 
 describe("a deactivated account cannot log in (D14)", () => {
-  // Nothing is deleted from this database, so `active = false` is how a person
-  // stops being one. Before this, the right password still authenticated: the
-  // cookie was written and the redirect issued, and the first screen bounced
-  // them back with no message.
+  // Before this, the right password still authenticated a deactivated account.
   it("is refused, with the same message as every other failure", async () => {
     mocked.deactivated.add("kid1");
 
@@ -300,10 +278,8 @@ describe("a deactivated account cannot log in (D14)", () => {
 });
 
 describe("a password is taken as typed", () => {
-  // `.trim()` on the password was a mutation nothing caught, and it is the
-  // worst kind: a password with a space at either end silently stops being the
-  // password, with no message and nothing in a log. `.env` is edited by hand,
-  // and a trailing space in a hand-edited file is not exotic.
+  // `.trim()` on the password went uncaught, and a padded password silently
+  // stops matching.
   it("accepts a password whose spaces are part of it", async () => {
     const result = await login("kid2", SPACED_MARKER);
 
@@ -320,8 +296,7 @@ describe("a password is taken as typed", () => {
   });
 
   it("still trims the username, which is not a secret", async () => {
-    // The username is normalised on purpose: a phone keyboard adds a capital,
-    // and a long-press paste adds a space. Neither is true of the password box.
+    // A phone keyboard adds a capital and a paste adds a space; not so the password.
     const result = await login("  Kid2  ", SPACED_MARKER);
 
     expect(result.to).toBe("/menino");
@@ -456,12 +431,8 @@ describe("logout", () => {
 
 describe("nothing under src/ prints anything", () => {
   it("has no console call outside the tests", () => {
-    // The structural half of "nenhuma senha aparece em log". The behavioural
-    // half above proves the login path is quiet today; this proves nobody
-    // reached for `console.log` while debugging it and left the line in.
-    //
-    // The two CLI scripts under `scripts/` do print, on purpose, and are not
-    // part of the running app.
+    // The structural half: nobody left a `console.log` from debugging. The CLI
+    // scripts under `scripts/` print on purpose.
     const src = join(import.meta.dirname, "..", "..");
     const offenders = readdirSync(src, { recursive: true, withFileTypes: true })
       .filter(

@@ -3,26 +3,9 @@ import { describe, expect, it, vi } from "vitest";
 import type { Session } from "../auth/access";
 
 /**
- * The five redirects that decide which screen a browser is allowed to render.
- *
- * The guard that matters is the one inside each server action, and
- * `balance.test.ts` sends the forged POST at it. This file covers the other
- * half — the navigation — for a reason the review round found by deleting it:
- * every one of these five `redirect` calls could be removed and the suite
- * stayed at 459 green. They work in the running app; nothing here noticed.
- *
- * Each layout and page is an async function, so it is called as one. Two
- * modules are replaced and neither is the thing under test:
- *
- * - `../auth/guard`, so a case can say "the browser presents Kid1's cookie"
- *   without a request context. What `currentSession` itself does — signature,
- *   database lookup, `active = false` — has its own suite in `guard.test.ts`.
- * - `next/navigation`, so the destination of a redirect is readable. `redirect`
- *   throws inside Next, and the replacement throws too: the code after it must
- *   not run, and a test that let it run would be testing a different function.
- *
- * `../auth/env` is replaced because the login screen reaches it through the
- * action it imports, and it is the module that reads Varlock (D23).
+ * The navigation half: every one of these redirects could be deleted with the
+ * suite green. `../auth/guard` and `next/navigation` are replaced; `../auth/env`
+ * too, since the login screen reaches Varlock through its action (D23).
  */
 
 const mocked = vi.hoisted(() => ({ session: null as Session | null }));
@@ -65,14 +48,7 @@ const KID1: Session = {
 
 type Segment = (props: { children: unknown }) => Promise<unknown>;
 
-/**
- * Runs a segment and reports where it sent the browser, or `null` if it
- * rendered instead.
- *
- * Anything thrown that is not a redirect is re-thrown: a segment that blows up
- * has not "not redirected", and swallowing it here would turn a broken screen
- * into a passing case.
- */
+/** Anything thrown that is not a redirect is re-thrown: a crash has not "not redirected". */
 async function destination(
   segment: Segment,
   session: Session | null,
@@ -125,8 +101,6 @@ describe("the admin area (src/app/(app)/admin/layout.tsx)", () => {
 
 describe("the boy's area (src/app/(app)/menino/layout.tsx)", () => {
   it("sends an admin to the admin home", async () => {
-    // These screens read `session.userId`, and an admin has no balance of his
-    // own; he sees both boys from `/admin`.
     await expect(destination(kidLayout, ADMIN1)).resolves.toBe("/admin");
   });
 
@@ -150,7 +124,6 @@ describe("the signpost at / (src/app/page.tsx)", () => {
   });
 
   it("never renders anything of its own", async () => {
-    // It is a redirect and nothing else, for all three cases above.
     for (const session of [KID1, ADMIN1, null]) {
       await expect(destination(rootPage, session)).resolves.not.toBeNull();
     }

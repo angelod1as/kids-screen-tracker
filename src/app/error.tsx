@@ -4,17 +4,8 @@ import { Button } from "../ui/button";
 import { BORDER_CLASS, SHELL_CLASS } from "../ui/style";
 
 /**
- * What a crash inside the app shows (#14: "toda a interface em pt-BR").
- *
- * Without this file Next serves its own screen, in English. That screen is
- * reachable today only in theory — the layouts redirect before any guard can
- * throw — but `AccessDeniedError` is thrown rather than returned, so the day a
- * refusal reaches a browser it arrives here.
- *
- * It does not print `error.message`. A message written for a server log is a
- * message that names a table, a path or an id, and the one message this app
- * throws on purpose ("Acesso negado.") was written to say nothing about who
- * asked for what. Both arguments point the same way: one fixed sentence.
+ * Without it Next answers in English (#14). Never prints `error.message`: a
+ * server message can name a table, a path or an id.
  */
 export default function AppError({ reset }: { reset: () => void }) {
   return (

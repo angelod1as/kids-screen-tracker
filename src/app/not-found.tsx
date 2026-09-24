@@ -1,18 +1,8 @@
 import { BORDER_CLASS, SHELL_CLASS } from "../ui/style";
 
 /**
- * What a wrong address shows (#14: "toda a interface em pt-BR").
- *
- * Without this file Next serves its own page, and its own page says "This page
- * could not be found." in English — which the review round found by asking for
- * `/naoexiste`. `design.test.ts` never noticed because it reads `lang` out of
- * the root layout, and the root layout is not what renders that screen.
- *
- * There is no link back on purpose: `design.test.ts` refuses a raw `<a>` or
- * `<Link>` outside `src/ui/`, and a navigation primitive invented for this one
- * screen is a primitive with one caller. A boy who lands here is one tap from
- * where he was, because the bar at the bottom is still on the screen he came
- * from.
+ * Without it Next answers in English (#14). No link back: `design.test.ts`
+ * refuses a raw `<a>` outside `src/ui/`, and the bottom bar is still there.
  */
 export default function NotFound() {
   return (

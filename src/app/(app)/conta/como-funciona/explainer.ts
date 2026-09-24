@@ -16,7 +16,6 @@ import type {
 /** The session the owner asked about in #107: an input to the example, not a rule. */
 export const SHORT_SESSION_MINUTES = 7;
 
-/** How many bands the decay table walks through. */
 export const DECAY_ROWS = 4;
 
 export type Example = {

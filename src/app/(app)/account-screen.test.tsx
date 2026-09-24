@@ -4,18 +4,8 @@ import { describe, expect, it, vi } from "vitest";
 import type { Session } from "../../auth/access";
 
 /**
- * The account page (#70), which is where the top bar's two jobs went.
- *
- * The old bar wrote the name and offered "Sair" above every screen. The name is
- * now the first cell of the bottom bar and the way out is here, one tap behind
- * it — so this file holds what `components.test.tsx` used to hold about the
- * logout form, plus the half that is new: what an admin gets here and a boy
- * does not.
- *
- * `../../auth/guard` is replaced so a case can say who is logged in, and
- * `../actions/session` because it reads Varlock (D23). The identity of the
- * logout mock is what the form's action is compared against, so "the button
- * logs out" is an assertion and not a shape check.
+ * `../../auth/guard` is replaced to say who is logged in, `../actions/session`
+ * because it reads Varlock (D23). The form's action is compared by identity.
  */
 
 const mocked = vi.hoisted(() => ({ session: null as Session | null }));
@@ -66,7 +56,6 @@ async function screen(session: Session): Promise<Element[]> {
   return elements(await AccountPage());
 }
 
-/** Every `href` the page offers, whatever component drew it. */
 function links(page: Element[]): string[] {
   return page
     .map((element) => element.props.href)
@@ -82,8 +71,7 @@ describe("the account page, per role (#70)", () => {
   });
 
   it("gives an admin Configuração as well", async () => {
-    // It left the bottom bar with this issue, so this is the only place it is
-    // reachable from — a page that dropped it would strand the screen.
+    // It left the bottom bar (#70); this is the only way to reach it.
     const page = await screen(ADMIN1);
 
     expect(links(page)).toEqual([
@@ -93,19 +81,13 @@ describe("the account page, per role (#70)", () => {
   });
 
   it("never offers a boy an admin route", async () => {
-    // The menu half of the access rule. The half that holds is the admin
-    // layout and the guard inside every action behind that link.
     for (const href of links(await screen(KID1))) {
       expect(href.startsWith("/admin")).toBe(false);
     }
   });
 
   it("writes whose account it is", async () => {
-    // Since #74 the name is the title of the panel the page is built from, so
-    // it arrives as a prop of `Panel` and as the children of the heading that
-    // panel renders. Either satisfies the rule this is checking — the screen
-    // says whose account it is — so both are looked at rather than pinning the
-    // one the markup happens to use today.
+    // The name reaches the page as `Panel`'s title and as heading children; either counts.
     const page = await screen(KID1);
     const written = page.flatMap((element) => [
       element.props.children,
@@ -118,8 +100,7 @@ describe("the account page, per role (#70)", () => {
 
 describe("logging out", () => {
   it("submits to the logout action, visibly", async () => {
-    // `hidden` on this form was a mutation nothing caught when it lived in the
-    // shell: logout kept working and stopped being reachable.
+    // `hidden` here once kept logout working and unreachable.
     const form = (await screen(KID1)).find(
       (element) => element.type === "form",
     );

@@ -19,20 +19,9 @@ import {
 import { recoverFrom } from "./timer-screen";
 
 /**
- * A network failure on the stopwatch does not lose the running session (#29).
- *
- * The session never lived in the browser: `startTimerAction` writes a row with
- * the stamps (D16, D17) before it answers, and every later tap is another
- * action against that row. So "the network failed" can only mean one of two
- * things, and both are played here against a real database:
- *
- * - the request never arrived — the row is untouched, and the same tap later
- *   does what it would have done;
- * - the request arrived and only the answer was lost — the row already moved,
- *   the same tap is refused, and the screen's recovery reads the server again
- *   instead of leaving the boy stuck on a button that can never succeed.
- *
- * Only the cookie and the connection are replaced, as in `timer.test.ts`.
+ * The session lives in a row, never in the browser (#29). A request that never
+ * arrived leaves the row for the same tap later; one whose answer was lost has
+ * moved it, the tap is refused, and the recovery reads the server again.
  */
 
 const mocked = vi.hoisted(() => ({
@@ -54,7 +43,6 @@ vi.mock("../../../../db", () => ({
 
 const MINUTE = 60 * 1000;
 
-/** A Tuesday afternoon in São Paulo: 14:00 local, which is 17:00 UTC. */
 const START = new Date("2026-09-01T17:00:00.000Z");
 
 const NETWORK = new TypeError("Failed to fetch");
@@ -113,7 +101,6 @@ describe("a network failure on the stopwatch loses nothing (#29)", () => {
     await startTimerAction(kid1, book);
     pass(20 * MINUTE);
 
-    // Nothing from the browser in between: a closed tab, a dead connection.
     const screen = await fetchTimerScreenAction(kid1);
 
     expect(screen.open?.status).toBe("running");
@@ -123,11 +110,9 @@ describe("a network failure on the stopwatch loses nothing (#29)", () => {
   it("lets the same stop go through later when the first one never arrived", async () => {
     await startTimerAction(kid1, book);
     pass(30 * MINUTE);
-    // *Parar*: the pause that freezes the duration arrived.
     await pauseTimerAction(kid1);
 
-    // *Enviar para aprovação* failed on the way out, and the boy only gets
-    // his connection back ten minutes later.
+    // *Enviar* failed on the way out; the connection is back ten minutes later.
     pass(10 * MINUTE);
 
     const recovered = await recoverFrom(NETWORK, () =>
@@ -153,8 +138,7 @@ describe("a network failure on the stopwatch loses nothing (#29)", () => {
     await startTimerAction(kid1, book);
     pass(45 * MINUTE);
     await pauseTimerAction(kid1);
-    // Arrived and was written; the phone got a network error instead of the
-    // answer, which is what it hands to the recovery.
+    // Written, but the phone got a network error instead of the answer.
     await stopTimerAction(kid1, "");
 
     const recovered = await recoverFrom(NETWORK, () =>
@@ -165,7 +149,6 @@ describe("a network failure on the stopwatch loses nothing (#29)", () => {
     expect(recovered.data?.open).toBeNull();
     expect(recovered.data?.pending).toHaveLength(1);
     expect(recovered.data?.pending[0]?.durationMinutes).toBe(45);
-    // One record, not two.
     expect(logs()).toHaveLength(1);
   });
 
@@ -175,8 +158,7 @@ describe("a network failure on the stopwatch loses nothing (#29)", () => {
     await pauseTimerAction(kid1);
     await stopTimerAction(kid1, "");
 
-    // Without the recovery the boy would tap again, and this is what he gets:
-    // a refusal, because there is nothing left to stop.
+    // Without the recovery he taps again and is refused: nothing left to stop.
     const retry = await stopTimerAction(kid1, "").then(
       () => null,
       (error: unknown) => error,

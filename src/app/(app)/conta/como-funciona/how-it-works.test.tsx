@@ -46,7 +46,6 @@ const HowItWorksPage = (await import("./page")).default;
 let root: string;
 let connection: ReturnType<typeof openDatabase>;
 
-/** "Futebol ou outro esporte coletivo", the first timed activity of Corpo. */
 const FOOTBALL = 1;
 
 beforeEach(() => {
@@ -90,7 +89,6 @@ function football() {
   return { activity, category };
 }
 
-/** What the engine says the example is worth, outside the screen. */
 function engineHours(minutes: number, returnBonusPct?: number): number {
   const { activity, category } = football();
   const occurredOn = saoPauloDay(new Date());

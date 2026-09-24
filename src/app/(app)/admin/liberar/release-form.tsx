@@ -15,27 +15,11 @@ import { releaseHoursAction } from "../../../actions/ledger";
 import type { Kid } from "../../../actions/people";
 
 /**
- * Releasing hours onto the devices (#23).
- *
- * The screen is short because the operation is: a boy, an amount, and where it
- * went. The destination is free text and optional — "WhatsApp", "Xbox", "TV" —
- * because it is what the extract will call the row, and the adult is standing
- * at the console, not filling in a form.
- *
- * **Nothing here checks the balance against what is being released**, and that
- * is the criterion rather than an omission. The balance may go below zero
- * without limit: an adult who releases three hours to a boy who has one is
- * describing something that already happened on a device, and an app that
- * refused it would stop being the record of what happened. The number that
- * comes back is drawn in the one colour CLAUDE.md lets a negative balance wear.
- *
- * What follows a release is the half that is easy to leave out: the app has not
- * turned anything on. The reminder says so, and that is all it says — what is
- * configured on the device is the device's business, not a second record this
- * app keeps beside it (D41).
+ * No check against the balance: it may go below zero without limit, because a
+ * release describes something already done on a device. The app turns nothing
+ * on, and what is configured there is not its business (D41).
  */
 
-/** The amounts an adult releases without thinking about it. */
 const HOUR_CHOICES: readonly Choice[] = [0.5, 1, 1.5, 2, 3, 4].map((hours) => ({
   value: hours,
   label: formatHours(hours),

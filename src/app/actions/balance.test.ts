@@ -11,19 +11,7 @@ import { seedWithTestUsers } from "../../db/test-users";
 import { fetchBalanceAction } from "./balance";
 import { listKidsAction } from "./people";
 
-/**
- * The forged request, end to end (#13).
- *
- * `fetchBalanceAction` is a server action, which means it is an HTTP endpoint
- * that takes a number. The interface never draws a link to the brother's
- * balance, and that fact protects nobody: anyone with the app open can send the
- * POST by hand with the other id in it. What follows sends exactly that
- * request.
- *
- * Only the cookie is mocked — the same two modules as `guard.test.ts`, for the
- * same reasons. The action's guard, the database lookup behind it and the
- * ledger query all run for real, against a migrated and seeded SQLite file.
- */
+/** Sends the forged POST with the brother's id (#13). Only the cookie is mocked. */
 
 const mocked = vi.hoisted(() => ({
   username: null as string | null,
@@ -47,11 +35,7 @@ let ids: Map<string, number>;
 
 /** Kid1's ledger, in hours: 4 earned, 1,5 spent, 0,25 refunded. */
 const KID1_BALANCE = 2.75;
-/**
- * Kid2's: 10,5 earned, 3,25 spent. Deliberately not a round number and not
- * Kid1's — a leak of the wrong balance has to be visible as a wrong value,
- * and a digit that also turns up in a stack trace proves nothing.
- */
+/** Not round and not Kid1's, so a leak shows as a wrong value. */
 const KID2_BALANCE = 7.25;
 
 beforeEach(() => {
@@ -144,11 +128,7 @@ describe("a kid reading his own balance", () => {
   });
 });
 
-/**
- * The error a call was refused with. Fails loudly if it was not refused at all
- * — a `.catch()` that returns the resolved value instead would let a guard that
- * stopped guarding pass the assertions below.
- */
+/** Fails if the call resolved, so a guard that stopped guarding cannot pass. */
 async function refusal(promise: Promise<unknown>): Promise<Error> {
   try {
     await promise;
@@ -198,8 +178,7 @@ describe("a kid forging his brother's id", () => {
   });
 
   it("cannot get his brother's id out of the app either", async () => {
-    // Forging the request needs a number. The only endpoint that hands the two
-    // ids out is admin-only, so the app does not supply the ingredient.
+    // The only endpoint that hands out both ids is admin-only.
     mocked.username = "kid1";
 
     await expect(listKidsAction()).rejects.toMatchObject({
@@ -298,8 +277,7 @@ describe("the balance itself", () => {
       .run();
     mocked.username = "kid1";
 
-    // 0.1 + 0.2 is 0.30000000000000004 in binary floating point, and a balance
-    // that renders with sixteen decimals on a phone is a balance nobody trusts.
+    // 0.1 + 0.2 must not render with sixteen decimals.
     await expect(fetchBalanceAction(idOf("kid1"))).resolves.toBe(0.3);
   });
 });

@@ -24,12 +24,7 @@ export type HowItWorksData = {
   activities: HowItWorksActivity[];
 };
 
-/**
- * The live configuration the "Como funciona" screen (#107) explains.
- *
- * `requireSession` and not `requireAccess`: the answer is the table both boys
- * are measured by, never one person's data, so there is no target to check.
- */
+/** `requireSession`: this is the table both boys are measured by, not one person's data. */
 export async function fetchHowItWorksAction(): Promise<HowItWorksData> {
   await requireSession();
 

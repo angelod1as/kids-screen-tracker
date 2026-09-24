@@ -27,38 +27,12 @@ import {
 } from "../../../actions/timer";
 
 /**
- * The boy's timer (#18).
- *
- * **Nothing on this screen interrupts him.** No confirmation every so often, no
- * alert when the limit is near, no notification, no dialog, no sound. That is
- * the spec's rule and not a preference, and it is the reason the only timer in
- * this file is the one that redraws the digits: `timer-screen.test.tsx` reads
- * this source and fails if `alert`, `confirm`, `Notification` or a second
- * `setInterval` ever turns up in it.
- *
- * **The state is the server's.** Everything here is drawn from what an action
- * answered, and every button is an action: closing the tab loses nothing,
- * because there is nothing in the browser to lose. The digits do count up
- * locally between two answers — a clock that only moved when the network did
- * would be a clock nobody believes — and they count up from the number the
- * server gave, using the difference between two readings of the browser's own
- * `Date.now()`. The value that reaches the record is never this one.
- *
- * **The clock is the readout and the panel is the instrument** (#74). The
- * digits are set in the monospace face at the same size as the balance on the
- * home screen, because they are the same kind of thing: the one number the
- * screen exists to show. What the session is, and whether it is counting, sit
- * in the band above it, so the number below never has to share its line.
- *
- * The stop is two taps and the first of them is real: *Parar* pauses the
- * session on the server, so the duration is frozen at the moment he said he was
- * finished and not at the moment he finishes typing. If he closes the tab in
- * between, he comes back to a paused session — and a paused session left for
- * twelve hours is D16's `abandoned`, which is the rule that already covers "he
- * never came back", rather than a fourth state invented here.
+ * Nothing interrupts him: no alert, confirm, notification or second interval,
+ * and `timer-screen.test.tsx` fails if one appears. The state is the server's;
+ * *Parar* pauses on the server so the duration freezes at that tap, and a tab
+ * closed in between leaves a pause that D16 already covers.
  */
 
-/** Seconds in a minute, for the cap below. */
 const SECONDS_PER_MINUTE = 60;
 
 export function TimerScreen({ initial }: { initial: TimerScreenData }) {
@@ -69,19 +43,12 @@ export function TimerScreen({ initial }: { initial: TimerScreenData }) {
   const [failed, setFailed] = useState<string | null>(null);
   const [busy, startAction] = useTransition();
 
-  /**
-   * Milliseconds the browser has watched pass since `data` arrived.
-   *
-   * Zero on the first render, on the server and in the browser alike, so the
-   * markup React hydrates is the markup it produced. It only ever grows from an
-   * interval, and only while something is running.
-   */
+  /** Zero on the first render, so the hydrated markup matches the server's. */
   const [watchedMs, setWatchedMs] = useState(0);
   const open = data.open;
 
-  // `open` is a fresh object on every answer, so the anchor is reset every time
-  // the server says something new: the digits never add the browser's elapsed
-  // time to a number that already contains it.
+  // `open` is fresh on every answer, so the anchor resets and the digits never
+  // count the browser's elapsed time twice.
   useEffect(() => {
     setWatchedMs(0);
 
@@ -104,9 +71,8 @@ export function TimerScreen({ initial }: { initial: TimerScreenData }) {
           fetchTimerScreenAction(data.userId),
         );
 
-        // Nothing on screen is thrown away on a failure: the confirmation and
-        // the note he typed stay, so the retry is the same tap. Only a fresh
-        // read that says the session is already over closes the confirmation.
+        // The confirmation and the typed note survive a failure, so the retry is
+        // the same tap. Only a read saying the session is over closes it.
         if (recovered.data !== null) {
           setData(recovered.data);
           if (recovered.data.open === null) setConfirming(false);
@@ -165,9 +131,8 @@ export function TimerScreen({ initial }: { initial: TimerScreenData }) {
           onPause={() => act(() => pauseTimerAction(data.userId))}
           onResume={() => act(() => resumeTimerAction(data.userId))}
           onStop={() =>
-            // Pausing first is what freezes the duration at this tap. It is
-            // idempotent, so tapping it while already paused keeps the pause
-            // the twelve hours of D16 are counted from.
+            // Pausing first freezes the duration at this tap. Idempotent, so an
+            // existing pause keeps the instant D16's twelve hours count from.
             act(
               () => pauseTimerAction(data.userId),
               () => setConfirming(true),
@@ -184,15 +149,8 @@ export function TimerScreen({ initial }: { initial: TimerScreenData }) {
 }
 
 /**
- * What the screen does after a request failed (#29).
- *
- * The session is the server's, so the one thing a failure can cost is a screen
- * that no longer matches it: a *Parar* whose answer was lost on the way back
- * has already paused, and an *Enviar* whose answer was lost has already created
- * the record — tapping it again would be refused, because there is no open
- * session left to stop. So the screen asks again. If the read comes back, the
- * screen is redrawn from it and says so; if it does not, nothing is replaced and
- * the sentence says what to do, with the session untouched on the server.
+ * A lost answer may already have paused or filed (#29), so the screen reads
+ * again; if that fails too, nothing is replaced.
  */
 export async function recoverFrom(
   error: unknown,
@@ -206,14 +164,7 @@ export async function recoverFrom(
   }
 }
 
-/**
- * The digits: what the server said, plus what the browser has watched go by.
- *
- * Capped at the activity's own limit, which is a statement about the *display*
- * and not a second copy of D16's rule — the cut itself is decided on the server,
- * from the stamps, and this only keeps the screen from reading 3h05 for a
- * session that ended at 3h00 while nobody was tapping anything.
- */
+/** Capped for display only: the cut itself is the server's, from the stamps (D16). */
 export function displayedSeconds(
   open: OpenSessionView,
   watchedMs: number,
@@ -229,7 +180,6 @@ export function displayedSeconds(
   return limit === null ? counted : Math.min(counted, limit);
 }
 
-/** A sentence the screen has to say, in a panel of its own. */
 function Box({ children }: { children: React.ReactNode }) {
   return (
     <Panel title="Aviso">
@@ -305,8 +255,7 @@ function Confirm({
   onNote: (value: string) => void;
   open: OpenSessionView;
 }) {
-  // #86: the server refuses a session under the floor (D44); the screen says so
-  // before the tap rather than after it.
+  // #86: the server refuses under the floor (D44); the screen says so before the tap.
   const short = !reachesMinimum(open.activeSeconds, open.minSessionMinutes);
 
   return (
@@ -421,18 +370,9 @@ function Idle({
 }
 
 /**
- * What the boy is told about a session that ended without him filing it
- * (D16, D3, #71).
- *
- * Four sentences and not one, because the four endings are four different
- * things to him: the limit stopped a session he was in the middle of, the turn
- * of the day stopped one he began yesterday, an abandonment threw one away, and
- * a session under the activity's floor was not sent (D44). The last two create
- * nothing, and both say so — an ending that files no record and does not admit
- * it is how a boy comes to believe the app eats his afternoons.
- *
- * `tooShort` names the floor out loud, with the time he reached beside it;
- * "não deu para enviar" would leave him tapping the same button again.
+ * Four endings, four sentences: an ending that files nothing and does not admit
+ * it is how a boy comes to believe the app eats his afternoons. `tooShort` names
+ * the floor (D44).
  */
 export function settlementText(settlement: TimerSettlement): string {
   const minutes = formatRecordedDuration(settlement.durationSeconds ?? 0);
@@ -451,7 +391,6 @@ export function settlementText(settlement: TimerSettlement): string {
   }
 }
 
-/** The warning on the confirmation of a session under its floor (#86, D44). */
 export function shortText(minSessionMinutes: number): string {
   const floor =
     minSessionMinutes === 0 ? "30 segundos" : formatDuration(minSessionMinutes);
@@ -459,13 +398,7 @@ export function shortText(minSessionMinutes: number): string {
   return `A sessão mínima desta atividade é de ${floor}. Se encerrar agora, nada vai para aprovação. Para enviar, toque em Voltar e continue o cronômetro.`;
 }
 
-/**
- * What he has already sent and nobody has decided on yet.
- *
- * The one lasting sign that a session became something: the notice above it
- * belongs to a single answer and is gone on the next refresh, and a boy who
- * cannot see his own entry has no reason to believe it was ever made.
- */
+/** The one lasting sign that a session became something: the notice above is gone on refresh. */
 function PendingList({ data }: { data: TimerScreenData }) {
   return (
     <Panel
@@ -490,12 +423,7 @@ function PendingList({ data }: { data: TimerScreenData }) {
               className={`${ROW_CLASS} flex-col items-stretch`}
               key={proposal.id}
             >
-              {/*
-                The mark is on the entry and not only on the panel's band: the
-                count says how many are waiting, and this says *which*. #18 asks
-                for the boy's own waiting entries to carry the pendency colour,
-                and a count in a band is not that.
-              */}
+              {/* On the entry, not only the band: the count says how many, this says which (#18). */}
               <span className="flex items-center gap-2">
                 <PendingMark>Pendente</PendingMark>
                 <span className="break-words text-base font-bold text-black">
