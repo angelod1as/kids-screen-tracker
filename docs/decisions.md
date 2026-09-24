@@ -1,8 +1,8 @@
 # Decisões — Quanto Tempo Vale?
 
 Vinte e cinco ambiguidades da spec, resolvidas e justificadas antes da primeira
-linha de código, mais as que cada fase mediu depois. Hoje são quarenta e sete,
-D1–D47, mais nove emendas e as duas declarações da Fase 4, uma delas revogada.
+linha de código, mais as que cada fase mediu depois. Hoje são quarenta e oito,
+D1–D48, mais nove emendas e as duas declarações da Fase 4, uma delas revogada.
 
 **Onde este documento e `spec.md` discordarem, este documento vence.**
 
@@ -1399,3 +1399,85 @@ histórico, sem bônus. Ninguém volta de onde nunca esteve.
 **Resíduo aceito.** Enquanto a estreia de uma categoria espera na fila, nenhuma
 entrada posterior daquela categoria pode ser decidida. A fila já lista da mais
 antiga para a mais nova, então o caminho normal não encosta nisso.
+
+---
+
+## A decisão que veio da #3
+
+### D48 — Login errado atrasa, não tranca
+
+O `/entrar` não limitava tentativa. Com o repositório público, a URL e o
+formulário são conhecidos, e o único freio era o custo de uma derivação scrypt:
+cerca de 4 palpites por segundo num navegador, 100 senhas erradas seguidas em
+26,2 s, e a certa aceita logo depois.
+
+**Decisão.** Um limitador em memória, por nome de usuário, que atrasa e nunca
+tranca (`src/auth/login-throttle.ts`).
+
+- **Cinco tentativas livres.** Depois, cada tentativa que passa abre uma espera
+  que dobra a partir de 1 s, com teto de **15 minutos**. Chave sem tentativa
+  por 24 h recomeça; login certo zera a chave.
+- **Tentativa dentro da espera é recusada sem checar a senha,** com a mesma
+  mensagem de sempre (#12), e não alonga a espera. Não gasta scrypt.
+- **A tentativa é cobrada antes de checar,** de forma síncrona. Requisições em
+  paralelo não passam juntas pela mesma janela aberta.
+- **A chave é o nome digitado, normalizado,** exista a conta ou não. Nome
+  inventado e nome real atrasam igual, então o atraso não conta quem existe.
+- **Cookie de dispositivo.** Login certo grava `kst_device` (httpOnly, `lax`,
+  um ano), assinado com uma chave derivada do `SESSION_SECRET` diferente da da
+  sessão, e que sobrevive ao logout. A tentativa de um navegador que carrega o
+  cookie **do mesmo nome digitado** conta numa chave separada. Ela também é
+  limitada, com o mesmo teto.
+- **Sem IP e sem serviço externo.** O estado mora na memória do processo, que
+  é um container só, e some no restart.
+
+**Por quê.** São quatro contas numa família. Trancar a conta depois de N erros
+dá ao irmão uma arma: ele erra de propósito e o outro não entra. Um atraso por
+nome sozinho tem o mesmo defeito, mais brando: o menino que erra a senha do
+adulto no próprio celular atrasa o login do adulto. O cookie de dispositivo
+separa os dois. O adulto entra do próprio aparelho sem esperar, e o menino só
+atrasa a tentativa que vem de aparelho sem o cookie do adulto. IP não separa
+ninguém: em casa todos saem pelo mesmo endereço, e o `x-forwarded-for` só vale
+atrás do proxy.
+
+**Medido** num `next start` local, banco descartável com as quatro contas de
+teste, postando o formulário sem JavaScript como um script faria:
+
+| cenário | antes (#3) | depois |
+|---|---|---|
+| senhas erradas seguidas, um cliente, mesma conta | 100 checadas em 26,2 s | 40 tentativas em 3,8 s, **6 checadas** (5 livres e 1 depois de 1 s); as outras recusadas em 6–66 ms, sem scrypt |
+| senha certa logo depois | aceita | recusada, com a mesma mensagem |
+| 30 logins certos em paralelo, cliente sem cookie | — | **5 aceitos**, 25 recusados |
+| 50 erros na conta de um admin, cliente sem cookie; depois o admin do próprio aparelho | — | cliente sem cookie recusado; admin com cookie **aceito**; o outro admin, intocado |
+| nome inexistente e nome real, 6ª tentativa | — | mesma mensagem, mesmo status, 10 ms e 12 ms |
+
+Em regime, uma chave aceita cerca de 110 palpites no primeiro dia e 96 por dia
+depois, contra ~345 mil por dia antes. Com 50 mil chaves, o mapa ocupa 8,7 MiB
+(183 bytes por chave) e uma chave nova com o mapa cheio custa 0,7 ms.
+
+**Considerado e descartado.**
+
+- *Trancar a conta.* É a arma do irmão.
+- *Chave por IP.* Em casa, o IP do menino é o do adulto.
+- *Guardar no SQLite.* Sobreviveria ao restart, mas faria o login, que hoje só
+  lê, escrever no banco de produção a cada tentativa, e pediria uma migration
+  para um estado que vale minutos.
+- *Mensagem própria para "espere".* Ajudaria quem erra a própria senha, mas a
+  #12 pede uma mensagem para toda falha.
+
+**Resíduos aceitos.**
+
+- **Restart esquece tudo,** inclusive a espera em curso. Cada deploy dá cinco
+  palpites livres por nome.
+- **Quem entra de aparelho novo durante um ataque espera até 15 minutos,** e
+  nesse tempo a senha certa recebe "Usuário ou senha incorretos.".
+- **O cookie de dispositivo só nasce no próximo login.** Quem já está logado
+  hoje não tem um até a sessão expirar ou sair e entrar.
+- **Um cookie por navegador:** o último nome que entrou nele.
+- **Nenhum teto global.** Nomes inventados em rodízio custam um scrypt cada, e
+  o CPU do container é o limite. Para expulsar uma chave do mapa cheio, é
+  preciso criar 50 mil chaves novas, que custam cerca de duas horas de CPU e
+  rendem cinco palpites. Um limite no proxy fecharia isso, fora do
+  repositório.
+- **Quem tem o celular do adulto na mão** usa a chave com cookie do adulto, que
+  é limitada do mesmo jeito.

@@ -13,6 +13,7 @@ import {
 
 import type { StoredAccount } from "../../auth/accounts";
 import { LOGIN_FAILED_MESSAGE } from "../../auth/credentials";
+import { FREE_FAILURES, loginThrottle } from "../../auth/login-throttle";
 import { hashPassword } from "../../auth/password-hash";
 import { EMPTY_LOGIN_STATE } from "./login-state";
 import { loginAction, logoutAction } from "./session";
@@ -39,6 +40,8 @@ const SPACED_MARKER = "  zzMARKERzz-kid2-password-77de  ";
 const mocked = vi.hoisted(() => ({
   started: [] as string[],
   ended: 0,
+  device: null as string | null,
+  remembered: [] as string[],
   deactivated: new Set<string>(),
   accounts: new Map<string, StoredAccount>(),
 }));
@@ -79,6 +82,10 @@ beforeAll(async () => {
 vi.mock("../../auth/session", () => ({
   SESSION_COOKIE_NAME: "kst_session",
   readSessionUsername: async () => null,
+  readDeviceUsername: async () => mocked.device,
+  rememberDevice: async (username: string) => {
+    mocked.remembered.push(username);
+  },
   startSession: async (username: string) => {
     mocked.started.push(username);
   },
@@ -151,6 +158,9 @@ beforeEach(() => {
   mocked.started = [];
   mocked.ended = 0;
   mocked.deactivated = new Set();
+  mocked.device = null;
+  mocked.remembered = [];
+  loginThrottle.clear();
 
   for (const method of CONSOLE_METHODS) {
     spies.push(vi.spyOn(console, method).mockImplementation(() => undefined));
@@ -316,6 +326,116 @@ describe("a password is taken as typed", () => {
 
     expect(result.to).toBe("/menino");
     expect(mocked.started).toEqual(["kid2"]);
+  });
+});
+
+describe("repeated failures delay, they do not lock (D48)", () => {
+  async function failTimes(username: string, times: number): Promise<void> {
+    for (let i = 0; i < times; i += 1) {
+      await login(username, "not-the-password");
+    }
+  }
+
+  it("refuses the right password, with the usual message, right after the free failures", async () => {
+    await failTimes("admin1", FREE_FAILURES);
+
+    const { state, to } = await login("admin1", ADMIN_MARKER);
+
+    expect(to).toBeUndefined();
+    expect(state).toEqual({ error: LOGIN_FAILED_MESSAGE });
+    expect(mocked.started).toEqual([]);
+  });
+
+  it("lets the right password in once the wait is over", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    try {
+      await failTimes("admin1", FREE_FAILURES);
+      vi.setSystemTime(Date.now() + 1000);
+
+      const result = await login("admin1", ADMIN_MARKER);
+
+      expect(result.to).toBe("/admin");
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("does not delay the owner's own device when a sibling fails on another", async () => {
+    await failTimes("admin1", FREE_FAILURES + 3);
+    mocked.device = "admin1";
+
+    const result = await login("admin1", ADMIN_MARKER);
+
+    expect(result.to).toBe("/admin");
+  });
+
+  it("trusts a device only for the username it logged in as", async () => {
+    await failTimes("admin1", FREE_FAILURES);
+    mocked.device = "kid1";
+
+    const { to } = await login("admin1", ADMIN_MARKER);
+
+    expect(to).toBeUndefined();
+  });
+
+  it("still limits a trusted device, separately", async () => {
+    mocked.device = "admin1";
+    await failTimes("admin1", FREE_FAILURES);
+
+    const { to } = await login("admin1", ADMIN_MARKER);
+
+    expect(to).toBeUndefined();
+  });
+
+  it("delays an unknown username exactly like a real one", async () => {
+    await failTimes("mallory", FREE_FAILURES);
+    await failTimes("kid1", FREE_FAILURES);
+
+    const unknown = await login("mallory", "whatever");
+    const known = await login("kid1", "whatever");
+
+    expect(unknown.state).toEqual({ error: LOGIN_FAILED_MESSAGE });
+    expect(known.state).toEqual(unknown.state);
+  });
+
+  it("counts a capitalised username as the same one", async () => {
+    await failTimes("KID1", FREE_FAILURES);
+
+    const { to } = await login("kid1", PASSWORD_MARKER);
+
+    expect(to).toBeUndefined();
+  });
+
+  it("lets only the free failures through when fired in parallel", async () => {
+    const results = await Promise.all(
+      Array.from({ length: 20 }, () => login("kid1", PASSWORD_MARKER)),
+    );
+
+    expect(results.filter((r) => r.to !== undefined)).toHaveLength(
+      FREE_FAILURES,
+    );
+  });
+
+  it("marks the device on a successful login", async () => {
+    await login("kid1", PASSWORD_MARKER);
+
+    expect(mocked.remembered).toEqual(["kid1"]);
+  });
+
+  it("marks no device on a failed one", async () => {
+    await login("kid1", "not-the-password");
+
+    expect(mocked.remembered).toEqual([]);
+  });
+
+  it("starts over after a success", async () => {
+    await failTimes("kid1", FREE_FAILURES - 1);
+    await login("kid1", PASSWORD_MARKER);
+    await failTimes("kid1", FREE_FAILURES - 1);
+
+    const { to } = await login("kid1", PASSWORD_MARKER);
+
+    expect(to).toBe("/menino");
   });
 });
 
