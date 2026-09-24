@@ -15,7 +15,7 @@ Family Link, Xbox ou PlayStation.
 
 | documento | papel |
 |---|---|
-| [`docs/decisions.md`](docs/decisions.md) | **Normativo.** 47 decisões, D1–D47. |
+| [`docs/decisions.md`](docs/decisions.md) | **Normativo.** 48 decisões, D1–D48. |
 | [`docs/spec.md`](docs/spec.md) | Anexo histórico. A intenção original. |
 | [`docs/handoff.md`](docs/handoff.md) | **Retrato datado.** Estado do projeto, o que falta para o MVP e como o trabalho é conduzido. Comece por aqui numa sessão nova. |
 | [`docs/design.md`](docs/design.md) | **Sistema visual.** Paleta, contraste medido, tipografia, raios, ícones e o porquê de cada um. Normativo pela D42. |

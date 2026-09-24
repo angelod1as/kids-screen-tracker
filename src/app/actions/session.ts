@@ -2,12 +2,19 @@
 
 import { redirect } from "next/navigation";
 
+import { normalizeUsername } from "../../auth/accounts";
 import {
   LOGIN_FAILED_MESSAGE,
   verifyCredentials,
 } from "../../auth/credentials";
 import { findLoginAccount } from "../../auth/guard";
-import { endSession, startSession } from "../../auth/session";
+import { loginThrottle, throttleKey } from "../../auth/login-throttle";
+import {
+  endSession,
+  readDeviceUsername,
+  rememberDevice,
+  startSession,
+} from "../../auth/session";
 import { homePathFor } from "../../ui/navigation";
 import type { LoginState } from "./login-state";
 
@@ -23,6 +30,7 @@ import type { LoginState } from "./login-state";
  * hash (D45), and one that has been deactivated (D14). Nothing is logged: a
  * `console.error` on a failed login is the classic way a password ends up in a
  * container log, because the natural thing to print is "the input that failed".
+ * A throttled attempt is refused unchecked, with that same message (D48).
  */
 export async function loginAction(
   _previous: LoginState,
@@ -31,13 +39,22 @@ export async function loginAction(
   const username = String(formData.get("username") ?? "");
   const password = String(formData.get("password") ?? "");
 
+  const normalized = normalizeUsername(username);
+  const trusted = (await readDeviceUsername()) === normalized;
+  const key = throttleKey(normalized, trusted);
+  if (!loginThrottle.begin(key, Date.now())) {
+    return { error: LOGIN_FAILED_MESSAGE };
+  }
+
   const account = await verifyCredentials(username, password, findLoginAccount);
 
   if (account === null) {
     return { error: LOGIN_FAILED_MESSAGE };
   }
 
+  loginThrottle.succeed(key);
   await startSession(account.username);
+  await rememberDevice(account.username);
 
   // Outside the failure branch, so it is never inside a `try` that would
   // swallow the control-flow error `redirect` throws.

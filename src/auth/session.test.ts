@@ -49,8 +49,15 @@ vi.mock("./env", () => ({
   sessionSecret: () => "test-session-secret-not-the-real-one",
 }));
 
-const { SESSION_COOKIE_NAME, endSession, readSessionUsername, startSession } =
-  await import("./session");
+const {
+  DEVICE_COOKIE_NAME,
+  SESSION_COOKIE_NAME,
+  endSession,
+  readDeviceUsername,
+  readSessionUsername,
+  rememberDevice,
+  startSession,
+} = await import("./session");
 
 function written(): Recorded {
   const entry = jar.get(SESSION_COOKIE_NAME);
@@ -195,5 +202,48 @@ describe("logout (#12)", () => {
     await endSession();
 
     await expect(readSessionUsername()).resolves.toBeNull();
+  });
+});
+
+describe("the device cookie (D48)", () => {
+  it("is httpOnly, lax, whole-app and lasts a year", async () => {
+    await rememberDevice("admin1");
+
+    const entry = jar.get(DEVICE_COOKIE_NAME);
+    expect(entry?.options).toMatchObject({
+      httpOnly: true,
+      sameSite: "lax",
+      path: "/",
+      maxAge: 365 * 24 * 60 * 60,
+    });
+  });
+
+  it("reads back as the username it was written for", async () => {
+    await rememberDevice("admin1");
+
+    await expect(readDeviceUsername()).resolves.toBe("admin1");
+  });
+
+  it("survives logout", async () => {
+    await startSession("admin1");
+    await rememberDevice("admin1");
+    await endSession();
+
+    await expect(readDeviceUsername()).resolves.toBe("admin1");
+  });
+
+  it("does not open a session when copied into the session cookie", async () => {
+    await rememberDevice("admin1");
+    const device = jar.get(DEVICE_COOKIE_NAME)?.value ?? "";
+    jar.set(SESSION_COOKIE_NAME, { value: device, options: {} });
+
+    await expect(readSessionUsername()).resolves.toBeNull();
+  });
+
+  it("is not minted by copying a session cookie into it", async () => {
+    await startSession("admin1");
+    jar.set(DEVICE_COOKIE_NAME, { value: written().value, options: {} });
+
+    await expect(readDeviceUsername()).resolves.toBeNull();
   });
 });

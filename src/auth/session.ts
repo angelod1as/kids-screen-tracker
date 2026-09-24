@@ -16,18 +16,27 @@ import {
 /** Not `session`, which collides with other apps on the same dev host. */
 export const SESSION_COOKIE_NAME = "kst_session";
 
+/** Survives logout: it marks a browser that once logged in as its username (D48). */
+export const DEVICE_COOKIE_NAME = "kst_device";
+export const DEVICE_TTL_MS = 365 * 24 * 60 * 60 * 1000;
+
+/** Its own key, so a device cookie never verifies as a session and vice versa. */
+function deviceSecret(): string {
+  return `${sessionSecret()}\0device`;
+}
+
 /**
  * `httpOnly` (#12) hides it from script. `lax` blocks the cross-site POST every
  * mutation is; `strict` would log out a link from WhatsApp. `secure` only in
  * production, or `http://localhost` cannot log in. `expiresAt` is what binds.
  */
-function cookieOptions() {
+function cookieOptions(ttlMs = SESSION_TTL_MS) {
   return {
     httpOnly: true,
     sameSite: "lax" as const,
     secure: process.env.NODE_ENV === "production",
     path: "/",
-    maxAge: Math.floor(SESSION_TTL_MS / 1000),
+    maxAge: Math.floor(ttlMs / 1000),
   };
 }
 
@@ -50,6 +59,31 @@ export async function startSession(username: string): Promise<void> {
   );
 
   (await cookies()).set(SESSION_COOKIE_NAME, token, cookieOptions());
+}
+
+/** The username this browser last logged in as, or `null` (D48). */
+export async function readDeviceUsername(): Promise<string | null> {
+  const cookie = (await cookies()).get(DEVICE_COOKIE_NAME);
+  if (cookie === undefined) {
+    return null;
+  }
+
+  const token = verifySessionToken(cookie.value, deviceSecret(), Date.now());
+
+  return token === null ? null : token.username;
+}
+
+export async function rememberDevice(username: string): Promise<void> {
+  const token = signSessionToken(
+    { username, expiresAt: Date.now() + DEVICE_TTL_MS },
+    deviceSecret(),
+  );
+
+  (await cookies()).set(
+    DEVICE_COOKIE_NAME,
+    token,
+    cookieOptions(DEVICE_TTL_MS),
+  );
 }
 
 /**
