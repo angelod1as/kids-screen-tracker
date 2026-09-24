@@ -1,0 +1,28 @@
+# D20: Node 22 LTS is a lock, not a suggestion. Without engineStrict, the
+# engines field in package.json only prints a warning and the install goes
+# through anyway — which is exactly the major-version bump that breaks
+# better-sqlite3.
+engineStrict: true
+
+# pnpm 10+ blocks install scripts unless the package is allowlisted here.
+#
+# better-sqlite3: native module, needs its install script to place the binary.
+# esbuild: pulled in by vitest and drizzle-kit, downloads its platform binary.
+allowBuilds:
+  better-sqlite3: true
+  esbuild: true
+
+# Varlock replaces the loader Next.js reads .env files with, so `next dev` and
+# `next build` resolve and validate .env.schema. pnpm 10+ only reads `overrides`
+# from this file, and an override needs the workspace root declared in
+# `packages`. The built server does not revalidate on its own — that is what the
+# `varlock run` in the `start` script is for.
+#
+# The range is pinned to the same one as the direct dependency in package.json.
+# Left open, the override resolves on its own and a second copy of the package
+# ends up in the store. Bump both together.
+packages:
+  - .
+
+overrides:
+  "@next/env": "npm:@varlock/nextjs-integration@^1.2.2"

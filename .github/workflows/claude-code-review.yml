@@ -1,0 +1,69 @@
+name: Claude Code Review
+
+# Never `pull_request_target`: it runs the PR's code with secrets.
+on:
+  pull_request:
+    types: [opened, synchronize]
+    paths-ignore:
+      - "docs/**"
+      - "**/*.md"
+
+concurrency:
+  group: claude-review-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  claude-review:
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+      issues: read
+      id-token: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Run Claude Code Review
+        id: claude-review
+        uses: anthropics/claude-code-action@833fb0f8c9f6686b33d963a8bae0a94f4936ab2a # v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          prompt: |
+            REPO: ${{ github.repository }}
+            PR NUMBER: ${{ github.event.pull_request.number }}
+
+            Review this pull request and give feedback on:
+            - Correctness and bugs
+            - Conformance with `docs/decisions.md`
+            - Test coverage
+            - Access control and security
+            - Code quality and project conventions
+
+            `docs/decisions.md` is normative: it holds decisions D1-D25, and it
+            wins wherever it disagrees with `docs/spec.md`. Read the decision
+            numbers the PR's issue cites and check the diff against them,
+            decision and diff side by side. `docs/spec.md` is a historical
+            annex, not a requirement.
+
+            `CLAUDE.md` carries the style and convention rules: UI copy in
+            Brazilian Portuguese, identifiers and comments in English,
+            Conventional Commits, no decorative animation, 48px touch targets,
+            Node runtime and never edge.
+
+            Never read, print or quote `.env`. It belongs to the repo owner
+            (D23). `.env.schema` is versioned and safe to read.
+
+            Be constructive and specific. Point at file and line.
+
+            Use `gh pr comment` with your Bash tool to leave your review as a
+            comment on the PR.
+
+          # See https://github.com/anthropics/claude-code-action/blob/main/docs/usage.md
+          # or https://code.claude.com/docs/en/cli-reference for available options
+          claude_args: '--allowed-tools "Bash(gh issue view:*),Bash(gh search:*),Bash(gh issue list:*),Bash(gh pr comment:*),Bash(gh pr diff:*),Bash(gh pr view:*),Bash(gh pr list:*)"'

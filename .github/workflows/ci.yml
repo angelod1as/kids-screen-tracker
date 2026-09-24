@@ -1,0 +1,169 @@
+name: CI
+
+# D25: CI green is the real gate. Every pull request targeting main runs the
+# whole pipeline, and any step failing turns the check red.
+#
+# It runs on main as well, because the deploy hangs off this run: `deploy.yml`
+# only fires when this workflow finishes green on main (D43).
+# A docs-only merge skips CI and so the deploy: the code in production is the same.
+on:
+  pull_request:
+    branches: [main]
+    paths-ignore:
+      - "docs/**"
+      - "**/*.md"
+  push:
+    branches: [main]
+    paths-ignore:
+      - "docs/**"
+      - "**/*.md"
+
+# Per sha on main: a run deploy.yml waits on is never cancelled or queued.
+concurrency:
+  group: ci-${{ github.event_name == 'push' && github.sha || github.ref }}
+  cancel-in-progress: true
+
+# Nothing here reads a secret. The job only needs to read the repository so the
+# checkout works, so the token is narrowed to that.
+permissions:
+  contents: read
+
+env:
+  # Every `next build` phones home to Vercel with anonymous usage data, which
+  # contradicts the "no external services" rule. Same switch as the Dockerfile.
+  NEXT_TELEMETRY_DISABLED: "1"
+
+jobs:
+  ci:
+    name: lint, typecheck, test, build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          persist-credentials: false
+
+      # Must come before setup-node: the pnpm cache lookup needs pnpm on PATH.
+      # The version comes from the `packageManager` field in package.json.
+      - name: Install pnpm
+        uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4.3.0
+
+      # D20: the Node version comes from .nvmrc, the same lock the repo uses
+      # locally and in the Dockerfile.
+      - name: Install Node
+        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      # engineStrict in pnpm-workspace.yaml makes this fail outright if the Node
+      # major above ever drifts away from 22.
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        run: pnpm lint
+
+      # D22: the root layout only sets an inherited default, so a child segment
+      # could still opt into edge. This is the guard that says no.
+      - name: Check Node runtime
+        run: pnpm check:runtime
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Test
+        run: pnpm test
+
+      # Varlock refuses to build when a required value is empty, which is the
+      # point of D23 — an artifact carrying `undefined` is worse than a failed
+      # build. CI has no secrets and must not have any, so it builds against
+      # throwaway values. These prove the build compiles; they are never the
+      # real ones, which only exist in the deploy environment.
+      - name: Write a throwaway .env for the build
+        run: |
+          cat > .env <<'ENVEOF'
+          DATABASE_PATH=./data/ci.db
+          SESSION_SECRET=ci-not-a-real-secret-do-not-use-anywhere
+          ENVEOF
+
+      - name: Build
+        run: pnpm build
+
+      # #14 on the artifact rather than on the source. Tailwind's extractor
+      # reads comments too, so a sentence forbidding a utility is a sentence
+      # that generates it; only the built stylesheet can answer whether the
+      # rule is actually served.
+      - name: Check the served stylesheet
+        run: pnpm check:css
+
+      # #60 on the artifact. `@sensitive` in .env.schema did not keep the
+      # values out of .next — they were measured in clear text there. This
+      # reads which items are sensitive, and their values, from the same
+      # throwaway .env the build used, fails if any of them appears in any file
+      # under .next/, and prints only file paths and item names.
+      - name: Check that no sensitive value reached .next
+        run: pnpm check:secrets
+
+  # A second job on purpose. It shares nothing with the one above — no pnpm, no
+  # node_modules, no lockfile cache — because the whole question it answers is
+  # what the Dockerfile does on a machine that has only the repository and a
+  # Docker daemon, which is what the deploy will be.
+  #
+  # It does not `needs: ci`. The two failures are unrelated — a broken Dockerfile
+  # and a failing test say different things — and a reviewer opening a red pull
+  # request should see both at once instead of one after the other.
+  docker:
+    name: docker build and container smoke
+    runs-on: ubuntu-latest
+
+    env:
+      # The Dockerfile opens with a `# syntax=` directive and reads TARGETARCH,
+      # and both of those are BuildKit. With BuildKit off, TARGETARCH resolves
+      # empty and the deps stage cannot tell which prebuilt SQLite binary to
+      # take. It is on by default on this runner; saying so here means a runner
+      # image that changes its mind does not turn into a puzzling build error.
+      DOCKER_BUILDKIT: "1"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          persist-credentials: false
+
+      # No build args, no secrets, no registry login. The Dockerfile builds
+      # against the placeholder values written inside it, which is the whole of
+      # D23 as it applies here: nothing real may be in scope while a layer is
+      # being written. `next build` used to write what it resolved into .next
+      # in clear text (#60); the build strips that now, and the smoke step
+      # asserts the placeholder is nowhere in .next inside the image and that
+      # the image history holds nothing but the Dockerfile's own values (D40).
+      - name: Build the image
+        run: docker build --tag kids-screen-tracker:ci .
+
+      # Two numbers, because one of them is not portable and it is the one
+      # people quote. `docker image inspect --format '{{.Size}}'` means the sum
+      # of the *compressed* blobs on an engine using the containerd image store
+      # — that is where the 71.4 MB of #38 comes from, measured on a laptop —
+      # and the sum of the *uncompressed* layers on this runner's overlay2
+      # store, which for this image is roughly three times larger. Reading one
+      # against the other looks like a catastrophic regression that is not
+      # there. `du` inside the image answers the same on any engine, so that is
+      # the number to compare across machines.
+      - name: Report the image size
+        run: |
+          bytes="$(docker image inspect kids-screen-tracker:ci --format '{{.Size}}')"
+          LC_ALL=C awk -v b="$bytes" \
+            'BEGIN { printf "docker image inspect on this engine: %d bytes (%.1f MB)\n", b, b / 1000000 }'
+          docker run --rm --entrypoint sh kids-screen-tracker:ci \
+            -c 'du -sk -x / 2>/dev/null | cut -f1' \
+            | LC_ALL=C awk '{ printf "uncompressed filesystem in the image: %d bytes (%.1f MB)\n", $1 * 1024, $1 * 1024 / 1000000 }'
+
+      # #43 and #44 both land here: the container starts, answers 200, reaches
+      # healthy, refuses to start without a required item, creates its schema on
+      # an empty volume, seeds it, keeps the rows across a container replacement
+      # and applies a further migration without losing them. #60 (D40) adds
+      # the image config and a build the Dockerfile's secret guard must refuse.
+      - name: Smoke the container
+        run: ./scripts/docker-smoke.sh kids-screen-tracker:ci

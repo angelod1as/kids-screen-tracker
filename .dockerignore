@@ -1,0 +1,37 @@
+# Everything the build context does not need. Keeping this tight is not only
+# about speed: it is what guarantees a stray .env never lands in a layer (D23).
+
+# secrets — .env.schema is the only one that ships
+.env
+.env.*
+!.env.schema
+
+# installed and generated
+node_modules
+.next
+dist
+out
+next-env.d.ts
+env.d.ts
+*.tsbuildinfo
+coverage
+
+# the database is a volume, never an image layer
+data
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+
+# repo metadata
+.git
+.gitignore
+.github
+.orca-worktree-trash
+Dockerfile
+.dockerignore
+
+# editors and OS
+.vscode
+.idea
+.DS_Store

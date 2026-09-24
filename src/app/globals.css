@@ -1,0 +1,51 @@
+/*
+ * `source(none)` turns off Tailwind's automatic source detection, and the
+ * `@source` lines below name what replaces it.
+ *
+ * The extractor reads whatever it scans as plain text, comments included, and
+ * with automatic detection it scans the whole repository: a sentence that
+ * forbids a utility by name is a sentence that generates it. That is not
+ * hypothetical — `.text-gray-500`, `.text-gray-600` and `.transition` reached
+ * the production stylesheet from three comments arguing against them, and
+ * rewording those three only moved the problem to the next file that had to
+ * mention a class name in prose.
+ *
+ * So the input is narrowed to the files that actually render one: the
+ * components and screens, plus `style.ts`, where the shared classes live.
+ * Tests describe rather than render, and a shell script renders nothing at all.
+ */
+@import "tailwindcss" source(none);
+@source "../**/*.tsx";
+@source not "../**/*.test.tsx";
+@source "../ui/style.ts";
+
+/*
+ * The two families `src/app/fonts.ts` loads, wired into the two families
+ * Tailwind already has names for.
+ *
+ * Setting `--font-sans` here is what makes it the document's default, because
+ * the preflight sets `html { font-family: var(--default-font-family) }` and
+ * that resolves to this. So no screen has to remember to ask for it, and the
+ * only places that name a family are the ones that want the other one.
+ *
+ * The system stacks stay behind each variable as a fallback: the woff2 files
+ * are served from this origin and preloaded, but a stylesheet that arrives
+ * before the font still has to set something, and "black text in the system
+ * sans" is a far better half-second than nothing at all.
+ */
+@theme {
+  --font-sans: var(--font-plex-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-plex-mono), ui-monospace, monospace;
+}
+
+/*
+ * Tailwind's preflight paints placeholder text at 50% opacity, which is grey on
+ * white by construction and exactly what "nada de cinza sobre cinza" rules out.
+ *
+ * `Field` does not accept a `placeholder` prop, so nothing in this app renders
+ * one; this is the second lock, for whatever renders the first raw input.
+ */
+::placeholder {
+  color: black;
+  opacity: 1;
+}

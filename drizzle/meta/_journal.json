@@ -1,0 +1,48 @@
+{
+  "version": "7",
+  "dialect": "sqlite",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "6",
+      "when": 1788292897007,
+      "tag": "0000_swift_vengeance",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1788292897008,
+      "tag": "0001_ledger_owner_guard",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1788979067183,
+      "tag": "0002_frozen_pricing_inputs",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1789689487453,
+      "tag": "0003_duration_in_seconds",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1790128636704,
+      "tag": "0004_min_session",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "6",
+      "when": 1790208767041,
+      "tag": "0005_users_password_hash",
+      "breakpoints": true
+    }
+  ]
+}

@@ -1,0 +1,52 @@
+{
+  "name": "kids-screen-tracker",
+  "version": "0.1.0",
+  "private": true,
+  "packageManager": "pnpm@11.0.5",
+  "engines": {
+    "node": ">=22.0.0 <23.0.0"
+  },
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build && node scripts/strip-build-env.mjs",
+    "start": "varlock run -- node .next/standalone/server.js",
+    "lint": "biome check --error-on-warnings .",
+    "typecheck": "varlock codegen && tsc --noEmit",
+    "test": "vitest run",
+    "check:runtime": "./scripts/check-node-runtime.sh",
+    "check:css": "./scripts/check-served-css.sh",
+    "check:secrets": "varlock run -- node scripts/check-build-secrets.mjs",
+    "auth:hash": "tsx scripts/hash-password.ts",
+    "db:generate": "drizzle-kit generate",
+    "db:bundle": "esbuild scripts/db-migrate.ts scripts/db-seed.ts scripts/db-backup.ts scripts/db-demo.ts --bundle --platform=node --format=esm --target=node22 --external:varlock/env --external:better-sqlite3 --outdir=dist/db --out-extension:.js=.mjs",
+    "db:migrate": "varlock run -- tsx scripts/db-migrate.ts",
+    "db:seed": "varlock run -- tsx scripts/db-seed.ts",
+    "db:backup": "varlock run -- tsx scripts/db-backup.ts",
+    "db:demo": "varlock run -- tsx scripts/db-demo.ts",
+    "db:demo:clear": "varlock run -- tsx scripts/db-demo.ts --clear"
+  },
+  "dependencies": {
+    "@varlock/nextjs-integration": "^1.2.2",
+    "better-sqlite3": "^13.0.3",
+    "drizzle-orm": "^0.45.2",
+    "next": "^16.3.4",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
+    "tsx": "^4.23.13",
+    "varlock": "^1.18.0"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.5.11",
+    "@tailwindcss/postcss": "^4.3.3",
+    "@types/better-sqlite3": "^9.6.0",
+    "@types/node": "^22.18.13",
+    "@types/react": "^19.2.18",
+    "@types/react-dom": "^19.2.4",
+    "drizzle-kit": "^0.31.10",
+    "esbuild": "^0.28.2",
+    "jsdom": "^30.0.1",
+    "tailwindcss": "^4.3.3",
+    "typescript": "^7.0.2",
+    "vitest": "^4.1.11"
+  }
+}

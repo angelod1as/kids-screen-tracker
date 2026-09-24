@@ -1,0 +1,59 @@
+name: Deploy
+
+# D43: main only reaches production through a green CI run. Coolify's own
+# "deploy on push" listener would publish a merge whose tests failed, and the
+# gate of D25 exists precisely because the plan has no branch protection (D26).
+# So Coolify's auto deploy stays off and this workflow asks for the deploy,
+# after CI on main has finished green.
+# zizmor: safe only because nothing is checked out and `if` admits only our main.
+on: # zizmor: ignore[dangerous-triggers]
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+
+# Nothing is read from the repository: the job only calls the Coolify API.
+permissions: {}
+
+concurrency:
+  # A second merge while a deploy is in flight waits for it rather than racing
+  # it: two deploys of the same app write the same volume.
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: ask Coolify to deploy main
+    runs-on: ubuntu-latest
+    # `branches` matches a name only, and a fork's branch can be called main.
+    if: >-
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'push' &&
+      github.event.workflow_run.head_branch == 'main' &&
+      github.event.workflow_run.head_repository.full_name == github.repository
+
+    steps:
+      - name: Trigger the deploy
+        env:
+          # All three live in the repository's secrets, the host among them: the
+          # repository says nothing about where this deploys to.
+          COOLIFY_URL: ${{ secrets.COOLIFY_URL }}
+          COOLIFY_TOKEN: ${{ secrets.COOLIFY_TOKEN }}
+          COOLIFY_APP_UUID: ${{ secrets.COOLIFY_APP_UUID }}
+        run: |
+          set -euo pipefail
+
+          if [ -z "${COOLIFY_URL}" ] || [ -z "${COOLIFY_TOKEN}" ] || [ -z "${COOLIFY_APP_UUID}" ]; then
+            echo "COOLIFY_URL, COOLIFY_TOKEN or COOLIFY_APP_UUID is missing from the repository secrets." >&2
+            exit 1
+          fi
+
+          # --fail-with-body so a 401 or a 404 fails the step and still prints
+          # what Coolify said. The body carries a deployment uuid, not a secret.
+          curl --silent --show-error --fail-with-body \
+            --request GET \
+            --header "Authorization: Bearer ${COOLIFY_TOKEN}" \
+            "${COOLIFY_URL}/api/v1/deploy?uuid=${COOLIFY_APP_UUID}&force=false"
+
+          echo
+          echo "Coolify accepted the deploy request for ${{ github.sha }}."
