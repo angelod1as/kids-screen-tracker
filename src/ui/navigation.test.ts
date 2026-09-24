@@ -19,8 +19,6 @@ describe("the navigation is different per role (#14)", () => {
   });
 
   it("gives the admin his three, without Configuração (#70)", () => {
-    // Configuração moved to the account page: it is not a Tuesday, and the bar
-    // is for Tuesdays. Two taps from any screen, which is CLAUDE.md's ceiling.
     expect(navigationFor("admin")).toEqual([
       { href: "/admin", label: "Início" },
       { href: "/admin/fila", label: "Fila" },
@@ -39,8 +37,7 @@ describe("the navigation is different per role (#14)", () => {
   });
 
   it("never offers an admin a kid route", () => {
-    // `/menino/*` reads `session.userId`, and an admin has no balance of his
-    // own. He sees both boys from `/admin`.
+    // `/menino/*` reads `session.userId`, and an admin has no balance of his own.
     for (const item of navigationFor("admin")) {
       expect(item.href.startsWith("/admin")).toBe(true);
     }
@@ -68,12 +65,6 @@ describe("the navigation is different per role (#14)", () => {
       "Lançar",
     ]);
   });
-
-  // What used to be here was `navigationFor(role).length <= 4`, justified as
-  // "four are 80, which leaves room for the longest label". Measured at 320 px
-  // it was 79, and two labels did not fit. Width is a property of the bar, not
-  // of this list, and it is checked in `nav.test.tsx` against the geometry the
-  // bar is actually built from.
 });
 
 describe("the account item on the left of the bar (#70)", () => {
@@ -86,7 +77,6 @@ describe("the account item on the left of the bar (#70)", () => {
   });
 
   it("is one route for both roles, and in neither menu", () => {
-    // What differs is what the page offers, and that is the page's decision.
     for (const role of ["kid", "admin"] as const) {
       expect(navigationFor(role).map((item) => item.href)).not.toContain(
         ACCOUNT_PATH,
@@ -125,8 +115,6 @@ describe("which item is marked as the current page", () => {
   });
 
   it("does not light up the home item on a child route", () => {
-    // `/menino` is a prefix of every other kid route, so a `startsWith` here
-    // would mark two items at once and the bar would stop meaning anything.
     expect(isCurrent(home, "/menino/historico")).toBe(false);
     expect(isCurrent(home, "/menino/cronometro")).toBe(false);
   });

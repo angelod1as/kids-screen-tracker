@@ -23,28 +23,15 @@ export function lineMinutes(lines: readonly { hours: number }[]): number[] {
 }
 
 /**
- * The answer, and then the reason for it.
- *
- * "A explicação é o produto" — so the lines are not a footnote under the
- * number: they are the larger half of the block, each one an addend with its
- * own signed hours, closing on a total that repeats the headline. Showing the
- * total twice is the point of D9's "a soma tem que fechar": a boy who adds the
- * column up gets the number at the top, and the day he does not, he has caught
- * a real bug rather than a rounding artefact.
+ * The total is shown twice so the column must add up to it (D9): a boy whose sum
+ * misses has found a real bug, not a rounding artefact.
  */
 export function Result({
   calculation,
   heading = "Você ganharia",
 }: {
   calculation: Calculation;
-  /**
-   * Whose gain this is, in words.
-   *
-   * The boy's calculator says "você ganharia" to the boy who is holding the
-   * phone; the admin's launch screen is one adult talking about a boy who is
-   * not, so it names him. Same block, same arithmetic, one sentence apart —
-   * which is the reason this is a prop and not a second copy of the list.
-   */
+  /** A prop, not a copy: the launch screen names the boy instead of "você". */
   heading?: string;
 }) {
   const minutes = lineMinutes(calculation.lines);

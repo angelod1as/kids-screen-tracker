@@ -1,41 +1,11 @@
 /**
- * The eight glyphs the bottom bar draws, and the only pictures in the app.
- *
- * **Drawn here, not imported, and never an emoji.** CLAUDE.md rules emoji out
- * as icons, and it is right to: an emoji is a font the OS picks, so it arrives
- * coloured, differently shaped on Android and iOS, and at a size nobody
- * controls. These are eight inline paths on a 24-unit grid — same weight, same
- * terminals, same optical size, and `currentColor` so a glyph is whatever ink
- * the cell it sits in already uses. That is what makes the current tab work:
- * the label and the glyph invert together, because neither names a colour.
- *
- * There is no icon package. Eight paths do not justify a dependency, a build
- * step or 40 kB of tree-shaken sprite, and a set drawn to one brief is more
- * consistent than a set assembled from one.
- *
- * **Keyed by route, not carried on the nav item.** `navigation.ts` is pure data
- * that `navigation.test.ts` asserts the exact shape of, and a route's picture
- * is a rendering concern rather than part of what the menu *is*. A route with
- * no glyph here renders its label alone rather than breaking, which is the
- * right failure for a menu.
- *
- * Every glyph is `aria-hidden`: the link already says "Histórico" in words, and
- * a screen reader that also announced "picture of a list" would be reading the
- * decoration twice.
+ * The bar's glyphs (D42; docs/design.md, Ícones). Keyed by route, not carried on
+ * the nav item: `navigation.ts` is data whose exact shape is asserted.
  */
 
 type GlyphProps = { d: string; extra?: string };
 
-/**
- * One glyph, at 24 px, stroked.
- *
- * `strokeWidth 2` against the 700-weight label beside it: a hairline glyph next
- * to bold text reads as an afterthought at 24 px, and this is the one place in
- * the app where a picture has to hold its own against a word.
- *
- * `shrink-0` because the cell is a flex column at 79 px on the narrowest phone,
- * and a glyph that shrinks to fit is a glyph that stops being recognisable.
- */
+/** `shrink-0`: in a 79 px flex cell, a glyph that shrinks stops being recognisable. */
 function Glyph({ d, extra }: GlyphProps) {
   return (
     <svg
@@ -55,7 +25,6 @@ function Glyph({ d, extra }: GlyphProps) {
   );
 }
 
-/** A house: where you land. Both roles use it, for the same reason. */
 function HomeIcon() {
   return (
     <Glyph
@@ -65,7 +34,6 @@ function HomeIcon() {
   );
 }
 
-/** A stopwatch: the crown and the button on top, the hand pointing up. */
 function StopwatchIcon() {
   return (
     <Glyph
@@ -75,7 +43,6 @@ function StopwatchIcon() {
   );
 }
 
-/** A calculator: the readout at the top, the keys under it. */
 function CalculatorIcon() {
   return (
     <Glyph
@@ -85,13 +52,7 @@ function CalculatorIcon() {
   );
 }
 
-/**
- * An extract: three entries, each a mark and the line it names.
- *
- * Not three plain rules — that is the "align text" glyph every toolbar has, and
- * it was the first thing this drew. The marks on the left are what make it a
- * list of things rather than a paragraph.
- */
+/** The marks on the left keep it a list, not the toolbar's "align text" glyph. */
 function LedgerIcon() {
   return (
     <Glyph
@@ -101,7 +62,6 @@ function LedgerIcon() {
   );
 }
 
-/** A tray: what has arrived and is waiting to be decided. */
 function QueueIcon() {
   return (
     <Glyph
@@ -111,13 +71,7 @@ function QueueIcon() {
   );
 }
 
-/**
- * A plus: add something that never went through the stopwatch.
- *
- * The plus is inset rather than full-bleed. Drawn edge to edge inside the
- * square it stopped being a plus and became a window divided into four panes,
- * which is what it read as on the first pass.
- */
+/** Inset: drawn edge to edge, the plus read as a four-pane window. */
 function AddIcon() {
   return (
     <Glyph
@@ -127,18 +81,10 @@ function AddIcon() {
   );
 }
 
-/** Sliders: the settings that decide what everything is worth. */
 function SettingsIcon() {
   return <Glyph d="M4 7h16M4 17h16" extra="M9 4.5v5M15 14.5v5" />;
 }
 
-/**
- * A person: whoever is logged in, and the way to the account page (#70).
- *
- * The one cell whose label is a name rather than a word, so the glyph is the
- * only part of it that is the same for all four accounts — which is what makes
- * the cell findable before the name is read.
- */
 function AccountIcon() {
   return (
     <Glyph
@@ -148,7 +94,7 @@ function AccountIcon() {
   );
 }
 
-/** The glyph a route wears, or `null` for a route nobody drew one for. */
+/** `null` for a route with no glyph: the label renders alone rather than breaking. */
 export function iconFor(href: string) {
   switch (href) {
     case "/menino":

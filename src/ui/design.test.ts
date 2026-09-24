@@ -22,29 +22,9 @@ import {
 } from "./style";
 
 /**
- * The design rules of #14, as checks over the source.
- *
- * Three of the four criteria are properties of the whole tree rather than of
- * any one component — "nenhuma animação", "todo alvo de toque com no mínimo
- * 48px", "nada de cinza sobre cinza" — and a rule of that shape is kept by
- * being enforced, not by being remembered. What follows is what stops the
- * fifth screen, written in three months, from being the one with the grey
- * placeholder text and the 32 px icon button.
- *
- * There is no DOM here and nothing is rendered: that needs a renderer and a
- * jsdom environment this project does not have, and adding both to assert a
- * class name would be a lot of machinery for a weaker check. Scanning the
- * source catches the mistakes that are actually made — a shaded grey typed
- * by habit, a raw `<button>` that skipped the primitive.
- *
- * What it checks is the *source*, and the distinction cost a review round.
- * Tailwind's extractor reads every file it scans as plain text, comments
- * included: three sentences of prose that each named the utility they forbade
- * — one here, one in `style.ts`, one in `button.tsx` — put those exact rules
- * into the production stylesheet. Nothing referenced them and nothing was grey
- * on screen, but "the stylesheet has no such rule" was a claim no check had
- * made. `scripts/check-served-css.sh` makes it, against the built CSS, after
- * `pnpm build` — the only moment that question can be answered.
+ * The design rules (#14, D42) as checks over the source. The source only:
+ * Tailwind reads comments too, so the built stylesheet is checked separately by
+ * `scripts/check-served-css.sh`.
  */
 
 const SRC = join(import.meta.dirname, "..");
@@ -78,14 +58,8 @@ function relative(path: string): string {
 
 describe("no decorative animation (#14)", () => {
   /**
-   * Every way an animation can be asked for from this codebase: the Tailwind
-   * utilities, and raw CSS.
-   *
-   * The list has no allowlist behind it, because the app currently animates
-   * nothing at all — the login button's pending state is a word and a disabled
-   * control, not a spinner. The design rules do permit a spinner "onde há
-   * espera real"; when one is genuinely needed, the exception is added here,
-   * named, in a diff.
+   * No allowlist: the app animates nothing. A spinner "onde há espera real" is
+   * added here, named, in a diff.
    */
   const FORBIDDEN = [
     /\btransition\b/,
@@ -115,26 +89,8 @@ describe("no decorative animation (#14)", () => {
 });
 
 /**
- * The palette, declared: every shaded colour the app is allowed to serve, the
- * one file allowed to write it, and the job it does.
- *
- * This list replaces the "black and white, plus three exceptions" rule of #14,
- * by the owner's decision on #74 ("falta cor", "queria que parecesse mais um
- * app"). **What it does not replace is the guard.** The check below still fails
- * on any shaded colour written anywhere in `src/` that is not on this list, and
- * still fails on anything dimmed with opacity. Adding a colour is still a diff
- * a reviewer reads.
- *
- * `meaning` is the half CLAUDE.md governs, and #83 took it from three to two —
- * a pendency and a negative balance. The alert of a regime with no balance went
- * with the screen that recorded the regimes (D41). The test below asserts the
- * count, so the freedom to paint the chrome cannot be used to smuggle a third
- * thing that colour is allowed to *mean*.
- *
- * `chrome` is the app's own furniture: a band, the top of the app, the ground a
- * panel sits on. It says nothing about the data, which is exactly why it is
- * blue and the meanings are red and yellow — far apart on the wheel, so the one
- * warm thing on a screen is always something to act on.
+ * Every shaded colour the app may serve, and the file allowed to write it (D42).
+ * `meaning` is CLAUDE.md's two; `chrome` is furniture and says nothing.
  */
 const PALETTE = [
   {
@@ -182,9 +138,7 @@ describe("the palette is declared, and nothing else is served (#14, #74, D42)", 
   });
 
   it("still lets colour mean exactly two things", () => {
-    // CLAUDE.md's rule, as #83 left it. The chrome may grow with the design;
-    // this may not, because a third *meaning* is a third thing a reader has to
-    // learn to see.
+    // A third meaning is a third thing a reader has to learn to see.
     expect(
       PALETTE.filter((entry) => entry.kind === "meaning")
         .map((entry) => entry.rule)
@@ -193,21 +147,15 @@ describe("the palette is declared, and nothing else is served (#14, #74, D42)", 
   });
 
   it("gives each job a utility of its own", () => {
-    // The check nobody can perform by reading the stylesheet, and the reason
-    // the pendency is yellow rather than the red of a negative balance. Both
-    // colour guards — this file and `scripts/check-served-css.sh` — match
-    // *utilities*. A rule wearing another rule's utility passes both while
-    // carrying colour in a place neither of them can name.
+    // Both colour guards match utilities, so a rule wearing another's utility
+    // would carry colour where neither can name it.
     const utilities = PALETTE.map((entry) => entry.utility);
 
     expect(new Set(utilities).size).toBe(utilities.length);
   });
 
   it("keeps the two halves apart on the wheel", () => {
-    // Not a taste check. If the chrome were warm, a screen of chrome would be a
-    // screen where the pendency and the negative balance have to compete to be
-    // the warm thing, and the whole argument for spending colour on exactly
-    // two meanings collapses.
+    // Warm chrome would make the two meanings compete to be the warm thing.
     const hue = (utility: string) => utility.replace(/^[a-z]+-|-\d+$/g, "");
 
     for (const entry of PALETTE.filter((item) => item.kind === "chrome")) {
@@ -219,10 +167,7 @@ describe("the palette is declared, and nothing else is served (#14, #74, D42)", 
   });
 
   it("serves no colour that is not on the list", () => {
-    // Tailwind's palette colours all carry a numeric shade — `gray-500`,
-    // `slate-700`, `red-600`. `black` and `white` do not. So one pattern finds
-    // every colour in the tree, and whatever is left after the declared ones
-    // are struck out is a colour that arrived without being declared.
+    // Every Tailwind palette colour carries a numeric shade; black and white do not.
     const shaded =
       /\b(?:text|bg|border|ring|outline|decoration|divide|from|via|to|fill|stroke|accent|caret|shadow)-[a-z]+-\d{2,3}\b/;
 
@@ -249,13 +194,8 @@ describe("the palette is declared, and nothing else is served (#14, #74, D42)", 
 });
 
 /**
- * Every pair of ink and ground the app sets text in, and the ratio
- * `docs/design.md` writes down for it (D42).
- *
- * The ratio is computed, not copied: Tailwind 4 declares its palette in
- * `oklch()` in the `theme.css` it ships, and the test converts the installed
- * value to sRGB and applies the WCAG 2 formula. An upgrade that moves a shade
- * fails here instead of quietly making the number in the document false.
+ * Computed from the installed `theme.css`, not copied, so an upgrade that moves a
+ * shade fails here instead of making `docs/design.md` false.
  */
 const TEXT_PAIRS = [
   { ink: "white", ground: ACCENT_BG_CLASS, ratio: 8.82 },
@@ -356,7 +296,6 @@ describe("every text pair is high contrast, and measured (D42)", () => {
   });
 
   it("keeps the negative red off black, where it would fail", () => {
-    // Why the red is ink on white and never on a band or a black ground.
     expect(contrast(NEGATIVE_CLASS, "black")).toBeLessThan(4.5);
   });
 
@@ -401,8 +340,6 @@ describe("two radii, and icons only in the bar (D42)", () => {
 
 describe("labels, not placeholders (#14)", () => {
   it("keeps `placeholder` out of the Field type", () => {
-    // The compile-time half of this lives in `components.test.tsx`; this is
-    // the one that says which prop and why, next to the other design rules.
     const field = readFileSync(join(SRC, "ui", "field.tsx"), "utf8");
 
     expect(field).toContain('"placeholder"');
@@ -426,17 +363,10 @@ describe("every touch target is at least 48 px (#14)", () => {
     expect(TOUCH_TARGET_CLASS).toContain("min-w-[48px]");
   });
 
-  /**
-   * Anything a finger is meant to hit. `<form>` and `<div>` are not on the
-   * list; `<a>` and `<Link>` are, and so is every form control.
-   */
   const INTERACTIVE = /<(?:button|input|select|textarea|a|Link)\b[^>]*>/g;
 
   it("has no raw interactive element outside the primitives", () => {
-    // The rule that makes the check above worth anything: a screen cannot
-    // reach for a bare `<button>`, so it cannot forget the minimum. The four
-    // primitives that do use one are in `src/ui/`, and the case below holds
-    // each of them to the class.
+    // A screen cannot reach for a bare `<button>`, so it cannot forget the minimum.
     const offenders = sourceFiles(/\.tsx$/)
       .filter(({ path }) => !relative(path).startsWith("ui/"))
       .flatMap(({ path, source }) =>
@@ -465,7 +395,6 @@ describe("every touch target is at least 48 px (#14)", () => {
       ({ source }) => stripComments(source).match(INTERACTIVE) ?? [],
     );
 
-    // The button, the input, and the nav link.
     expect(found.length).toBeGreaterThanOrEqual(3);
   });
 });
@@ -478,7 +407,6 @@ describe("desktop is the same base, opened wide (#74, D42)", () => {
   });
 
   it("is what both shells use", () => {
-    // The authenticated frame and the login screen, which sits outside it.
     for (const file of ["ui/app-shell.tsx", "app/entrar/page.tsx"]) {
       const source = readFileSync(join(SRC, file), "utf8");
 
@@ -489,17 +417,7 @@ describe("desktop is the same base, opened wide (#74, D42)", () => {
 
 describe("the bar is pinned, and covers nothing (#70)", () => {
   it("reserves exactly the height the bar occupies, plus the iPhone inset", () => {
-    // Two numbers that have to agree and live in different declarations: the
-    // class is a literal because Tailwind's extractor reads source as text and
-    // never sees a class name built by a template string.
-    //
-    // #70 could write the height as one touch target plus the rule, because
-    // every cell was a label inside a 48 px minimum. #74 put a glyph above each
-    // label, so the cell is taller than the minimum it guarantees and the sum
-    // is spelled out instead: 24 for the glyph, 4 for the gap, 30 for two lines
-    // of a wrapped label, 16 for `py-2`, 2 for the rule. It has to stay at or
-    // above the target, which is the half of the old assertion that still
-    // means something.
+    // The class is a literal for Tailwind's extractor; the sum is in docs/design.md.
     expect(NAV_BAR_PX).toBe(24 + 4 + 30 + 16 + BORDER_PX);
     expect(NAV_BAR_PX).toBeGreaterThanOrEqual(TOUCH_TARGET_PX + BORDER_PX);
     expect(CONTENT_BOTTOM_CLASS).toBe(
@@ -519,7 +437,6 @@ describe("the bar is pinned, and covers nothing (#70)", () => {
   });
 
   it("has no bar above the page any more", () => {
-    // The strip that wrote the name and a large "Sair" on every screen.
     const shell = readFileSync(join(SRC, "ui", "app-shell.tsx"), "utf8");
 
     expect(stripComments(shell)).not.toContain("<header");
@@ -528,9 +445,8 @@ describe("the bar is pinned, and covers nothing (#70)", () => {
 
 describe("the interface is in Brazilian Portuguese (#14)", () => {
   it("declares the language on every document, not just the root layout", () => {
-    // `global-error.tsx` replaces the root layout outright, so the attribute
-    // set there does not reach it. Reading only `app/layout.tsx` was how the
-    // English 404 went unnoticed.
+    // `global-error.tsx` replaces the root layout, so its `lang` does not reach
+    // it: reading only `app/layout.tsx` is how the English 404 went unnoticed.
     const documents = sourceFiles(/\.tsx$/).filter(({ source }) =>
       /<html\b/.test(stripComments(source)),
     );
@@ -546,19 +462,14 @@ describe("the interface is in Brazilian Portuguese (#14)", () => {
   });
 
   it("has a Portuguese screen for a wrong address and for a crash", () => {
-    // Without these files Next serves its own, in English, and #14 asks for
-    // the whole interface in pt-BR. What they say is checked in
-    // `app/error-screens.test.tsx`; that they exist at all is checked here,
-    // next to the rest of the design rules.
+    // Without these, Next serves its own screens in English.
     for (const file of ["not-found.tsx", "error.tsx", "global-error.tsx"]) {
       expect(existsSync(join(SRC, "app", file)), `src/app/${file}`).toBe(true);
     }
   });
 
   it("pins the light colour scheme, so native controls stay black on white", () => {
-    // A dark-mode phone paints password inputs, autofill and scrollbars from
-    // the OS palette otherwise — grey on white, on the one screen everybody
-    // sees first.
+    // Otherwise a dark-mode phone paints native controls grey on white.
     const layout = readFileSync(join(SRC, "app", "layout.tsx"), "utf8");
 
     expect(layout).toContain('colorScheme: "light"');

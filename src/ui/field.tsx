@@ -7,16 +7,8 @@ import {
 } from "./style";
 
 /**
- * A labelled text input, at the same 48 px minimum as every other target.
- *
- * The label is a real `<label htmlFor>`, not a placeholder. A placeholder
- * disappears the moment someone starts typing, is grey by definition — the
- * preflight paints it at half opacity — and is the single most common way a
- * high-contrast rule gets broken by accident. So `placeholder` is not a prop
- * either: the type is what closes the door, because a docstring arguing
- * against something the type still accepts is a docstring, not a rule.
- *
- * As with `Button`, `className` is not a prop.
+ * No `placeholder` prop: it vanishes on typing and is painted at half opacity,
+ * so the type closes the door rather than a docstring. No `className` either.
  */
 type FieldProps = Omit<
   ComponentProps<"input">,
