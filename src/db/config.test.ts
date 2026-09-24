@@ -23,14 +23,7 @@ import {
 import { migrateDatabase } from "./migrate";
 import { seedWithTestUsers } from "./test-users";
 
-/**
- * The configuration of the categories (#26), against the real modules.
- *
- * The table is `config.rules.ts`, shared with the sabotage matrix. What is here
- * beyond running it is the pair of checks D15 asks for in so many words —
- * "editar **não recalcula** nada já creditado — teste provando" — written two
- * different ways, because they fail for different reasons.
- */
+/** #26 against the real modules, plus D15 proved two ways that fail differently. */
 
 const MODULE: ConfigModule = {
   listCategories,
@@ -82,7 +75,7 @@ describe("configuring the categories (#26)", () => {
   );
 
   it("covers every acceptance criterion of the issue", () => {
-    // A table that quietly lost a whole rule still passes every case it kept.
+    // A table that lost a whole rule still passes every case it kept.
     expect([...new Set(CONFIG_CASES.map((one) => one.rule))].sort()).toEqual([
       "a category can be created, edited and switched off",
       "a category's numbers are held while something is under way",
@@ -96,31 +89,15 @@ describe("configuring the categories (#26)", () => {
   });
 });
 
-/**
- * D15, proved twice.
- *
- * The first is the behavioural half: a credited entry, a category edited under
- * it in every way the form allows, and the frozen value and the balance read on
- * both sides. The second is the structural half, and it is the sharper of the
- * two — a recalculation added by somebody thinking about something else would
- * have to survive a source scan as well as a balance assertion, and the scan is
- * the one that cannot be satisfied by accident.
- */
+/** D15: once by balance, once by scanning the source. */
 describe("editing recalculates nothing already credited (D15)", () => {
   it("leaves a frozen entry and the balance exactly where they were", () => {
     const world = freshWorld();
 
     try {
       const logId = world.credit(BOOK, 3);
-      // A waiting entry beside the credited one, in a *different* category —
-      // D37 refuses to edit a category that has one of its own waiting, which
-      // is the point of that rule. This one is Casa's, so editing Mente is
-      // allowed and the fixture still has a pending row in it.
-      //
-      // It is here because a recalculation scoped to *pending* rows slipped
-      // past a fixture that only had approved ones: 1300 tests stayed green
-      // with every pending entry's frozen value doubled on any category edit.
-      // Its `computed_hours` is null while it waits, and stays null.
+      // A waiting entry in another category, so a recalculation of pending rows
+      // is visible; D37 would refuse the edit on its own category.
       const waitingId = world.addPending({
         activity: CAR,
         durationMinutes: null,
@@ -130,8 +107,7 @@ describe("editing recalculates nothing already credited (D15)", () => {
       const balanceBefore = world.balance();
       const id = world.categoryId(MENTE);
 
-      // Everything the form can do, one after another, on the category the
-      // entry was written under.
+      // Everything the form can do, on the entry's own category.
       updateCategory(world.connection, id, {
         name: "Mente",
         baseRate: 9,
@@ -153,9 +129,7 @@ describe("editing recalculates nothing already credited (D15)", () => {
 
       expect(world.balance()).toBe(balanceBefore);
       expect(world.balance()).toBe(3);
-      // The name follows, because the history reads it through the foreign key
-      // and D14 is what keeps that readable. The *number* does not move, and
-      // the number is what D15 is about.
+      // The name follows (D14); the number does not (D15).
       expect(world.frozenText(logId)).toBe(
         "approved 3 h · Ler livro / Mente renomeada · ledger earn 3",
       );
@@ -171,41 +145,25 @@ describe("editing recalculates nothing already credited (D15)", () => {
   });
 
   it("never touches a log or a ledger row, by the source", () => {
-    // A module that cannot name the tables cannot rewrite them, and that holds
-    // for a recalculation nobody has written yet. `activity_logs` and `ledger`
-    // are the two tables D15 freezes; `categories.ts` imports neither.
-    //
-    // Comments are stripped first, and finding that out cost a run: the
-    // module's own docstring explains D15 by saying that the ledger row is
-    // written beside the frozen value, and a scan that counts prose fails over
-    // the sentence that documents the rule. It is the same trap Tailwind's
-    // extractor sprang on this repository — a file that argues against a thing
-    // by name contains the name — and `design.test.ts` answers it the same way.
+    // A module that cannot name the tables cannot rewrite them. Comments are
+    // stripped: the docstring explaining D15 names the ledger.
     const source = stripComments(
       readFileSync(join(import.meta.dirname, "categories.ts"), "utf8"),
     );
 
-    // Both spellings, and both tables. The camelCase names are drizzle's; the
-    // snake_case ones are what raw SQL uses, and a recalculation written as
-    // `connection.sqlite.prepare("update activity_logs set computed_hours ...")`
-    // passed this scan and the balance case beside it — measured, 1300 tests
-    // green with every pending entry's frozen value doubled on any category
-    // edit. The behavioural half missed it because it credited only an
-    // *approved* entry; the scan missed it because it only knew one spelling.
+    // Both spellings: a raw-SQL recalculation passed a camelCase-only scan.
     for (const forbidden of [
       "activityLogs",
       "activity_logs",
       "ledger",
       "calculateEarnedHours",
-      // The two ways to reach raw SQL from a module that has a connection.
       "sqlite.prepare",
       "tx.run(",
     ]) {
       expect(source, forbidden).not.toContain(forbidden);
     }
 
-    // And the scan is looking at real code, not at a file it stripped to
-    // nothing: it does name the two tables the module is allowed to touch.
+    // And the scan is reading real code, not an emptied file.
     expect(source).toContain("categories");
     expect(source).toContain("activities");
   });

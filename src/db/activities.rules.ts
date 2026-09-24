@@ -9,28 +9,11 @@ import { activities, activityLogs, categories } from "./schema";
 import { pauseTimer, startTimer } from "./timers";
 
 /**
- * The rules of #27, written out one case at a time.
- *
- * Same shape and same reason as `config.rules.ts` next door, and built on its
- * world: the categories and the activities are one screen and one set of
- * decisions, and the decisive cases here need a category that can be switched
- * off (D33) and a credited entry that must not move (D15) — both of which that
- * fixture already is.
- *
- * Two files run this table. `activities.test.ts` asserts the real module
- * answers every case, and `activities.sabotage.test.ts` rewrites one clause of
- * `src/db/activities.ts` or `src/db/input.ts` at a time and asserts each mutant
- * gets at least one case wrong.
- *
- * **Most cases assert the sentence and not merely the refusal**, and that is a
- * lesson the categories' own matrix taught at some cost: every rule in this
- * module is also a CHECK on its column, so a case asking "was it refused"
- * passes with the guard deleted. What the guard adds to the constraint is a
- * sentence naming the field and an acceptable value, on a screen where an adult
- * is trying to work out what to type — so the sentence is the rule.
+ * The rules of #27, on `config.rules.ts`'s world, run by `activities.test.ts`
+ * and the sabotage matrix. Cases assert the sentence: every rule is also a
+ * CHECK, so "was it refused" passes with the guard deleted.
  */
 
-/** The part of the activity CRUD a case may call. */
 export type ActivityModule = {
   listActivities: (connection: Connection, categoryId: number) => ActivityRow[];
   createActivity: (connection: Connection, input: ActivityInput) => number;
@@ -47,53 +30,22 @@ export type ActivityModule = {
 };
 
 export type ActivityWorld = ConfigWorld & {
-  /** One activity as one comparable line. */
   activityText: (name: string) => string;
-  /** A category's activities as one line, switched-off ones included. */
+  /** Switched-off ones included. */
   activityListText: (module: ActivityModule, categoryName: string) => string;
-  /** Whether an activity is one an adult can still choose (D14, D33). */
+  /** D14, D33. */
   isOffered: (name: string) => boolean;
-  /** The most recently written log, for the cases that file one via the timer. */
+  /** For the cases that file one via the timer. */
   newestLogId: () => number;
-  /**
-   * Refuses an entry, as the fixture rather than as the thing under test.
-   *
-   * A raw update for the reason `setCategoryOff` gives: `rejectLog` is another
-   * module's rule with its own matrix, and a case that says "once the entry is
-   * decided" should be about a row that is no longer pending, however it got
-   * there.
-   */
+  /** A raw update, so the case does not depend on `rejectLog`'s own rule. */
   reject: (logId: number) => void;
-  /**
-   * What a waiting entry would be paid right now.
-   *
-   * Read through the queue's own list, which is what an adult is looking at
-   * when he edits — so a case that says "the price did not move" is about the
-   * number on the screen and not a second opinion of it.
-   */
+  /** Through the queue's own list: the number on the adult's screen. */
   previewOf: (logId: number) => number | null;
-  /**
-   * Puts an activity into a state the CRUD now refuses to create, by writing
-   * the column directly.
-   *
-   * D37 stops an adult reaching these states, which is the point of it — but
-   * `requireEditableActivity` in `approveLog` is what catches them if D37 ever
-   * has a hole, and a guard whose state nothing can build is a guard nothing
-   * tests. So the fixture builds it and the case asks the approval, which is
-   * the question that guard answers.
-   */
+  /** Writes a state D37 refuses, so `requireEditableActivity`'s backstop is tested. */
   forceActivity: (name: string, patch: Record<string, unknown>) => void;
   /** Opens a stopwatch session on an activity, and optionally pauses it. */
   startSession: (name: string, options?: { paused?: boolean }) => void;
-  /**
-   * Switches a category, as the fixture rather than as the thing under test.
-   *
-   * A `update` straight at the column, deliberately: `setCategoryActive` from
-   * `categories.ts` is another module's rule with its own matrix, and a fixture
-   * built out of the neighbouring module makes every case here depend on it. A
-   * case that says "under a switched-off category" should be about a row whose
-   * `active` is 0, however it got that way.
-   */
+  /** A raw update, so the case does not depend on `setCategoryActive`. */
   setCategoryOff: (categoryName: string) => void;
 };
 
@@ -132,9 +84,7 @@ export function makeActivityWorld(connection: Connection): ActivityWorld {
         .map((row) => `${row.name}(${row.active ? "on" : "off"})`)
         .join(" | "),
     isOffered: (name) => {
-      // Exactly the join every picker uses (`fetchLaunchDataAction`), so "is it
-      // offered" is answered by the query the screens actually run rather than
-      // by a second opinion about what `active` means.
+      // The join every picker runs (`fetchLaunchDataAction`).
       const found = connection.db
         .select({
           active: activities.active,
@@ -199,14 +149,12 @@ export function makeActivityWorld(connection: Connection): ActivityWorld {
 }
 
 export type ActivityCase = {
-  /** Which acceptance criterion of #27 this case belongs to. */
   rule: string;
   name: string;
   run: (module: ActivityModule, world: ActivityWorld) => unknown;
   expected: unknown;
 };
 
-/** Runs `body` and names the refusal instead of letting it escape. */
 function refused(body: () => void): string {
   try {
     body();
@@ -217,13 +165,13 @@ function refused(body: () => void): string {
   return "not refused";
 }
 
-/** Mente, which is where the cases put a new activity unless they say otherwise. */
+/** Where new activities go unless a case says otherwise. */
 const MENTE = "Mente";
 
-/** Casa, whose activities are `delivery` and carry a seven-day cooldown. */
+/** `delivery`, with a seven-day cooldown. */
 const CASA = "Casa";
 
-/** An activity as the form hands it over, with one field changed at a time. */
+/** One field changed at a time. */
 function input(
   world: ActivityWorld,
   overrides: Partial<ActivityInput> = {},
@@ -243,7 +191,6 @@ function input(
 }
 
 export const ACTIVITY_CASES: readonly ActivityCase[] = [
-  // --- criar, editar, desativar --------------------------------------------
   {
     rule: "an activity can be created, edited and switched off",
     name: "a new activity is stored with every field the form sent",
@@ -283,7 +230,7 @@ export const ACTIVITY_CASES: readonly ActivityCase[] = [
 
       return world.activityText("Ler livro");
     },
-    // The limit is dropped: a `delivery` has no session for one to be about.
+    // A `delivery` has no session to limit.
     expected:
       "Ler livro em Mente · delivery 4 · limite null · nota true · cooldown 3 · ordem 9 · on",
   },
@@ -375,7 +322,6 @@ export const ACTIVITY_CASES: readonly ActivityCase[] = [
       "refused: guessing is not a way of counting: it is one of duration, fixed, delivery, free",
   },
 
-  // --- D14: desativar não apaga --------------------------------------------
   {
     rule: "switching an activity off deletes nothing",
     name: "the row is still there, switched off, with its numbers",
@@ -448,7 +394,6 @@ export const ACTIVITY_CASES: readonly ActivityCase[] = [
     expected: "approved 3 h · Ler livro / Mente · ledger earn 3",
   },
 
-  // --- D33: a guarda vale no endpoint --------------------------------------
   {
     rule: "an activity is only ever under a live category",
     name: "creating one under a switched-off category is refused, in words",
@@ -506,8 +451,7 @@ export const ACTIVITY_CASES: readonly ActivityCase[] = [
         module.setActivityActive(world.connection, id, true),
       );
     },
-    // Otherwise the tap reports success and the activity is still in no picker,
-    // which is worse than a refusal.
+    // Otherwise the tap reports success and the activity is in no picker.
     expected:
       "refused: Mente is switched off: an activity under it would be in no picker at all (D14, D33)",
   },
@@ -527,12 +471,11 @@ export const ACTIVITY_CASES: readonly ActivityCase[] = [
     expected: true,
   },
 
-  // --- D11: o value é explícito e é quem manda ------------------------------
   {
     rule: "the value is explicit, and it is what the engine reads",
     name: "an activity priced away from its category keeps its own price",
     run: (module, world) => {
-      // Mente's `base_rate` is 2,0; this one is 1,5, like "Ler quadrinhos".
+      // Priced away from Mente's `base_rate`.
       module.createActivity(world.connection, input(world, { value: 1.5 }));
 
       return world.activityText("Podcast");
@@ -554,8 +497,7 @@ export const ACTIVITY_CASES: readonly ActivityCase[] = [
     rule: "the value is explicit, and it is what the engine reads",
     name: "the category's rate is never quietly copied in",
     run: (module, world) => {
-      // Convívio declares no rate at all (D11). An activity under it still has
-      // to carry one, and nothing here may invent it.
+      // D11: Convívio declares no rate, and nothing may invent one.
       const value = refused(() =>
         module.createActivity(
           world.connection,
@@ -639,7 +581,6 @@ export const ACTIVITY_CASES: readonly ActivityCase[] = [
       "Podcast em Mente · duration 2 · limite 120 · nota false · cooldown 0 · ordem 5 · on",
   },
 
-  // --- D16: o limite de sessão, e os outros contadores ---------------------
   {
     rule: "every counter the engine reads is checked here",
     name: "a session limit is kept only where there is a session",
@@ -651,8 +592,7 @@ export const ACTIVITY_CASES: readonly ActivityCase[] = [
 
       return world.activityText("Podcast");
     },
-    // Stored as null rather than refused: a mode changed away from `duration`
-    // must not leave a limit behind for nothing to read.
+    // Null, not refused, so a mode change leaves no stale limit.
     expected:
       "Podcast em Mente · fixed 2 · limite null · nota false · cooldown 0 · ordem 5 · on",
   },
@@ -825,13 +765,9 @@ export const ACTIVITY_CASES: readonly ActivityCase[] = [
     expected: 4,
   },
 
-  // --- D37: nada muda de preço debaixo de uma entrada que já espera ---------
   {
     rule: "a waiting entry is priced by the table it was written under",
     name: "raising the value is refused, and the entry is named",
-    // Measured before this rule: the same one-hour session paid 3 h approved as
-    // it was registered and 15 h after `value` 2 → 10, with nothing about the
-    // entry touched. Four sessions parked in the queue went from 9 h to 13,50 h.
     run: (module, world) => {
       const logId = world.addPending({ activity: "Ler livro" });
 
@@ -867,9 +803,7 @@ export const ACTIVITY_CASES: readonly ActivityCase[] = [
   {
     rule: "a waiting entry is priced by the table it was written under",
     name: "turning the grade on is refused",
-    // Left alone this took the whole approval queue down with an HTTP 500: the
-    // engine refuses a graded entry with no grade, and the queue priced every
-    // row without tolerance.
+    // Unguarded, this took the whole queue down with an HTTP 500.
     run: (module, world) => {
       world.addPending({ activity: "Ler livro" });
 
@@ -908,13 +842,7 @@ export const ACTIVITY_CASES: readonly ActivityCase[] = [
   {
     rule: "a waiting entry is priced by the table it was written under",
     name: "moving another activity is allowed, and does not move the price",
-    // There used to be a second refusal here, for the categories a move travels
-    // between. It protected nothing once D37's second half stamped
-    // `category_id` on the log — measured, the pending entry priced 1,00 h
-    // before and after — and it refused 96 of 192 legal moves with one pending
-    // entry per boy, on the very operation this phase exists to allow without a
-    // deploy. The case that replaces it holds the bound: the move goes through,
-    // and the waiting entry does not move.
+    // No refusal for the move's categories: the stamp already protects the entry (D37).
     run: (module, world) => {
       const logId = world.addPending({ activity: "Ler quadrinhos ou HQ" });
       const before = world.previewOf(logId);
@@ -931,8 +859,7 @@ export const ACTIVITY_CASES: readonly ActivityCase[] = [
   {
     rule: "a waiting entry is priced by the table it was written under",
     name: "switching it off while one waits is refused, not silently stranding it",
-    // D33 refuses to approve an entry whose activity is off, so switching one
-    // off with an entry waiting left the boy's real session unapprovable.
+    // D33 would leave the waiting entry unapprovable.
     run: (module, world) => {
       world.addPending({ activity: "Ler livro" });
 
@@ -949,11 +876,7 @@ export const ACTIVITY_CASES: readonly ActivityCase[] = [
   {
     rule: "a waiting entry is priced by the table it was written under",
     name: "an open stopwatch session refuses the edit too, before anything is filed",
-    // The line is `startTimer`, not `stopTimer`. Left at the filing, everything
-    // this rule refuses was reachable one step earlier: 120 min of Ler livro
-    // paid 6,75 h after `value` 2 → 3, 120,00 h after three fields, and
-    // 750.000,00 h at the column's ceiling on a 30-minute session — against a
-    // calibrated asymptote of 4,00 h, with no proration and repeatable daily.
+    // D37: the line is `startTimer`, not `stopTimer`.
     run: (module, world) => {
       world.startSession("Ler livro");
 
@@ -970,8 +893,7 @@ export const ACTIVITY_CASES: readonly ActivityCase[] = [
   {
     rule: "a waiting entry is priced by the table it was written under",
     name: "a paused session is still a session",
-    // Pausing is not finishing: the minutes already on the clock are still
-    // going to be priced by whatever the table says when the boy stops.
+    // Paused minutes are still priced when the boy stops.
     run: (module, world) => {
       world.startSession("Ler livro", { paused: true });
 
@@ -987,8 +909,7 @@ export const ACTIVITY_CASES: readonly ActivityCase[] = [
   {
     rule: "a waiting entry is priced by the table it was written under",
     name: "a rename is still free with a session open",
-    // The bound: the rule is about what changes a price, not about freezing the
-    // screen whenever a boy touches the stopwatch.
+    // Only what changes a price is refused.
     run: (module, world) => {
       world.startSession("Ler livro");
 
@@ -1005,9 +926,7 @@ export const ACTIVITY_CASES: readonly ActivityCase[] = [
   {
     rule: "a waiting entry is priced by the table it was written under",
     name: "a rename, a reorder and a session limit are not repricing, and go through",
-    // The bound that keeps the rule from being "nothing may ever be edited".
-    // None of these three can change what a waiting entry is worth: its minutes
-    // are already on the row.
+    // None of these three reprice a waiting entry: its minutes are on the row.
     run: (module, world) => {
       world.addPending({ activity: "Ler livro" });
 
@@ -1029,8 +948,7 @@ export const ACTIVITY_CASES: readonly ActivityCase[] = [
   {
     rule: "a waiting entry is priced by the table it was written under",
     name: "an entry waiting on another category does not block the edit",
-    // The other bound: the rule is about the entries this edit could reprice,
-    // not about the queue being empty.
+    // Only the entries this edit could reprice count.
     run: (module, world) => {
       world.addPending({
         activity: "Lavar o carro",
@@ -1051,8 +969,7 @@ export const ACTIVITY_CASES: readonly ActivityCase[] = [
   {
     rule: "a waiting entry is priced by the table it was written under",
     name: "once the entry is decided, the edit goes through",
-    // The rule is a wait, not a lock: it says "decide that one first", the same
-    // sentence D32 says, and then the field is free.
+    // A wait, not a lock, as in D32.
     run: (module, world) => {
       const logId = world.addPending({ activity: "Ler livro" });
       world.reject(logId);
@@ -1068,7 +985,6 @@ export const ACTIVITY_CASES: readonly ActivityCase[] = [
       "Ler livro em Mente · duration 10 · limite 120 · nota false · cooldown 0 · ordem 1 · on",
   },
 
-  // --- D15: mudar a taxa não reescreve o passado ----------------------------
   {
     rule: "changing the rate does not rewrite the past",
     name: "the frozen value of an entry does not move when the rate doubles",
@@ -1149,8 +1065,7 @@ export const ACTIVITY_CASES: readonly ActivityCase[] = [
         sortOrder: 1,
       });
 
-      // The history follows the activity through the foreign key, which is what
-      // D14 keeps readable; the number does not move, which is D15.
+      // D14 keeps the history readable; D15 keeps the number.
       return world.frozenText(logId);
     },
     expected: "approved 3 h · Ler livro / Criativo · ledger earn 3",
@@ -1181,7 +1096,6 @@ export const ACTIVITY_CASES: readonly ActivityCase[] = [
     expected: 1,
   },
 
-  // --- a lista que a tela desenha ------------------------------------------
   {
     rule: "the list is the one the screen draws",
     name: "one category's activities, in the picker's order",

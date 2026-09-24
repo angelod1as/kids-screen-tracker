@@ -11,15 +11,8 @@ import { activities, categories } from "./schema";
 import { seedDatabase } from "./seed";
 
 /**
- * Like the schema tests, every case here runs against a database built the way
- * production builds one: `migrateDatabase` on an empty directory, then a
- * connection from `openDatabase`. The committed migration is what the seed is
- * written into.
- *
- * The expected tables below are written out literally rather than derived from
- * `SEED_CATEGORIES`. A test that reads the list it is checking
- * moves with a typo and stays green — and a wrong `value` here is a wrong
- * amount of screen time for the rest of the project.
+ * Built by the committed migration. Expected tables are written out, not read
+ * from `SEED_CATEGORIES`: a test that reads its own input moves with a typo.
  */
 
 let root: string;
@@ -64,12 +57,7 @@ describe("people", () => {
 });
 
 describe("the seven categories", () => {
-  /**
-   * `decay_step_hours` is the calibration table of `docs/decisions.md`, not the
-   * weekly `full_up_to` / `half_up_to` bands of `docs/spec.md`, which D1, D2
-   * and D4 removed. `base_rate` is null wherever the category declares no rate
-   * (D11), and null decay is the off switch (D2, D5, D12).
-   */
+  /** D1, D2, D4, D11; null decay is the off switch (D2, D5, D12). */
   it("seeds the calibration table, in the order the pickers show", () => {
     seedDatabase(connection);
 
@@ -154,12 +142,7 @@ describe("the seven categories", () => {
     ]);
   });
 
-  /**
-   * The asymptote is `rate × decay_step_hours × 2`, and it is the number the
-   * decision log actually calibrated — the step was derived from it. Asserting
-   * the product catches a step and a rate that were changed in opposite
-   * directions and still look plausible one at a time.
-   */
+  /** The asymptote catches a rate and a step changed in opposite directions. */
   it("lands on the daily ceilings the decision log calibrated", () => {
     seedDatabase(connection);
 
@@ -193,12 +176,7 @@ describe("the seven categories", () => {
   });
 });
 
-/**
- * The whole activity table, activity by activity, as `docs/spec.md` lists it
- * with the duration rates lowered to 1.5 (#110). `max_session_minutes` is set only where a session has a duration
- * to cut, and `repeat_cooldown_days` is 7 on every activity of Casa and 0
- * everywhere else.
- */
+/** The spec's activity table, with duration rates lowered to 1,5 (#110). */
 type ExpectedActivity = readonly [
   category: string,
   name: string,
@@ -376,11 +354,7 @@ describe("every activity of the spec", () => {
     }
   });
 
-  /**
-   * D11: the activity's `value` is what the engine reads, so it is explicit
-   * everywhere it can be — and `free` is the one mode where the schema demands
-   * it be null, because the admin types the number at launch time.
-   */
+  /** D11: explicit everywhere but `free`, where the schema demands null. */
   it("gives every mode but free an explicit value", () => {
     seedDatabase(connection);
 
@@ -392,7 +366,7 @@ describe("every activity of the spec", () => {
     }
   });
 
-  /** A `delivery` is `value × quality grade`, so it has to be graded. */
+  /** `value × grade`, so it has to be graded. */
   it("grades exactly the delivery activities", () => {
     seedDatabase(connection);
 
@@ -404,7 +378,7 @@ describe("every activity of the spec", () => {
     }
   });
 
-  /** D16 cuts a running session at this limit; the other modes never run one. */
+  /** D16: only a timed mode runs a session. */
   it("sets a session limit exactly on the timed activities", () => {
     seedDatabase(connection);
 
@@ -417,13 +391,7 @@ describe("every activity of the spec", () => {
   });
 });
 
-/**
- * The seed matches on the primary key, because it is the only thing about a
- * seeded row that no screen can change: the Configuration screen renames and
- * deactivates, and the partial unique index of the schema lets two rows share
- * a name. So the ids are part of the seed data and are pinned here — a number
- * that moved would be a row the next deploy no longer recognises.
- */
+/** Ids are seed data: a moved id is a row the next deploy no longer recognises. */
 describe("the identity of a seeded row", () => {
   it("gives the seven categories the ids the seed declares", () => {
     seedDatabase(connection);
@@ -497,9 +465,7 @@ describe("running it again", () => {
   it("leaves the rows byte for byte as they were", () => {
     seedDatabase(connection);
 
-    // `select *`, so a column added later is compared without this test being
-    // edited — including the ids, which is where a delete-and-reinsert would
-    // show up.
+    // `select *`, so a later column and a delete-and-reinsert both show up.
     const snapshot = () =>
       ["users", "categories", "activities"].map((table) =>
         connection.sqlite.prepare(`select * from ${table} order by id`).all(),
@@ -512,12 +478,7 @@ describe("running it again", () => {
     expect(snapshot()).toEqual(before);
   });
 
-  /**
-   * D15: the Configuration screen is where the table gets tuned, and the seed
-   * runs on every deploy. If it overwrote, the next deploy would silently undo
-   * an admin's calibration — and D14 makes the same point about a category
-   * that was switched off rather than deleted.
-   */
+  /** D15: overwriting would undo the admin's calibration on the next deploy. */
   it("does not overwrite a rate an admin changed", () => {
     seedDatabase(connection);
 
@@ -552,12 +513,7 @@ describe("running it again", () => {
     expect([book?.value, book?.repeatCooldownDays]).toEqual([9, 2]);
   });
 
-  /**
-   * D14 again, from the other side: the match ignores `active`, so a category
-   * or an activity the admin switched off stays off instead of coming back as
-   * a second, live row — which the partial unique index, scoped to the live
-   * rows, would accept without complaint.
-   */
+  /** D14: the match ignores `active`, so a switched-off row stays off. */
   it("does not resurrect a deactivated category or activity", () => {
     seedDatabase(connection);
 
@@ -593,13 +549,7 @@ describe("running it again", () => {
     expect(bicicleta.map((row) => row.active)).toEqual([false]);
   });
 
-  /**
-   * The Configuration screen does full CRUD on categories and activities
-   * (`docs/spec.md`, "Configuração"), so a name is an editable label, not an
-   * identity. Keyed by name, the seed re-created what an admin had renamed:
-   * `Corpo` renamed to `Físico` came back with its four activities, eight live
-   * categories, two of them on `sort_order` 1.
-   */
+  /** A name is an editable label: keyed by name, a rename came back as a duplicate. */
   it("does not re-create a category or activity that was renamed", () => {
     seedDatabase(connection);
 
@@ -639,13 +589,7 @@ describe("running it again", () => {
     expect(live.map((row) => row.sortOrder)).toEqual([1, 2, 3, 4, 5, 6, 7]);
   });
 
-  /**
-   * D14 through the partial unique index of the schema: it is scoped to the
-   * live rows on purpose, so a deactivated `Corpo` may coexist with a `Corpo`
-   * the admin created afterwards. A lookup by name then has two rows to choose
-   * from — and choosing the last one hung the four seeded activities under the
-   * admin's new category, as four duplicates.
-   */
+  /** D14: a deactivated and a live `Corpo` may coexist; the seed must not pick one. */
   it("does not duplicate activities when two categories share a name", () => {
     seedDatabase(connection);
 

@@ -18,21 +18,9 @@ import type { TimersModule, World } from "./timers.rules";
 import { failingTimersCases, makeWorld, TIMERS_CASES } from "./timers.rules";
 
 /**
- * The sabotage matrix for the settlement (#18, #19).
- *
- * The one this project was told it was missing. Round 1 mutated
- * `src/db/timers.ts` nine ways and three of the nine survived the entire suite:
- * the rounding of the banked seconds, the instant a stop is dated at, and the
- * re-read inside `readTimer`'s transaction — the only thing between two tabs
- * and two records for one session, deletable with 799 tests still green.
- *
- * All three are mutations here, and the third is the reason `timers.rules.ts`
- * has a connection that lets another tab in between the two reads: a rule that
- * only holds under concurrency needs a case that produces some.
- *
- * **The control has to come back uncaught**, as in the two matrices before
- * this one, so that a loader that quietly failed cannot report every rule
- * protected.
+ * Sabotage matrix for the settlement (#18, #19). `timers.rules.ts` can let
+ * another tab in between two reads: that rule only holds under concurrency.
+ * The control must come back uncaught.
  */
 
 const SOURCE_PATH = join(import.meta.dirname, "timers.ts");
@@ -40,12 +28,10 @@ const MUTANT_DIR = join(import.meta.dirname, "..", "..", ".sabotage-timers");
 
 type Mutation = {
   name: string;
-  /** One or more exact rewrites, all of which have to apply. */
   edits: { find: string; replace: string }[];
 };
 
 const MUTATIONS: readonly Mutation[] = [
-  // --- o registro sai dos carimbos ------------------------------------------
   {
     name: "the record is dated at the confirmation instead of at the pause",
     edits: [
@@ -103,7 +89,6 @@ const MUTATIONS: readonly Mutation[] = [
     ],
   },
 
-  // --- uma sessão por menino, e só o que dá para cronometrar ----------------
   {
     name: "a second session can be opened while one is running",
     edits: [
@@ -132,7 +117,6 @@ const MUTATIONS: readonly Mutation[] = [
     ],
   },
 
-  // --- a liquidação acontece uma vez ----------------------------------------
   {
     name: "the settlement is written from the row read outside the transaction",
     edits: [
@@ -171,7 +155,6 @@ const MUTATIONS: readonly Mutation[] = [
     ],
   },
 
-  // --- D44: a sessão mínima -------------------------------------------------
   {
     name: "a stop files a session under the floor",
     edits: [
@@ -202,7 +185,6 @@ const MUTATIONS: readonly Mutation[] = [
     ],
   },
 
-  // --- o limite, o abandono e a virada do dia -------------------------------
   {
     name: "an abandoned session leaves a record after all",
     edits: [
@@ -250,15 +232,7 @@ const MUTATIONS: readonly Mutation[] = [
   },
 ];
 
-/**
- * The rewrite that has to come back uncaught.
- *
- * `orderBy(desc(timers.id))` picks which of two open timers is read, and there
- * is never more than one: the transaction in `startTimer` is what makes that
- * true, and this only says which first `limit 1` means. Removing it changes the
- * plan and not the answer — same file, same loader, same table, and the answer
- * is no.
- */
+/** The control: `orderBy` on a query that only ever finds one row. */
 const CONTROL: Mutation = {
   name: "the open timer is read without saying which one comes first",
   edits: [

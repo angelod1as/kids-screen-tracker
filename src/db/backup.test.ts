@@ -15,24 +15,14 @@ import { backupDatabase } from "./backup";
 import { openDatabase } from "./client";
 import { migrateDatabase } from "./migrate";
 
-// `existsSync` is otherwise the real implementation (see the `importOriginal`
-// spread) — only the "reports a race" test below overrides it, and only for
-// as many calls as it queues with `mockReturnValueOnce`.
+// Real `existsSync` except where the race test queues `mockReturnValueOnce`.
 vi.mock("node:fs", async (importOriginal) => {
   const actual = await importOriginal<typeof import("node:fs")>();
   return { ...actual, existsSync: vi.fn(actual.existsSync) };
 });
 const mockedExistsSync = vi.mocked(existsSync);
 
-/**
- * `VACUUM INTO` is the whole point of #30: a plain `cp` of a database open
- * under WAL can copy the main file mid-write and hand back something that
- * fails to open. These tests hold a write transaction open on a second
- * connection while the backup runs, so a regression back to `cp` — or to any
- * approach that reads a torn snapshot — would show up as a failed
- * `integrity_check` or as the uncommitted row leaking into the backup, not
- * just as a thrown exception.
- */
+/** An open write transaction runs across the backup, so a torn snapshot shows. */
 
 let root: string;
 let databasePath: string;
@@ -63,9 +53,7 @@ describe("backupDatabase", () => {
     insertUser(committed.sqlite, "admin1");
     insertUser(committed.sqlite, "admin2");
 
-    // A second connection with a write transaction open but not yet
-    // committed, held open across the backup call — the shape of two admins
-    // using the app while a backup runs.
+    // Two admins writing while the backup runs.
     const inFlight = openDatabase(databasePath);
     inFlight.sqlite.prepare("begin immediate").run();
     insertUser(inFlight.sqlite, "kid1");
@@ -97,18 +85,10 @@ describe("backupDatabase", () => {
       /Refusing to overwrite/,
     );
 
-    // The pre-existing file is untouched, not silently replaced.
     expect(readFileSync(destinationPath, "utf8")).toBe("not a database");
   });
 
-  /**
-   * `openDatabase` (`client.ts`) creates the file when it is missing — right
-   * for `db-migrate`/`db-seed` against an empty volume, wrong here: a typo'd
-   * or unmounted `DATABASE_PATH` must not "back up" a brand new, empty
-   * database and report success. `backupDatabase` opens the source with
-   * `fileMustExist` instead, and this is the case that would have passed
-   * silently without it.
-   */
+  /** A mistyped `DATABASE_PATH` must not back up a brand new empty database. */
   it("refuses to back up a database that does not exist", () => {
     const missingSource = join(root, "does-not-exist.db");
 
@@ -116,7 +96,6 @@ describe("backupDatabase", () => {
       /No such database/,
     );
 
-    // Neither side effect that a silent success would have produced.
     expect(existsSync(missingSource)).toBe(false);
     expect(existsSync(destinationPath)).toBe(false);
   });
@@ -129,21 +108,11 @@ describe("backupDatabase", () => {
     ).toThrowError(/No such directory/);
   });
 
-  /**
-   * Two `db:backup` runs racing on the same destination can both pass the
-   * `existsSync` check before either has written anything — simulated here by
-   * making the destination check report "does not exist" once, then writing
-   * the file itself before `VACUUM INTO` runs, standing in for the other
-   * process winning the race. SQLite's own refusal is correct but does not
-   * read like `backupDatabase`'s message for the same cause; this is the
-   * normalization in the `catch` block of `backupDatabase`.
-   */
+  /** Simulates losing the race to another `db:backup`, for the `catch`'s message. */
   it("reports a race on the destination the same way as a pre-existing file", () => {
     mockedExistsSync.mockReturnValueOnce(true); // databasePath exists
     mockedExistsSync.mockReturnValueOnce(false); // destinationPath: race not visible yet
     mockedExistsSync.mockReturnValueOnce(true); // destinationDir exists
-    // Calls after this point (inside the `catch`) fall back to the real
-    // implementation `vi.mock` above wraps `existsSync` with.
 
     writeFileSync(destinationPath, "the other process won the race");
 

@@ -20,16 +20,8 @@ import { migrateDatabase } from "./migrate";
 import { seedWithTestUsers } from "./test-users";
 
 /**
- * The sabotage matrix for the release and the refund (#23, #24).
- *
- * Same shape and same argument as `admin.sabotage.test.ts`, including the three
- * files: the two movements are `ledger.ts`, and two of their rules live beside
- * them in `input.ts` and `people.ts`.
- *
- * What these two functions have that the launch does not is a rule about
- * something **not** happening: the balance may go below zero, without limit, so
- * there is no check to break — only one to *add*. A mutation that adds one is
- * how a matrix can protect an absence, and it is the first one below.
+ * Sabotage matrix for release and refund (#23, #24), shaped like the launch's.
+ * The negative balance is an absence, protected by a mutation that adds a check.
  */
 
 const DB_DIR = import.meta.dirname;
@@ -47,7 +39,6 @@ type Mutation = {
 };
 
 const MUTATIONS: readonly Mutation[] = [
-  // --- o saldo pode ficar negativo, sem limite ------------------------------
   {
     name: "a release is refused when the boy does not have the hours",
     file: "ledger.ts",
@@ -59,7 +50,6 @@ const MUTATIONS: readonly Mutation[] = [
       "    }\n",
   },
 
-  // --- #23: liberar debita -------------------------------------------------
   {
     name: "a release adds instead of taking away",
     file: "ledger.ts",
@@ -104,7 +94,6 @@ const MUTATIONS: readonly Mutation[] = [
     replace: "        destination,",
   },
 
-  // --- #24: estornar soma, com data e motivo -------------------------------
   {
     name: "a refund takes away instead of giving back",
     file: "ledger.ts",
@@ -136,7 +125,6 @@ const MUTATIONS: readonly Mutation[] = [
     replace: '        kind: "refund",\n        hours: hours / 2,',
   },
 
-  // --- o que o adulto digitou ----------------------------------------------
   {
     name: "an amount is not checked at all",
     file: "input.ts",
@@ -174,7 +162,6 @@ const MUTATIONS: readonly Mutation[] = [
     replace: "  if (false) {",
   },
 
-  // --- D33: quem pode receber ----------------------------------------------
   {
     name: "anybody with a row can be released for",
     file: "people.ts",
@@ -195,16 +182,7 @@ const MUTATIONS: readonly Mutation[] = [
   },
 ];
 
-/**
- * The rewrite that has to come back uncaught.
- *
- * The two spellings of "the destination, trimmed, or null" are the same
- * function. It is the shape of tidying a reviewer suggests, it sits one line
- * above a ternary that *is* a rule — an empty destination becomes null — and
- * the matrix has to be able to tell the two apart. That it does is what the
- * control's silence is worth, and the case below the control proves the other
- * half.
- */
+/** The control: two spellings of "trimmed, or null". */
 const CONTROL: Mutation = {
   file: "ledger.ts",
   name: "the destination is trimmed with fewer characters",
@@ -355,9 +333,7 @@ describe("the control: the matrix can still say no", () => {
   it("catches the neighbouring clause that is a rule", {
     timeout: 60_000,
   }, async () => {
-    // One line below the control's, about the same value: a destination of
-    // nothing but spaces is not a destination. One is a spelling and one is a
-    // rule, and the matrix has to tell them apart.
+    // Edited like the control, but a rule: the matrix must tell them apart.
     const failures = failingLedgerCases(
       await loadMutant(2 * MUTATIONS.length + 1, {
         file: "ledger.ts",

@@ -8,19 +8,10 @@ import { THAT_DAY } from "./queue.rules";
 import { ledger } from "./schema";
 
 /**
- * The rules of #23 and #24, written out one case at a time.
- *
- * Same shape and same reason as `queue.rules.ts` and `admin.rules.ts`, on the
- * same world as the launch: releasing and refunding move the same balance the
- * launch fills, and the three are read against each other on the same screen.
- *
- * Two files run this table. `ledger.test.ts` asserts the real module answers
- * every case, and `ledger.sabotage.test.ts` rewrites one clause of
- * `src/db/ledger.ts`, `src/db/input.ts` or `src/db/people.ts` at a time and
- * asserts each mutant gets at least one case wrong.
+ * The rules of #23 and #24, on the launch's world, run by `ledger.test.ts`
+ * and the sabotage matrix.
  */
 
-/** The part of the two movements a case may call. */
 export type LedgerModule = {
   releaseHours: (
     connection: Connection,
@@ -37,14 +28,12 @@ export type LedgerModule = {
 };
 
 export type LedgerCase = {
-  /** Which acceptance criterion of #23 or #24 this case belongs to. */
   rule: string;
   name: string;
   run: (movements: LedgerModule, world: AdminWorld) => unknown;
   expected: unknown;
 };
 
-/** Runs `body` and names the refusal instead of letting it escape. */
 function refused(body: () => void): string {
   try {
     body();
@@ -55,15 +44,7 @@ function refused(body: () => void): string {
   return "not refused";
 }
 
-/**
- * The ledger as one comparable line per row, with the two columns that name a
- * movement an adult made by hand.
- *
- * `admin.rules.ts` has a narrower one for the launch, where the row is named by
- * the entry behind it. These two rows have no entry: a release is named by
- * where the hours went and a refund by why they came back, and a column that
- * went unread by every case is a column a mutation could empty.
- */
+/** With destination and note: a column no case reads is one a mutation can empty. */
 function movementsText(world: AdminWorld): string {
   const rows = world.connection.db
     .select({
@@ -89,7 +70,7 @@ function movementsText(world: AdminWorld): string {
         .join(" | ");
 }
 
-/** An `earn` row of two hours, so a refund has something to sit beside. */
+/** Two hours earned, so a refund has something to sit beside. */
 function earn(world: AdminWorld, hours: number): void {
   world.connection.db
     .insert(ledger)
@@ -104,7 +85,6 @@ function earn(world: AdminWorld, hours: number): void {
 }
 
 export const LEDGER_CASES: readonly LedgerCase[] = [
-  // --- #23: libera, debita, e o saldo pode ficar negativo -------------------
   {
     rule: "releasing debits the boy it was released for",
     name: "two hours to the Xbox, today, by the adult who did it",
@@ -167,7 +147,6 @@ export const LEDGER_CASES: readonly LedgerCase[] = [
     expected: "0 · -1",
   },
 
-  // --- #23: o saldo pode ficar negativo, sem limite -------------------------
   {
     rule: "the balance may go below zero, without limit",
     name: "five hours released against an empty balance",
@@ -222,7 +201,6 @@ export const LEDGER_CASES: readonly LedgerCase[] = [
     expected: "not refused",
   },
 
-  // --- #24: estorna, soma no saldo, e diz por quê ---------------------------
   {
     rule: "a refund adds, like an entry does",
     name: "two hours back, on the day they are credited to, with the reason",
@@ -330,7 +308,6 @@ export const LEDGER_CASES: readonly LedgerCase[] = [
       "refused: 2026-09-14 has not happened yet: the date is today or earlier",
   },
 
-  // --- o que o adulto digitou é conferido antes de virar linha --------------
   {
     rule: "what an adult types is checked before it reaches a column",
     name: "nothing is not an amount",
@@ -392,9 +369,7 @@ export const LEDGER_CASES: readonly LedgerCase[] = [
         LAUNCHED_AT,
       );
 
-      // Read off the row and not off the balance: the balance is rounded on
-      // its way out (D9), so a third decimal stored in the column would come
-      // back rounded and the case would agree with a rule it never kept.
+      // Off the row: the balance is rounded on its way out (D9).
       return movementsText(world);
     },
     expected: `spend 1.24 on ${TODAY} to 3 by 1 · nowhere · no reason`,
@@ -411,9 +386,7 @@ export const LEDGER_CASES: readonly LedgerCase[] = [
           LAUNCHED_AT,
         ),
       ),
-    // The column's own CHECK would refuse it too, with a constraint name on a
-    // screen where an adult is standing beside a boy. This is the same rule
-    // said where it can name the field and the bound.
+    // The column CHECK would refuse it too, with a constraint name.
     expected:
       "refused: what is released is at most 1000000 hours, received 1000001",
   },
@@ -452,7 +425,6 @@ export const LEDGER_CASES: readonly LedgerCase[] = [
     expected: "refused: a destination is at most 500 characters, received 501",
   },
 
-  // --- D33: a guarda de quem pode receber vale no endpoint ------------------
   {
     rule: "only a boy who is switched on can be written for",
     name: "a deactivated boy cannot be released for",
@@ -506,7 +478,7 @@ export const LEDGER_CASES: readonly LedgerCase[] = [
   },
 ];
 
-/** The cases `movements` gets wrong, each run against a world of its own. */
+/** A fresh world per case. */
 export function failingLedgerCases(
   movements: LedgerModule,
   worlds: () => AdminWorld,

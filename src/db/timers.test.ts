@@ -19,14 +19,7 @@ import {
 import type { TimersModule, World } from "./timers.rules";
 import { failingTimersCases, makeWorld, TIMERS_CASES } from "./timers.rules";
 
-/**
- * The settlement as written, against the table in `timers.rules.ts`.
- *
- * `src/app/actions/timer.test.ts` covers the same module through the endpoints,
- * with the clock faked; this runs the table the sabotage matrix runs, so that
- * the matrix and the ordinary test are asking the same questions of the same
- * fixtures. A matrix whose table nothing else exercises is a second program.
- */
+/** The sabotage matrix's table, run against the real module. */
 
 const REAL: TimersModule = {
   readTimer,
