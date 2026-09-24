@@ -115,33 +115,63 @@ export const ACCESS_CASES: readonly AccessCase[] = [
     allowed: false,
   },
 
-  // --- Kid não escreve nada além de propor um log via cronômetro ---
+  // --- Kid não escreve nada além de propor pelo cronômetro ou pedir (D49) ---
   {
-    rule: "the timer proposal is the kid's only write",
+    rule: "the timer and the request are the kid's only writes",
     name: "Kid1 proposes a timer log for himself",
     session: KID1,
     request: { kind: "proposeTimerLog", targetUserId: KID1.userId },
     allowed: true,
   },
   {
-    rule: "the timer proposal is the kid's only write",
+    rule: "the timer and the request are the kid's only writes",
     name: "Kid1 proposes a timer log in Kid2's name",
     session: KID1,
     request: { kind: "proposeTimerLog", targetUserId: KID2.userId },
     allowed: false,
   },
   {
-    rule: "the timer proposal is the kid's only write",
+    rule: "the timer and the request are the kid's only writes",
     name: "Kid1 writes something else to his own data",
     session: KID1,
     request: { kind: "write", targetUserId: KID1.userId },
     allowed: false,
   },
   {
-    rule: "the timer proposal is the kid's only write",
+    rule: "the timer and the request are the kid's only writes",
     name: "Kid2 writes something else to Kid1's data",
     session: KID2,
     request: { kind: "write", targetUserId: KID1.userId },
+    allowed: false,
+  },
+
+  // --- D49: o pedido sem cronômetro é a segunda escrita do kid ---
+  {
+    rule: "the untimed request is the kid's second write",
+    name: "Kid1 requests an untimed log for himself",
+    session: KID1,
+    request: { kind: "requestLog", targetUserId: KID1.userId },
+    allowed: true,
+  },
+  {
+    rule: "the untimed request is the kid's second write",
+    name: "Kid2 requests an untimed log for himself",
+    session: KID2,
+    request: { kind: "requestLog", targetUserId: KID2.userId },
+    allowed: true,
+  },
+  {
+    rule: "the untimed request is the kid's second write",
+    name: "Kid1 requests an untimed log in Kid2's name",
+    session: KID1,
+    request: { kind: "requestLog", targetUserId: KID2.userId },
+    allowed: false,
+  },
+  {
+    rule: "the untimed request is the kid's second write",
+    name: "Kid2 requests an untimed log in an admin's name",
+    session: KID2,
+    request: { kind: "requestLog", targetUserId: ADMIN1.userId },
     allowed: false,
   },
 

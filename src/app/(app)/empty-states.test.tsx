@@ -56,6 +56,9 @@ const NO_TIMER: TimerScreenData = {
   settlement: null,
   proposed: null,
   pending: [],
+  requestable: [],
+  today: "2026-09-10",
+  requested: null,
 };
 
 describe("empty states (#29)", () => {

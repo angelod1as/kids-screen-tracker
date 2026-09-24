@@ -443,6 +443,7 @@ describe("the activity form the endpoint is handed (#27)", () => {
       value: 1.5,
       maxSessionMinutes: 90,
       minSessionMinutes: 5,
+      presumedMinutes: null,
       qualityGraded: false,
       repeatCooldownDays: 4,
       sortOrder: 6,

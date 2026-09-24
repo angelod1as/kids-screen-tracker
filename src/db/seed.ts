@@ -58,10 +58,9 @@ export const SEED_CATEGORIES: readonly SeedCategory[] = [
       },
       {
         id: 4,
-        name: "Treino em casa",
-        calcMode: "duration",
-        value: 1.5,
-        maxSessionMinutes: 180,
+        name: "Academia",
+        calcMode: "fixed",
+        value: 1,
       },
     ],
   },
@@ -101,6 +100,8 @@ export const SEED_CATEGORIES: readonly SeedCategory[] = [
         calcMode: "duration",
         value: 1.5,
         maxSessionMinutes: 120,
+        // #18: an hour when the boy requests it untimed; the adult corrects it.
+        presumedMinutes: 60,
       },
     ],
   },

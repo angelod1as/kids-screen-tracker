@@ -138,6 +138,9 @@ describe("the stopwatch after a failed request (#29)", () => {
       settlement: null,
       proposed: null,
       pending,
+      requestable: [],
+      today: "2026-09-10",
+      requested: null,
     };
   }
 

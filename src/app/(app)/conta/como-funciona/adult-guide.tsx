@@ -226,12 +226,14 @@ export function AdultGuide({ data }: { data: HowItWorksData }) {
       <Panel title="A fila">
         <Points>
           <li>
-            O que o cronômetro manda chega como Pendente. Aprovar congela o
-            valor. Recusar não gera hora, não conta para desgaste, bônus nem
-            repetição, e o motivo é anexado à observação.
+            O que o cronômetro manda, e o que o menino pede sem cronômetro,
+            chega como Pendente. Aprovar congela o valor. Recusar não gera hora,
+            não conta para desgaste, bônus nem repetição, e o motivo é anexado à
+            observação.
           </li>
           <li>
-            Na aprovação dá para corrigir atividade, duração, nota e observação.
+            Na aprovação dá para corrigir atividade, duração, nota e observação,
+            e dar o valor de uma atividade avulsa pedida.
           </li>
           <li>
             <strong>Ordem:</strong> uma entrada não pode ser aprovada enquanto

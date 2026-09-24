@@ -63,6 +63,9 @@ function screen(open: OpenSessionView | null): TimerScreenData {
     settlement: null,
     proposed: null,
     pending: [],
+    requestable: [],
+    today: "2026-09-10",
+    requested: null,
   };
 }
 
