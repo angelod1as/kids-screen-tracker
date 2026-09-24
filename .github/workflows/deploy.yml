@@ -48,12 +48,52 @@ jobs:
             exit 1
           fi
 
-          # --fail-with-body so a 401 or a 404 fails the step and still prints
-          # what Coolify said. The body carries a deployment uuid, not a secret.
-          curl --silent --show-error --fail-with-body \
+          # Which of the three secrets is wrong, before asking for a deploy.
+          # Every run of this workflow so far died on the same
+          # `401 Unauthenticated`, and that message names no cause: a stale
+          # token, a token without the deploy ability and a wrong host all
+          # answer alike. Two probes separate them.
+          api() {
+            curl --silent --show-error --output /dev/null \
+              --write-out '%{http_code}' \
+              --header "Authorization: Bearer ${COOLIFY_TOKEN}" \
+              "${COOLIFY_URL}$1"
+          }
+
+          version_code="$(api /api/v1/version || true)"
+          case "${version_code}" in
+            200) ;;
+            401)
+              echo "COOLIFY_TOKEN was refused: expired, revoked, or from another instance." >&2
+              exit 1
+              ;;
+            000)
+              echo "COOLIFY_URL did not answer. It takes no trailing slash and no /api suffix." >&2
+              exit 1
+              ;;
+            *)
+              echo "Unexpected answer from COOLIFY_URL: ${version_code}." >&2
+              exit 1
+              ;;
+          esac
+
+          if [ "$(api "/api/v1/applications/${COOLIFY_APP_UUID}" || true)" = "404" ]; then
+            echo "COOLIFY_APP_UUID names no application this token can see." >&2
+            exit 1
+          fi
+
+          # --fail-with-body so a refusal fails the step and still prints what
+          # Coolify said. The body carries a deployment uuid, not a secret. A
+          # refusal here, with both probes green, is a token that authenticates
+          # and lacks the deploy ability.
+          if ! body="$(curl --silent --show-error --fail-with-body \
             --request GET \
             --header "Authorization: Bearer ${COOLIFY_TOKEN}" \
-            "${COOLIFY_URL}/api/v1/deploy?uuid=${COOLIFY_APP_UUID}&force=false"
+            "${COOLIFY_URL}/api/v1/deploy?uuid=${COOLIFY_APP_UUID}&force=false")"; then
+            echo "${body}" >&2
+            echo "Coolify knows the token and refused the deploy: check that it carries the deploy ability." >&2
+            exit 1
+          fi
 
-          echo
+          echo "${body}"
           echo "Coolify accepted the deploy request for ${{ github.sha }}."
