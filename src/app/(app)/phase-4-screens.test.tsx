@@ -10,14 +10,8 @@ import { PENDING_BG_CLASS } from "../../ui/style";
 import type { TimerScreenData } from "../actions/timer";
 
 /**
- * The two screens of Phase 4: what they ask for, what they draw, and the one
- * rule of #18 that is a property of the *source* rather than of the markup.
- *
- * The actions are replaced because their own guards have their own suites
- * (`timer.test.ts`, `queue.test.ts`); what is under test here is the id the
- * page hands over, which is a different bug — the sabotage matrix of Phase 3
- * changed `session.userId` to `session.userId + 1` in a page and 674 tests
- * stayed green.
+ * Actions are replaced: what is under test is the id the page hands over, which
+ * the guards' own suites (`timer.test.ts`, `queue.test.ts`) do not see.
  */
 
 const mocked = vi.hoisted(() => ({
@@ -134,15 +128,7 @@ describe("the timer asks about the boy who is logged in (#13)", () => {
   });
 });
 
-/**
- * "**Nada interrompe o menino durante a sessão** — sem confirmação periódica,
- * sem alerta, sem notificação."
- *
- * A rule about what the screen does *not* do, which no rendered markup can
- * show: an `alert` fired from a `setTimeout` is invisible to every assertion
- * about HTML. So it is checked where it can be seen, in the source, and the one
- * interval the file is allowed is named.
- */
+/** An `alert` from a `setTimeout` is invisible in markup, so the source is checked. */
 describe("nothing interrupts the boy during a session (#18)", () => {
   const SOURCE = readFileSync(
     join(import.meta.dirname, "menino", "cronometro", "timer-screen.tsx"),
@@ -205,7 +191,7 @@ describe("what the boy sees (#18)", () => {
       }),
     );
 
-    // 02:05, and not the browser's idea of it: the first render adds nothing.
+    // The first render adds nothing to the server's 02:05.
     expect(markup).toContain("02:05");
     expect(markup).toContain("Pausar");
     expect(markup).toContain("Parar");
@@ -304,8 +290,6 @@ describe("what the admin sees (#20)", () => {
     const markup = await queueMarkup([entry()]);
 
     expect(markup).toContain(">Aprovar<");
-    // The correction and the refusal are each behind their own tap, so their
-    // controls are not on screen until one is asked for.
     expect(markup).not.toContain("Duração em minutos");
     expect(markup).not.toContain("Motivo (opcional)");
   });
@@ -348,8 +332,7 @@ describe("what the admin sees (#20)", () => {
 
     expect(markup).toContain("Aprove antes");
     expect(markup).toContain("10/09/2026");
-    // Refusing stays open: a refusal credits nothing (D19) and is one of the
-    // two ways to clear the way.
+    // D19: refusing clears the way too.
     expect(markup).toContain(">Recusar<");
     expect(markup).toMatch(/disabled=""[^>]*>Aprovar</);
   });

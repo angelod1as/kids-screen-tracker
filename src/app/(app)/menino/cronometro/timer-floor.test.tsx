@@ -72,7 +72,6 @@ function buttons(): string[] {
   );
 }
 
-/** Running, then *Parar*: the confirmation of a session of `seconds`. */
 async function confirm(seconds: number, minSessionMinutes?: number) {
   await act(async () =>
     root.render(
@@ -103,7 +102,6 @@ describe("the confirmation of a session under its floor (#86, D44)", () => {
     );
     expect(buttons()).toContain("Encerrar sem enviar");
     expect(buttons()).not.toContain("Enviar para aprovação");
-    // The way out that keeps the session: back to the running clock.
     expect(buttons()).toContain("Voltar");
   });
 

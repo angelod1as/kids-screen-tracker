@@ -5,18 +5,8 @@ import type { ActivityRow } from "../../db/activities";
 import type { CategoryRow } from "../../db/categories";
 
 /**
- * The Configuration screen (#26): what it asks for, and what it draws.
- *
- * The actions are replaced because their own guards have their own suites
- * (`config.test.ts`, `config.sabotage.test.ts`); what is under test here is
- * what the screen does with what they answer — above all the asymptote, which
- * is the one number on the page that no endpoint computes and that the whole
- * acceptance criterion is about.
- *
- * The pure helpers are exercised directly rather than through the markup. They
- * are decisions rather than layout — a percentage that has to become a
- * fraction, an empty field that has to become "no decay" rather than zero — and
- * an assertion on rendered HTML would pin the sentence instead of the rule.
+ * Actions are replaced: their guards have their own suites. Pure helpers are
+ * tested directly, since HTML assertions would pin the sentence, not the rule.
  */
 
 const mocked = vi.hoisted(() => ({
@@ -53,16 +43,7 @@ const {
 
 const ConfigurationPage = (await import("./admin/configuracao/page")).default;
 
-/** Mente, as the seed has it. */
-/**
- * Mente, as the seed has it — except for `activityCount`.
- *
- * The seed's Mente has four activities and an asymptote of `2 × 1 × 2 = 4`, and
- * those are the only two numbers the card prints. Measured: with both at 4, the
- * asymptote could be replaced by `category.activityCount` and all 51 cases
- * stayed green — the card would have printed a count where the acceptance
- * criterion asks for hours per day. Seven is a number nothing else here is.
- */
+/** Mente, but `activityCount` is 7 so it cannot stand in for the asymptote of 4. */
 const MENTE: CategoryRow = {
   id: 2,
   name: "Mente",
@@ -75,7 +56,7 @@ const MENTE: CategoryRow = {
   activityCount: 7,
 };
 
-/** Casa, which declares no rate and never decays (D5, D11). */
+/** No rate, no decay (D5, D11). */
 const CASA: CategoryRow = {
   id: 6,
   name: "Casa",
@@ -88,7 +69,6 @@ const CASA: CategoryRow = {
   activityCount: 6,
 };
 
-/** A form, filled in the way the seed's Mente is. */
 const DRAFT = {
   ...EMPTY_CATEGORY,
   name: "Mente",
@@ -100,8 +80,6 @@ const DRAFT = {
 
 describe("the asymptote, while the category is being edited (#26)", () => {
   it("says what the category would pay in a day", () => {
-    // `taxa × passo × 2`, which is the number an adult is actually calibrating
-    // and the reason the field beside it exists.
     expect(asymptoteText(DRAFT)).toBe(
       "Rende no máximo 4,00 h por dia (taxa × passo × 2).",
     );
@@ -126,9 +104,7 @@ describe("the asymptote, while the category is being edited (#26)", () => {
   });
 
   it("shows the absurdity of a step under the floor in the same breath", () => {
-    // 0,1 at a rate of 3,0 is the configuration the comment on #26 names, and
-    // this is the half an adult can check without knowing what a double is:
-    // the whole category would pay 36 minutes a day.
+    // The configuration #26 names: the whole category would pay 36 minutes a day.
     expect(
       asymptoteText({ ...DRAFT, baseRate: "3", decayStepHours: "0,1" }),
     ).toBe("Rende no máximo 0,60 h por dia (taxa × passo × 2).");
@@ -146,17 +122,12 @@ describe("the two floors, explained before they are hit (#26)", () => {
   });
 
   it("does not call an unreadable step a category without decay", () => {
-    // Four states, not three. Saying "sem desgaste" over a field with garbage
-    // in it is the app asserting something false in its own voice — and
-    // contradicting the warning printed directly underneath it.
     expect(asymptoteText({ ...DRAFT, decayStepHours: "abc" })).toBe(
       "Passo do desgaste ainda não é um número.",
     );
   });
 
   it("says something when the bonus fields are unreadable, as the step does", () => {
-    // A dead Save button with no sentence beside it is the screen refusing
-    // without saying why.
     expect(returnBonusWarning({ ...DRAFT, returnBonusPct: "abc" })).toBe(
       "Digite o bônus em porcentagem. Ex.: 50 para metade a mais.",
     );
@@ -169,10 +140,7 @@ describe("the two floors, explained before they are hit (#26)", () => {
     const warning = decayStepWarning({ ...DRAFT, decayStepHours: "0,1" });
 
     expect(warning).toContain("0,25 h");
-    // Not "a conta perde precisão": that stopped being true when the engine
-    // went exact (D39), and it was the app asserting something false in the
-    // only voice the adult hears. The floor is about the shape of the table
-    // now, and this sentence is exact at any rate.
+    // Not "a conta perde precisão": false since D39. The floor is D35's.
     expect(warning).toContain("menos da metade da taxa dela por dia");
     expect(warning).not.toContain("precisão");
     expect(warning).toContain("deixe o campo vazio");
@@ -190,14 +158,11 @@ describe("the two floors, explained before they are hit (#26)", () => {
   });
 
   it("says when a bonus is too small to be stored at all", () => {
-    // Screen and endpoint agree that 0,004 points is zero — that is the
-    // rounding. Agreeing *silently* is still the adult's bonus vanishing, which
-    // is the bug this screen already fixed once two orders of magnitude higher.
+    // 0,004 points rounds to zero on both sides; the screen must say so.
     expect(returnBonusWarning({ ...DRAFT, returnBonusPct: "0,004" })).toBe(
       "Menor que 0,01% é guardado como sem bônus. Digite 0,01 ou mais.",
     );
 
-    // And the boundary: a hundredth of a point is held.
     expect(returnBonusWarning({ ...DRAFT, returnBonusPct: "0,01" })).toBeNull();
     expect(
       categoryInputOf({ ...DRAFT, returnBonusPct: "0,01" })?.returnBonusPct,
@@ -215,24 +180,19 @@ describe("the two floors, explained before they are hit (#26)", () => {
 
 describe("the form the endpoint is handed (#26)", () => {
   it("turns the percentage on screen into the fraction the column holds", () => {
-    // The engine multiplies by `1 + pct`, so 50% is 0,5. A field labelled "%"
-    // that took 0,5 would be read as half a percent by every adult alive.
+    // A "%" field taking 0,5 would be read as half a percent.
     expect(categoryInputOf(DRAFT)?.returnBonusPct).toBe(0.5);
   });
 
   it("keeps a bonus to a hundredth of a percentage point, both ways", () => {
-    // The field is in percentage points and the column in a fraction, so the
-    // two round on the same lattice or a typed 12,5 comes back as 13. Every
-    // value here is one the endpoint stores unchanged (`requireBonusFraction`).
+    // Both sides round on the same lattice, or a typed 12,5 comes back as 13.
     for (const [typed, fraction] of [
       ["50", 0.5],
       ["12,5", 0.125],
       ["0,1", 0.001],
       ["7,25", 0.0725],
       ["0", 0],
-      // Off the lattice, which is what makes this a test of the rounding rather
-      // than of division: every value above divides exactly by 100, so dropping
-      // the rounding altogether left all 51 cases green.
+      // Off the lattice: every value above divides by 100 exactly.
       ["12,555", 0.1256],
     ] as const) {
       expect(
@@ -282,16 +242,13 @@ describe("the form the endpoint is handed (#26)", () => {
   });
 
   it("refuses a whole day of cooldown written as a decimal", () => {
-    // Not rounded into shape: the column is an integer, and "1,5 dias" is a
-    // field that has not been filled in correctly rather than a value.
+    // Not rounded into shape: the column is an integer.
     expect(
       categoryInputOf({ ...DRAFT, returnBonusAfterDays: "1,5" }),
     ).toBeNull();
   });
 
   it("answers nothing for a draft the endpoint would refuse", () => {
-    // The same two predicates the server applies, so the button is dead before
-    // the tap rather than the refusal arriving after it.
     expect(categoryInputOf({ ...DRAFT, decayStepHours: "0,1" })).toBeNull();
     expect(categoryInputOf({ ...DRAFT, returnBonusAfterDays: "0" })).toBeNull();
   });
@@ -325,10 +282,7 @@ describe("what a category says about itself in the list (#26)", () => {
   });
 
   it("writes a fractional percentage the way the form does, with a comma", () => {
-    // The card sits directly above the field. Rounding the two differently —
-    // "+13%" over "12,5" — is two numbers for one bonus with nothing to say
-    // which is real, and a full stop where the rest of the interface uses a
-    // comma is the other half of the same slip.
+    // The card sits right above the field: "+13%" over "12,5" is two numbers for one bonus.
     expect(categorySummary({ ...MENTE, returnBonusPct: 0.125 })).toBe(
       "até 4,00 h por dia · +12,5% após 3 dias",
     );
@@ -341,8 +295,7 @@ describe("the screen itself (#26)", () => {
 
     const markup = renderToStaticMarkup(await ConfigurationPage());
 
-    // The two decisions an adult has to trust before he will use this screen
-    // as often as the first months need him to (D14, D15).
+    // D14, D15.
     expect(markup).toContain("Nada que já foi creditado muda");
     expect(markup).toContain("desativar não apaga");
   });
@@ -393,9 +346,7 @@ describe("the screen itself (#26)", () => {
 
     const markup = renderToStaticMarkup(await ConfigurationPage());
 
-    // The empty form has no step yet, so the readout is in its no-decay state
-    // — the criterion here is that it is on the page, between the step field
-    // and the bonus field. Its four states are asserted above.
+    // Empty step, so the readout is in its no-decay state; its states are asserted above.
     expect(markup).toContain(
       "Sem desgaste: cada hora vale o mesmo o dia inteiro.",
     );
@@ -417,7 +368,6 @@ const {
   withCalcMode,
 } = await import("./admin/configuracao/activity-list");
 
-/** "Ler livro", as the seed has it. */
 const BOOK: ActivityRow = {
   id: 5,
   categoryId: 2,
@@ -434,14 +384,12 @@ const BOOK: ActivityRow = {
 
 describe("the category's rate as a suggestion (#27, D11)", () => {
   it("arrives in the value field of a new duration activity, filled in", () => {
-    // The acceptance criterion in so many words. Mente's `base_rate` is 2,0.
+    // Mente's `base_rate` is 2,0.
     expect(emptyActivity(2).value).toBe("2");
     expect(emptyActivity(2).calcMode).toBe("duration");
   });
 
   it("is empty for a category that declares no rate at all", () => {
-    // Convívio, Casa and Curinga. Inventing 2,0 here would put a number in
-    // front of an adult that nothing in the data supports.
     expect(emptyActivity(null).value).toBe("");
     expect(suggestedValue(null)).toBe("");
   });
@@ -457,8 +405,7 @@ describe("the category's rate as a suggestion (#27, D11)", () => {
   });
 
   it("never overwrites a value an adult has already typed", () => {
-    // The suggestion is an offer. Overwriting a typed number would make it a
-    // rule, and D11 is explicit that the activity's own value is what governs.
+    // D11: the suggestion is an offer, never a rule.
     const draft = { ...emptyActivity(2), value: "1,5" };
 
     expect(withCalcMode(draft, "duration", 2).value).toBe("1,5");
@@ -479,15 +426,7 @@ describe("the category's rate as a suggestion (#27, D11)", () => {
 });
 
 describe("the activity form the endpoint is handed (#27)", () => {
-  /**
-   * The activity form, with every number distinct.
-   *
-   * Measured with the previous fixture, which took `emptyActivity(2)` into
-   * category 2 with cooldown and sort order both `"0"`: `categoryId` could be
-   * replaced by `Math.round(value)` and the two counters swapped with each
-   * other, and all 51 cases stayed green. An activity would have been filed in
-   * the category whose id happened to equal its rate.
-   */
+  /** Every number distinct, or `categoryId` could be swapped for the rate unnoticed. */
   const DRAFT = {
     ...emptyActivity(1.5),
     name: "Podcast",

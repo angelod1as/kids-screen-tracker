@@ -14,18 +14,9 @@ import { fetchBalanceAction } from "./balance";
 import { fetchHistoryAction, fetchLedgerEntriesAction } from "./history";
 
 /**
- * The history (#16), end to end, against a real database.
- *
- * Both are server actions, which means both are HTTP endpoints that take a
- * number. "Não vaza nenhum dado do outro menino" is not a statement about what
- * the screen draws — the screen never draws a link to the brother's history —
- * it is a statement about what happens when a POST arrives carrying the
- * brother's id. What follows sends exactly that request, and separately checks
- * that a *permitted* answer contains none of the other boy's rows either: a
- * `where` that lost its `user_id` would pass the guard and still leak.
- *
- * Only the cookie is mocked, the same two modules as `balance.test.ts`. The
- * guard, the user lookup and the queries all run for real.
+ * Only the cookie is mocked. A forged POST with the brother's id is sent, and a
+ * permitted answer is checked for his rows: a `where` that lost `user_id` would
+ * pass the guard and still leak.
  */
 
 const mocked = vi.hoisted(() => ({
@@ -48,10 +39,7 @@ let root: string;
 let connection: ReturnType<typeof openDatabase>;
 let ids: Map<string, number>;
 
-/**
- * A destination nothing else in this file uses, so a leak of Kid2's row into
- * Kid1's list is visible as a string and not as a count.
- */
+/** Unique, so a leak shows as a string rather than a count. */
 const KID2_ONLY = "Nintendo do Kid2";
 
 beforeEach(() => {
@@ -75,14 +63,13 @@ beforeEach(() => {
 
   const admin1 = idOf("admin1");
 
-  // One approved log, so an `earn` row has an activity name to show. Activity 5
-  // is "Ler livro" in the seed.
+  // Activity 5 is "Ler livro" in the seed.
   const log = connection.db
     .insert(activityLogs)
     .values({
       userId: idOf("kid1"),
       activityId: 5,
-      // D37: activity 5 is "Ler livro", under Mente (2).
+      // D37: stamped with Mente (2).
       categoryId: 2,
       status: "approved",
       source: "admin",
@@ -127,8 +114,7 @@ beforeEach(() => {
         createdBy: admin1,
         createdAt: new Date("2026-09-02T09:00:00Z"),
       },
-      // Same day and same instant as Kid1's most recent row, so an ordering
-      // that happens to work cannot be what keeps this out of his list.
+      // Same instant as Kid1's latest row, so ordering cannot be what keeps it out.
       {
         userId: idOf("kid2"),
         kind: "spend",
@@ -147,15 +133,7 @@ afterEach(() => {
   rmSync(root, { recursive: true, force: true });
 });
 
-/**
- * An entry an adult refused, written the way `rejectLog` writes one (#72, D19).
- *
- * The note goes through `rejectionNote`, the real writer, rather than being
- * typed out here: what the screen reads back has to be what the queue wrote,
- * and a literal in this file would keep passing the day the two stop agreeing.
- * Nothing else about the row moves — no `computed_hours`, no ledger line —
- * because that is what D19 says a refusal is.
- */
+/** The note goes through `rejectionNote`, the real writer, so reader and writer cannot drift. */
 function addRejected({
   username,
   occurredOn,
@@ -175,7 +153,6 @@ function addRejected({
     .insert(activityLogs)
     .values({
       userId: idOf(username),
-      // Activity 5 is "Ler livro" in the seed.
       activityId: 5,
       status: "rejected",
       source: "timer",
@@ -200,11 +177,7 @@ function idOf(username: string): number {
   return id;
 }
 
-/**
- * The error a call was refused with. Fails loudly if it was not refused at all
- * — a `.catch()` that hands back the resolved value would let a guard that
- * stopped guarding pass the assertions below.
- */
+/** Fails if the call resolved, so a guard that stopped guarding cannot pass. */
 async function refusal(promise: Promise<unknown>): Promise<Error> {
   try {
     await promise;
@@ -229,7 +202,6 @@ describe("a kid reading his own history (#16)", () => {
   });
 
   it("shows the activity on an earn and the destination on a spend", async () => {
-    // #16: "cada linha mostra data, atividade ou destino, e as horas".
     mocked.username = "kid1";
 
     const entries = await fetchLedgerEntriesAction(idOf("kid1"), 10);
@@ -262,8 +234,6 @@ describe("a kid reading his own history (#16)", () => {
   });
 
   it("returns nothing at all when he has nothing", async () => {
-    // The empty state of #16, at the level of the data. What the screen writes
-    // over it is `screens.test.ts`.
     connection.db.delete(ledger).run();
     mocked.username = "kid1";
 
@@ -284,10 +254,7 @@ describe("a kid reading his own history (#16)", () => {
   });
 
   it("refuses a limit that is not a page, including SQLite's -1", async () => {
-    // `LIMIT -1` is "no limit" in SQLite, so a forged request with it came back
-    // with the whole ledger — measured, and the ceiling the screen relies on
-    // stopped being one for anybody not using the screen. It is not a leak: the
-    // `where` is still on the caller's own id.
+    // SQLite reads `LIMIT -1` as "no limit".
     mocked.username = "kid1";
 
     for (const limit of [-1, 0, 1.5, Number.NaN, HISTORY_LIMIT + 1]) {
@@ -297,7 +264,6 @@ describe("a kid reading his own history (#16)", () => {
       ).rejects.toThrow(/between 1 and 200/);
     }
 
-    // The two the app itself asks for are inside it.
     await expect(
       fetchLedgerEntriesAction(idOf("kid1"), RECENT_ENTRIES_LIMIT),
     ).resolves.toBeInstanceOf(Array);
@@ -307,10 +273,7 @@ describe("a kid reading his own history (#16)", () => {
   });
 
   it("keeps the two page sizes the screens were designed around", () => {
-    // Both constants could be changed to anything and nothing went red: the
-    // home screen asserts it asks for `RECENT_ENTRIES_LIMIT`, not that the
-    // number is five, and nothing at all mentioned 200. They are the numbers
-    // #15 and #16 were written against, so they are written down.
+    // Nothing else pins these numbers, and #15 and #16 were written against them.
     expect(RECENT_ENTRIES_LIMIT).toBe(5);
     expect(HISTORY_LIMIT).toBe(200);
   });
@@ -318,9 +281,7 @@ describe("a kid reading his own history (#16)", () => {
 
 describe("the history does not leak the other boy (#16)", () => {
   it("leaves his rows out of a list the caller is allowed to have", async () => {
-    // The guard is not what protects this: Kid1 is allowed to read Kid1.
-    // The `where` is. A query that lost it would pass every access test in the
-    // repository and still put this string on his screen.
+    // Kid1 may read Kid1; only the `where` keeps his brother's rows out.
     mocked.username = "kid1";
 
     const entries = await fetchLedgerEntriesAction(idOf("kid1"), 100);
@@ -400,9 +361,7 @@ describe("the history shows what an adult refused (#72)", () => {
   });
 
   it("keeps the boy's own note out of the reason", async () => {
-    // One text column holds both (`rejectionNote`), and what #72 asks for is
-    // the sentence the adult wrote — not the one the boy typed when he stopped
-    // the stopwatch.
+    // One column holds both (`rejectionNote`); #72 wants only the adult's sentence.
     addRejected({
       username: "kid1",
       occurredOn: "2026-09-03",
@@ -418,9 +377,7 @@ describe("the history shows what an adult refused (#72)", () => {
   });
 
   it("carries no reason at all when the adult wrote none", async () => {
-    // #20 makes refusing without a reason a normal thing to do, so null has to
-    // reach the screen as null. Anything else would be the app writing a
-    // sentence the adult chose not to.
+    // #20 makes a reasonless refusal normal; null must stay null.
     addRejected({ username: "kid1", occurredOn: "2026-09-03", reason: null });
     mocked.username = "kid1";
 
@@ -430,8 +387,7 @@ describe("the history shows what an adult refused (#72)", () => {
   });
 
   it("orders the refusal among the ledger rows, most recent first", async () => {
-    // Not appended at the end: it belongs on the day it happened, which is the
-    // day the boy is looking for it on.
+    // Not appended: it belongs on the day it happened.
     addRejected({ username: "kid1", occurredOn: "2026-09-01", reason: null });
     mocked.username = "kid1";
 
@@ -457,15 +413,12 @@ describe("the history shows what an adult refused (#72)", () => {
     });
 
     await expect(fetchBalanceAction(idOf("kid1"))).resolves.toBe(before);
-    // And it is not in the ledger list either: it has no ledger row to be in.
     await expect(
       fetchLedgerEntriesAction(idOf("kid1"), 10),
     ).resolves.toHaveLength(3);
   });
 
   it("does not show what is still waiting, nor what was approved twice", async () => {
-    // A pending entry is not history yet, and an approved one is already in
-    // the list under the hours it paid.
     mocked.username = "kid1";
 
     const entries = await fetchHistoryAction(idOf("kid1"), 10);
@@ -502,7 +455,6 @@ describe("the history shows what an adult refused (#72)", () => {
 });
 
 describe("the history of the other boy is his alone (#72, #73, D33)", () => {
-  /** A refusal of Kid2's, named so a leak is visible as a string. */
   const KID2_REFUSAL = "Motivo que só o Kid2 tem";
 
   beforeEach(() => {
@@ -514,9 +466,7 @@ describe("the history of the other boy is his alone (#72, #73, D33)", () => {
   });
 
   it("refuses a request carrying the brother's id", async () => {
-    // The screen `/admin/historico/4` is not what keeps him out: this is. The
-    // action is a POST endpoint taking a number, and a boy with a legitimate
-    // login can send it.
+    // The endpoint, not the `/admin` route, is what keeps him out.
     mocked.username = "kid1";
 
     await expect(fetchHistoryAction(idOf("kid2"), 10)).rejects.toMatchObject({
@@ -553,9 +503,7 @@ describe("the history of the other boy is his alone (#72, #73, D33)", () => {
   });
 
   it("leaves his refusals out of a list the caller is allowed to have", async () => {
-    // The guard is not what protects this one: Kid1 is allowed to read
-    // Kid1. The `where` on the log table is, and a query that lost it would
-    // pass every access case above and still put this string on his screen.
+    // Kid1 may read Kid1; only the `where` on the log table keeps these out.
     addRejected({ username: "kid1", occurredOn: "2026-09-03", reason: null });
     mocked.username = "kid1";
 

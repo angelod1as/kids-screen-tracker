@@ -23,22 +23,13 @@ import type { CalculatorData } from "../../../actions/calculator";
 import { Calculator } from "./calculator";
 
 /**
- * The calculator's two promises (#17): the explanation is on the screen, and
- * the lines add up to the number above them.
- *
- * The screen itself uses hooks, so it is not called here — `Result` is, with
- * calculations produced by the real engine over the real seed. That is the
- * split that matters: what the boy reads has to be what
- * `calculateEarnedHours` said, digit for digit, and the way to check it is to
- * ask the engine and then read the tree.
- *
- * `TODAY` is a fixed date rather than the real one, because a case that reads
- * "faz 4 dias" has to mean the same thing in March.
+ * `Result` is called with the real engine over the real seed, so what the boy
+ * reads is `calculateEarnedHours` digit for digit. `TODAY` is fixed so "faz 4
+ * dias" means the same thing in March.
  */
 
 const TODAY = "2026-09-02";
 
-/** Every string the tree renders, in document order. */
 function texts(node: ReactNode): string[] {
   if (typeof node === "string") return [node];
   if (typeof node === "number") return [String(node)];
@@ -48,7 +39,6 @@ function texts(node: ReactNode): string[] {
   return texts((node.props as { children?: ReactNode }).children);
 }
 
-/** The seed's rows, in the shape the engine takes. */
 function seedActivity(id: number): {
   activity: EngineActivity;
   category: EngineCategory;
@@ -103,14 +93,7 @@ function approvedLog(options: {
   };
 }
 
-/**
- * What `fetchCalculatorDataAction` hands the screen, rebuilt from the seed.
- *
- * The one rule of the action that the screen can see is reproduced here and
- * nowhere else: `free` activities are left out (D12), and every active category
- * is passed along whether or not anything survived that filter — which is how
- * Curinga reached the picker as an empty heading.
- */
+/** Reproduces the action's `free` filter (D12), which is how Curinga became an empty heading. */
 function calculatorData(): CalculatorData {
   const activities: EngineActivity[] = [];
   const categories: EngineCategory[] = [];
@@ -143,7 +126,6 @@ function calculatorData(): CalculatorData {
   };
 }
 
-/** A calculation, exactly as the screen would ask for one. */
 function simulate(options: {
   activityId: number;
   durationMinutes?: number;
@@ -155,8 +137,7 @@ function simulate(options: {
   const lookback = options.lookbackDays ?? 30;
   const historyFrom = shiftDate(TODAY, -lookback);
 
-  // The action promises a window at least this wide; a case that asked for a
-  // narrower one would be testing something the screen never sees.
+  // The action promises at least this window; narrower would test what the screen never sees.
   expect(historyFrom <= historyWindowStart(TODAY, activity, category)).toBe(
     true,
   );
@@ -179,14 +160,7 @@ function simulate(options: {
   });
 }
 
-/**
- * The cases the calculator has to get right, chosen to cover every kind of
- * line the engine can write.
- *
- * `hours` is not asserted against a number typed here: it is asserted against
- * the sum of the lines, which is the criterion #17 states. Pinning the numbers
- * as well would be `calculate.cases.test.ts`'s job, and it already does it.
- */
+/** `hours` is asserted against the sum of the lines (#17); pinning numbers is the engine cases' job. */
 const CASES = [
   {
     name: "an hour of reading on an empty day — cheio",
@@ -287,8 +261,7 @@ describe("the explanation is the product (#17)", () => {
   });
 
   it("has cases that actually produce lines", async () => {
-    // A matrix where every calculation came back with an empty explanation
-    // would pass every assertion above.
+    // Empty explanations would pass every assertion above.
     const total = CASES.map((entry) => simulate(entry.input).lines.length);
 
     expect(Math.min(...total)).toBeGreaterThan(0);
@@ -300,15 +273,12 @@ describe("the lines add up to the total shown (#17, D9)", () => {
   it.each(CASES.map((entry) => ({ ...entry })))("$name", ({ input }) => {
     const calculation = simulate(input);
 
-    // The engine's own guarantee, restated where the screen depends on it.
     const summed = calculation.lines.reduce(
       (total, line) => total + line.hours,
       0,
     );
     expect(Math.round(summed * 100) / 100).toBe(calculation.hours);
 
-    // And what is drawn: the headline and the closing total are the same
-    // string, and it is the engine's number.
     const rendered = texts(Result({ calculation }));
     const shown = rendered.filter(
       (text) => text === formatHours(calculation.hours),
@@ -316,7 +286,7 @@ describe("the lines add up to the total shown (#17, D9)", () => {
 
     expect(shown).toHaveLength(2);
 
-    // The column in minutes closes on the headline in minutes (#105).
+    // #105.
     const minutes = lineMinutes(calculation.lines);
     expect(minutes.reduce((total, line) => total + line, 0)).toBe(
       Math.round(calculation.hours * 60),
@@ -334,9 +304,7 @@ describe("the lines add up to the total shown (#17, D9)", () => {
   });
 
   it("closes on a total the boy can check by adding the column", () => {
-    // The 2h of football that pay 4h30: 3h base, +1h30 bonus. Adding the two
-    // visible numbers has to reach the visible total, or the screen is asking
-    // to be trusted rather than read.
+    // 3h base + 1h30 bonus: the visible numbers must add to the visible total.
     const calculation = simulate({
       activityId: 1,
       durationMinutes: 120,
@@ -385,15 +353,7 @@ describe("the lines add up to the total shown (#17, D9)", () => {
 });
 
 describe("the controls the boy actually touches", () => {
-  /**
-   * The screen as HTML, hooks and all.
-   *
-   * `Result` is called as a function everywhere above, which is enough for a
-   * component that has no state. `Calculator` has three `useState`s and a
-   * `useMemo`, so it is rendered instead — `renderToStaticMarkup` runs hooks
-   * at their initial values, which is exactly the screen a boy is handed
-   * before he touches anything.
-   */
+  /** Rendered, not called: `Calculator` has hooks, and their initial values are the untouched screen. */
   function markup(): string {
     return renderToStaticMarkup(
       createElement(Calculator, { data: calculatorData() }),
@@ -401,19 +361,14 @@ describe("the controls the boy actually touches", () => {
   }
 
   it("offers the six hours of reading decisions.md opens with", () => {
-    // "Ler 6 horas é permitido — só rende quase nada a mais do que ler 4" is
-    // the first thing the normative document says about the model, and until
-    // now the screen that exists to teach the model stopped at three hours.
     const rendered = markup();
 
     for (const label of ["15 min", "1h", "1h30", "3h", "4h", "6h"]) {
       expect(rendered, label).toContain(`>${label}</button>`);
     }
 
-    // And what it is worth, read through the engine the screen runs, against
-    // the table decisions.md prints: 2,81h for four hours read and 2,95h for
-    // six. Yesterday's reading is in the history so the return bonus does not
-    // fire, which is the row of that table and not a case of its own.
+    // 2,81h for four hours and 2,95h for six, as decisions.md prints; yesterday's
+    // reading keeps the return bonus out.
     const yesterday = [
       approvedLog({ activityId: 5, daysAgo: 1, durationMinutes: 60 }),
     ];
@@ -434,12 +389,8 @@ describe("the controls the boy actually touches", () => {
   });
 
   it("gives every option of a group the same width", () => {
-    // Measured in a browser at 320 px, the seven duration buttons came out
-    // 89,3 px each except `3h`, which was alone on the last row of a
-    // `flex-wrap` with `grow` and stretched to 284. On a screen with no colour
-    // size is the only hierarchy there is, and it was pointing at an arbitrary
-    // option. A grid makes the width a property of the group, not of how many
-    // options happened to land on the last row.
+    // In a browser at 320 px, a lone `3h` on the last `flex-wrap` row stretched
+    // to 284 px; on a screen with no colour, size is the only hierarchy.
     const rendered = markup();
     const classes = [
       ...rendered.matchAll(/<button[^>]*class="([^"]*)"[^>]*>/g),
@@ -457,9 +408,7 @@ describe("the controls the boy actually touches", () => {
   });
 
   it("draws no category heading with nothing under it", () => {
-    // Curinga's only activity is `free`, which the action leaves out (D12), so
-    // its `<optgroup>` arrived with a label and no options at all — a heading
-    // the boy scrolls to and finds empty.
+    // Curinga's only activity is `free`, which the action leaves out (D12).
     const rendered = markup();
     const groups = [
       ...rendered.matchAll(/<optgroup label="([^"]+)"><\/optgroup>/g),
@@ -467,27 +416,18 @@ describe("the controls the boy actually touches", () => {
 
     expect(groups.map((match) => match[1])).toStrictEqual([]);
     expect(rendered).not.toContain("Curinga");
-    // The groups that do have activities are still there.
     expect(rendered).toContain('<optgroup label="Mente">');
   });
 });
 
-/**
- * The source of the screen, for the two criteria that are about what is *not*
- * in it.
- *
- * Textual and therefore coarse, and it is the second lock rather than the
- * first: the cases above are what would actually go red if a second copy of the
- * formula started answering, because a copy that agrees with the engine on
- * eight cases including a band split, a cooldown and a bonus is not a copy.
- */
+/** Textual and coarse: the second lock. The cases above are the first. */
 const CALCULATOR_DIR = import.meta.dirname;
 
 function sourceOf(file: string): string {
   return readFileSync(join(CALCULATOR_DIR, file), "utf8");
 }
 
-/** Comments are prose. A comment saying "no insert" is not an insert. */
+/** A comment saying "no insert" is not an insert. */
 function stripComments(source: string): string {
   return source
     .replace(/\/\*[\s\S]*?\*\//g, "")
@@ -503,8 +443,7 @@ describe("no calculation logic is reimplemented here (#17)", () => {
   });
 
   it("holds none of the engine's constants", () => {
-    // The decay's halving, the cooldown's 0,5 and the bonus's `1 +` are the
-    // three numbers a reimplementation would have to write down.
+    // The three numbers a reimplementation would have to write down.
     const source = stripComments(sourceOf("calculator.tsx"));
 
     expect(source).not.toMatch(/2\s*\*\*\s*-/);
@@ -523,16 +462,12 @@ describe("the calculator writes nothing (#17)", () => {
       expect(source, file).not.toContain("use server");
       expect(source, file).not.toMatch(/\.insert\(|\.update\(|\.delete\(/);
       expect(source, file).not.toContain("getDb");
-      // A form would post somewhere. There is nothing to post.
       expect(source, file).not.toMatch(/<form\b/);
     }
   });
 
   it("hands the engine the whole window it was given (D34)", () => {
-    // The screen simulates an entry that will never be frozen, so everything
-    // the action fetched counts — and both ends of the window travel with it.
-    // A screen that dropped `historyTo` would be refused by the engine, which
-    // is the point: the far end is declared, not assumed.
+    // Both ends of the window travel with it: the far end is declared (D34).
     const source = stripComments(sourceOf("calculator.tsx"));
 
     expect(source).toContain("historyFrom: data.historyFrom");

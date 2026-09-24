@@ -49,7 +49,6 @@ function refundButton(): HTMLButtonElement {
   return found;
 }
 
-/** Types into a controlled input the way React listens for it. */
 async function type(selector: string, value: string) {
   const input = container.querySelector<HTMLInputElement>(selector);
 

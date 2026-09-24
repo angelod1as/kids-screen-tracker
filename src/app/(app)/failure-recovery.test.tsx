@@ -14,16 +14,9 @@ import type { QueueData } from "../actions/queue";
 import type { OpenSessionView, TimerScreenData } from "../actions/timer";
 
 /**
- * What the stopwatch and the queue do on screen when a request fails (#29).
- *
- * `timer-failure.test.ts` proves the server side — the session is a row, and a
- * fresh read finds it. This proves the half that lives in the component, which
- * only a mounted screen can show: that a failure reads the server again, what
- * the screen becomes when that read works and when it does not, and that what
- * the boy or the adult typed survives either way.
- *
- * The actions are replaced, and each test decides how they fail. The error they
- * throw is `fetch`'s `TypeError`, the network failure the issue is about.
+ * The component half of #29 (`timer-failure.test.ts` has the server half): a
+ * failure reads again, and what was typed survives. Actions throw `fetch`'s
+ * `TypeError`.
  */
 
 const timer = vi.hoisted(() => ({
@@ -94,7 +87,6 @@ async function click(name: string) {
   });
 }
 
-/** Types into a controlled input the way React listens for it. */
 async function type(selector: string, value: string) {
   const input = container.querySelector<HTMLInputElement>(selector);
 
@@ -149,7 +141,6 @@ describe("the stopwatch after a failed request (#29)", () => {
     };
   }
 
-  /** Running, then *Parar*, then a note: the confirmation, ready to send. */
   async function confirming() {
     await render(<TimerScreen initial={screen(session("running"))} />);
 
@@ -172,7 +163,6 @@ describe("the stopwatch after a failed request (#29)", () => {
     expect(hasButton("Enviar para aprovação")).toBe(true);
     expect(inputValue("#nota")).toBe("li o capítulo 3");
 
-    // The same tap, once the connection is back, sends the same note.
     timer.stopTimerAction.mockResolvedValueOnce(screen(null));
     await click("Enviar para aprovação");
 
@@ -216,8 +206,7 @@ describe("the stopwatch after a failed request (#29)", () => {
     expect(hasButton("Começar")).toBe(true);
     expect(container.textContent).toContain("Pendente");
 
-    // The next session opens on its own clock, not on a confirmation left over
-    // from the one that already ended.
+    // A fresh session, not a leftover confirmation.
     timer.startTimerAction.mockResolvedValueOnce(screen(session("running")));
     await click("Começar");
 
@@ -300,7 +289,7 @@ describe("the queue after a failed request (#29)", () => {
     await render(<QueueList initial={BOTH} />);
 
     queue.approveLogAction.mockRejectedValueOnce(NETWORK);
-    // The approval did go through: the re-read no longer has the entry.
+    // The approval did go through.
     queue.fetchQueueAction.mockResolvedValueOnce({
       entries: [entry(2, "Desenhar")],
       activities: ACTIVITIES,

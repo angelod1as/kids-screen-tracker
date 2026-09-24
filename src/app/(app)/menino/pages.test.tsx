@@ -7,21 +7,9 @@ import { NEGATIVE_CLASS, PENDING_BG_CLASS } from "../../../ui/style";
 import type { HistoryEntry } from "../../actions/history";
 
 /**
- * Which boy the two screens of #16 and #17 ask about.
- *
- * The guard inside each action is what protects the data, and it has its own
- * suites (`history.test.ts`, `calculator.test.ts`). This file covers the id the
- * page hands it, which is a different bug and used to be unwatched: the
- * sabotage matrix changed `session.userId` to `session.userId + 1` in
- * `calculadora/page.tsx` and 674 tests stayed green. For a kid `requireAccess`
- * refuses, so it is not a leak — but an admin session would simulate against
- * the wrong person in silence, on the screen the boy is meant to learn the
- * system from, and the same mutation in `historico/page.tsx` was caught. A gap,
- * then, and not a decision.
- *
- * The actions are replaced because what is under test is the argument, not the
- * query. `requireSession` is replaced because a page cannot read a cookie
- * without a request.
+ * The id each page hands its action. For a kid a wrong id is refused, but an
+ * admin would simulate against the wrong person in silence. Actions and
+ * `requireSession` are replaced: a page cannot read a cookie without a request.
  */
 
 const mocked = vi.hoisted(() => ({
@@ -123,10 +111,7 @@ describe("a history that stops says that it stopped (#16)", () => {
   }
 
   it("writes the line when the answer came back full", async () => {
-    // The one choice of #16 that had no test at all: the line could be deleted
-    // and nothing went red. A list that silently stops is a list that claims to
-    // be everything, and this is the screen where a boy checks whether the
-    // hours he remembers earning are there.
+    // A list that silently stops claims to be everything.
     expect(await markup(HISTORY_LIMIT)).toContain(
       `Mostrando os ${HISTORY_LIMIT} lançamentos mais recentes.`,
     );
@@ -150,7 +135,6 @@ describe("the refusal the boy used to watch vanish (#72)", () => {
     return renderToStaticMarkup(await KidHistoryPage());
   }
 
-  /** An entry an adult refused, as the action hands it to the screen. */
   function rejected(reason: string | null): HistoryEntry {
     return {
       id: 7,
@@ -182,23 +166,14 @@ describe("the refusal the boy used to watch vanish (#72)", () => {
   it("credits nothing, and says so in the place the hours go (D19)", async () => {
     const markup = await markupOf([rejected(null)]);
 
-    // Not `+0 min`: a signed zero would read as a movement of the balance, and
-    // a refusal is not one.
+    // Not `+0 min`: a refusal is not a movement of the balance.
     expect(markup).toContain("0 min");
     expect(markup).not.toContain("+0 min");
   });
 
   it("is told apart from an approved row without a third colour", async () => {
-    // CLAUDE.md spends colour on a pendency and a negative balance, and on
-    // nothing else. The refusal is inverted instead — white on black.
-    //
-    // This used to assert the markup carried *no* utility with a shade number,
-    // which was the same statement while the whole app was black and white.
-    // #74 gave the chrome a palette, so the screen now legitimately draws a
-    // blue band; what may not appear is a *meaning* colour, because a refusal
-    // is not a pendency or a negative balance. That is the
-    // rule this case was really holding, and `design.test.ts` holds the other
-    // half — nothing outside the declared palette, anywhere.
+    // A refusal is inverted, not coloured: colour means pendency or a negative
+    // balance only. `design.test.ts` holds the palette itself.
     const markup = await markupOf([entry(1), rejected("Não foi isso")]);
 
     expect(markup).toContain("bg-black");

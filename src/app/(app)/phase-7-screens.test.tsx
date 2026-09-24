@@ -4,18 +4,8 @@ import { TOUCH_TARGET_CLASS } from "../../ui/style";
 import type { HistoryEntry } from "../actions/history";
 
 /**
- * The adult's way into a boy's history (#73).
- *
- * The screen is the half that can be got around — a kid who types
- * `/admin/historico/4` is redirected by the admin layout, and one who POSTs the
- * action directly is refused by `requireAccess`, which `history.test.ts` and
- * `route-guards.test.ts` cover between them. What is under test here is the
- * other half: that the balance an adult reads is the thing he taps, that it
- * leads to the right boy, and that an address naming somebody who is not a boy
- * is a 404 rather than an empty history.
- *
- * The actions are replaced because their guards have their own suites; what is
- * being watched is the id the page hands them.
+ * The screen half (#73): the balance is the tap target, it leads to the right
+ * boy, and a non-kid id is a 404. The guards have their own suites.
  */
 
 const mocked = vi.hoisted(() => ({
@@ -77,8 +67,6 @@ describe("the balance an adult reads is the thing he taps (#73)", () => {
   });
 
   it("keeps the number and the name inside the target", async () => {
-    // The card is the target, not a word beside it: "Kid1 17h13" is what
-    // an adult is looking at when he decides to ask where it came from.
     const markup = renderToStaticMarkup(await AdminHomePage());
     const card = markup.slice(markup.indexOf('href="/admin/historico/3"'));
 
@@ -95,9 +83,7 @@ describe("the balance an adult reads is the thing he taps (#73)", () => {
   });
 
   it("is one tap: the home screen links straight there", async () => {
-    // "Se uma operação comum leva mais de dois toques, o desenho está errado."
-    // The adult lands on `/admin`; the history is the next tap and not the one
-    // after a picker.
+    // One tap from where the adult lands, not two.
     const markup = renderToStaticMarkup(await AdminHomePage());
 
     expect(markup).not.toContain('href="/admin/historico"');
@@ -116,9 +102,7 @@ describe("the history an adult opens is the boy's own (#73)", () => {
   });
 
   it("is a 404 for an address that names nobody, and asks nothing", async () => {
-    // `/admin/historico/1` is Admin1, who has no history of his own, and
-    // `/admin/historico/99` is nobody at all. An empty list would imply the
-    // app had looked and found nothing.
+    // An empty list would imply the app looked and found nothing.
     for (const userId of ["1", "99", "abc", ""]) {
       mocked.historyFor = [];
 

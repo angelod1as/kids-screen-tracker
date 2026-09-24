@@ -35,17 +35,9 @@ function categoryOf(
 }
 
 /**
- * What the calculator (#17) is handed, and what it is refused.
- *
- * The screen runs the engine in the browser, so this action is the whole of
- * the server side of #17 and everything the engine can get wrong downstream
- * begins here: a history missing a `user_id` filter halves a boy's afternoon
- * with a plausible number and an explanation that adds up; a window shorter
- * than the rules need pays too much and says nothing; a pending log in the list
- * charges him for something an adult refused (D19).
- *
- * Only the cookie is mocked. The guard, the joins and the window arithmetic run
- * for real, against a migrated and seeded database.
+ * The whole server side of #17: a missing `user_id` filter, a short window or a
+ * pending row here is a plausible wrong number downstream. Only the cookie is
+ * mocked.
  */
 
 const mocked = vi.hoisted(() => ({
@@ -67,7 +59,6 @@ vi.mock("../../db", () => ({
 let root: string;
 let connection: ReturnType<typeof openDatabase>;
 let ids: Map<string, number>;
-/** Today in São Paulo, as the action computes it. */
 let today: string;
 
 /** "Ler livro" and "Futebol ou outro esporte coletivo" in the seed. */
@@ -131,8 +122,7 @@ function addLog(options: {
     .values({
       userId: idOf(options.username),
       activityId: options.activityId,
-      // D37: an approved row carries the bucket it counted under; a pending one
-      // has not consumed a bucket yet, and the CHECK requires the null.
+      // D37: a pending row has consumed no bucket yet, and the CHECK requires the null.
       categoryId:
         status === "approved"
           ? categoryOf(connection, options.activityId)
@@ -166,7 +156,6 @@ describe("what the calculator is given (#17)", () => {
       "Casa",
       "Curinga",
     ]);
-    // Thirty-two activities minus the one `free` row.
     expect(data.activities).toHaveLength(31);
     expect(
       data.activities.every((activity) =>
@@ -176,9 +165,7 @@ describe("what the calculator is given (#17)", () => {
   });
 
   it("leaves out the `free` activity, whose value only an adult can type", async () => {
-    // D12: Curinga is the admin's escape hatch, and the engine refuses a `free`
-    // calculation with no `freeValue`. Offering it would be a button that
-    // throws.
+    // D12: the engine refuses `free` without a value; offering it would throw.
     mocked.username = "kid1";
 
     const data = await fetchCalculatorDataAction(idOf("kid1"));
@@ -205,8 +192,6 @@ describe("what the calculator is given (#17)", () => {
   });
 
   it("leaves out an activity whose category was deactivated", async () => {
-    // Deactivating a category does not touch its activities, so an offered
-    // activity could otherwise point at a category the picker does not have.
     connection.db
       .update(categories)
       .set({ active: false })
@@ -232,15 +217,8 @@ describe("what the calculator is given (#17)", () => {
   });
 
   it("says the São Paulo day at half past eleven at night (D13)", async () => {
-    // The case above recomputes the expected day off the same clock the action
-    // reads, so it can only ever disagree with `toISOString().slice(0, 10)` —
-    // the exact bug D13 was written against — between 21:00 and midnight in
-    // São Paulo. Measured: swapping `saoPauloDay` for the ISO slice left the
-    // whole suite green, correct 12,5% of the day and only if CI happens to run
-    // then. The instant is pinned here instead.
-    //
-    // 02:30Z is 23:30 of the day before in Brasília, and tomorrow's Mente
-    // bucket is empty: the boy reads a full rate on his fifth hour of reading.
+    // Pinned: the ISO-slice bug D13 guards against only shows between 21:00
+    // and midnight in São Paulo. 02:30Z is 23:30 the day before.
     vi.useFakeTimers({ toFake: ["Date"] });
 
     try {
@@ -251,11 +229,9 @@ describe("what the calculator is given (#17)", () => {
 
       expect(data.occurredOn).toBe("2026-09-02");
       expect(data.occurredOn).not.toBe(new Date().toISOString().slice(0, 10));
-      // And the window is measured from that day, not from the ISO one.
       expect(data.historyFrom).toBe("2026-08-03");
 
-      // Three hours later it is the next day in São Paulo too, so the day does
-      // move — a constant would pass everything above.
+      // Three hours later the day moves too, so a constant cannot pass.
       vi.setSystemTime(new Date("2026-09-03T03:00:00Z"));
 
       expect((await fetchCalculatorDataAction(idOf("kid1"))).occurredOn).toBe(
@@ -269,9 +245,7 @@ describe("what the calculator is given (#17)", () => {
 
 describe("the history the calculator reads", () => {
   it("reaches at least as far back as every offered activity needs", async () => {
-    // The engine refuses a window shorter than the rules it is about to apply,
-    // because a short window is silent over-credit. This is the promise the
-    // action makes it.
+    // A short window is silent over-credit, so the engine refuses one.
     mocked.username = "kid1";
 
     const data = await fetchCalculatorDataAction(idOf("kid1"));
@@ -283,7 +257,6 @@ describe("the history the calculator reads", () => {
       const category = byId.get(activity.categoryId);
       if (category === undefined) continue;
 
-      // Both are `YYYY-MM-DD`, so the lexical order is the calendar order.
       expect(
         data.historyFrom <=
           historyWindowStart(data.occurredOn, activity, category),
@@ -293,9 +266,7 @@ describe("the history the calculator reads", () => {
   });
 
   it("reaches further than the minimum, so the bonus line can name the day", async () => {
-    // `awayText` will not claim a number it cannot see: inside the minimum
-    // window the return bonus can only ever read "faz mais de 3 dias", and #17
-    // asks for "faz 4 dias".
+    // Inside the minimum window the bonus line can only say "faz mais de 3 dias".
     mocked.username = "kid1";
 
     const data = await fetchCalculatorDataAction(idOf("kid1"));
@@ -304,9 +275,7 @@ describe("the history the calculator reads", () => {
   });
 
   it("refuses a row that is not approved, rather than dropping it (D19)", async () => {
-    // Two claims, and the old version of this case only made the first one.
-    //
-    // First: the `where` keeps a pending row out, so the action answers.
+    // The `where` keeps a pending row out.
     addLog({
       username: "kid1",
       activityId: BOOK,
@@ -320,12 +289,8 @@ describe("the history the calculator reads", () => {
 
     expect(data.history).toEqual([]);
 
-    // Second: what the action does with a bad row *if it ever gets one*. The
-    // query never produces one, which is exactly why nothing used to exercise
-    // this half — the assertion could be deleted whole and 674 tests stayed
-    // green, because the `where` alone already produced `[]`. So the row is
-    // handed to the rule directly. `approvedOnly` is the engine's, and it is
-    // the only place D19's status rule is written.
+    // And a bad row is refused, not dropped: handed straight to `approvedOnly`,
+    // since the query never produces one.
     expect(() =>
       approvedOnly([{ id: 1, status: "pending", categoryId: null }]),
     ).toThrow(/only approved logs/);
@@ -342,9 +307,7 @@ describe("the history the calculator reads", () => {
       approvedOnly([{ id: 5, status: "approved", categoryId: 2 }]),
     ).toEqual([{ id: 5, status: "approved", categoryId: 2 }]);
 
-    // D37, in the same one place D19 lives: an approved row without the bucket
-    // it counted under is a row that was frozen without one, and reading it as
-    // "some other category" would quietly empty a bucket.
+    // D37: an approved row without its bucket would quietly empty one.
     expect(() =>
       approvedOnly([{ id: 6, status: "approved", categoryId: null }]),
     ).toThrow(/its bucket was never frozen/);
@@ -408,9 +371,7 @@ describe("the history the calculator reads", () => {
   });
 
   it("carries the category and the mode the bucket is counted by", async () => {
-    // D3 buckets by category and D5 says only a `duration` log puts hours in
-    // it. Neither column is on `activity_logs`; both come from the join, and
-    // without them the engine cannot tell Mente from Corpo.
+    // D3 and D5 need both columns, and both come from the join.
     addLog({
       username: "kid1",
       activityId: FOOTBALL,
@@ -429,11 +390,8 @@ describe("the history the calculator reads", () => {
   });
 
   it("is what the engine actually charges the boy for", async () => {
-    // The end of the chain: two hours of Mente already read today, so the
-    // bucket sits two halvings deep and the next hour of a book is worth a
-    // quarter — 1,5 × 0,25 = 0,375, shown as 0,38. If the action handed over
-    // the wrong rows, the other boy's or a pending one, this number would be
-    // 1,5 and nothing else in this file would notice.
+    // Two hours of Mente today: the next hour is worth a quarter, 0,375 → 0,38.
+    // Wrong rows would make it 1,5.
     addLog({
       username: "kid1",
       activityId: BOOK,
@@ -473,8 +431,6 @@ describe("the history the calculator reads", () => {
 
 describe("the calculator refuses the other boy's day (#13, #17)", () => {
   it("refuses a request carrying the brother's id", async () => {
-    // How many hours of Mente he has already read is his day, and the rule is
-    // "kid vê e simula apenas os próprios dados".
     mocked.username = "kid1";
 
     await expect(fetchCalculatorDataAction(idOf("kid2"))).rejects.toMatchObject(

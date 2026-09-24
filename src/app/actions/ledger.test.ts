@@ -17,16 +17,7 @@ import { seedWithTestUsers } from "../../db/test-users";
 import { fetchLedgerEntriesAction } from "./history";
 import { refundHoursAction, releaseHoursAction } from "./ledger";
 
-/**
- * Releasing and refunding, end to end (#23, #24).
- *
- * Two halves, as in `queue.test.ts` and `admin.test.ts`. The first runs
- * `ledger.rules.ts` against the real module; the second is about the endpoints
- * — who may call them, and whose id is written as the adult who did it.
- *
- * Only the cookie is replaced. The transaction and every CHECK constraint of
- * the schema run for real.
- */
+/** `ledger.rules.ts` against the real module, then the endpoints. Only the cookie is replaced. */
 
 const mocked = vi.hoisted(() => ({
   username: null as string | null,
@@ -68,7 +59,7 @@ function freshConnection(): Connection {
 let world: AdminWorld;
 
 beforeEach(() => {
-  // The endpoints read the clock; the table is handed one. See `admin.test.ts`.
+  // The endpoints read the clock; see `admin.test.ts`.
   vi.useFakeTimers({ toFake: ["Date"] });
   vi.setSystemTime(LAUNCHED_AT);
   world = makeAdminWorld(freshConnection());
@@ -188,7 +179,6 @@ describe("what comes back (#23, #24)", () => {
 
     await releaseHoursAction({ userId: world.kidId, hours: 1 });
 
-    // Admin2 is the second seeded user, and nothing in the request said so.
     expect(world.ledgerText()).toContain("by 2 to 3");
   });
 });
@@ -204,8 +194,6 @@ describe("what the boy sees afterwards (#23, #24)", () => {
 
     mocked.username = "kid1";
 
-    // His own screen, through his own cookie: the row is on the boy's extract,
-    // it says which way it moved, and it says why.
     await expect(
       fetchLedgerEntriesAction(world.kidId, 5),
     ).resolves.toMatchObject([

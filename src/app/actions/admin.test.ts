@@ -26,17 +26,7 @@ import {
   previewEntryAction,
 } from "./admin";
 
-/**
- * Launching an activity, end to end (#22).
- *
- * Two halves, as in `queue.test.ts`. The first runs `admin.rules.ts` against
- * the real module, which is where the rules of the launch live; the second is
- * about the endpoints — who may call them, and whose id ends up in
- * `reviewed_by`.
- *
- * Only the cookie is replaced. The engine, the transaction and every CHECK
- * constraint of the schema run for real.
- */
+/** `admin.rules.ts` against the real module, then the endpoints. Only the cookie is replaced. */
 
 const mocked = vi.hoisted(() => ({
   username: null as string | null,
@@ -77,15 +67,7 @@ function freshConnection(): Connection {
 
 let world: AdminWorld;
 
-/**
- * The clock the endpoints read.
- *
- * The rules table hands `now` in, so its cases are independent of the machine's
- * clock; an action takes it from `new Date()`, which is the whole point — the
- * day an entry may not be dated after is the server's day and not a parameter
- * anybody can send. So the clock is fixed to the same moment the fixtures are
- * built around, and `Date` is the only thing faked.
- */
+/** The action reads `new Date()`: the latest allowed day is the server's, never a parameter. */
 beforeEach(() => {
   vi.useFakeTimers({ toFake: ["Date"] });
   vi.setSystemTime(LAUNCHED_AT);
@@ -114,7 +96,7 @@ describe("the launch as written", () => {
   });
 
   it("has a table with something in it", () => {
-    // A matrix run against an empty table proves nothing, loudly.
+    // An empty matrix proves nothing, loudly.
     expect(ADMIN_CASES.length).toBeGreaterThan(25);
   });
 
@@ -131,7 +113,6 @@ describe("the launch as written", () => {
   });
 });
 
-/** The entry the endpoint cases send. */
 function entry(userId: number) {
   return {
     userId,
@@ -208,7 +189,6 @@ describe("what the launch writes (#22, D18)", () => {
       .where(eq(activityLogs.id, logId))
       .get();
 
-    // Admin2 is the second seeded user, and nothing in the request said so.
     expect(row).toMatchObject({
       createdBy: 2,
       reviewedBy: 2,
@@ -254,8 +234,7 @@ describe("what the pickers offer (#22, D14)", () => {
   });
 
   it("offers every seeded activity while nothing is switched off", async () => {
-    // The list is what the criterion is about; a picker that lost half the
-    // table would still pass the two cases above.
+    // A picker that lost half the table would pass the cases above.
     const data = await fetchLaunchDataAction();
     const live = world.connection.db
       .select({ id: activities.id })
@@ -280,18 +259,13 @@ describe("the preview is not the write", () => {
 
     const second = await launchEntryAction(entry(world.kidId));
 
-    // The preview said 1,5 hours and was true when it was drawn; the second
-    // launch reads the bucket the first one filled.
+    // The preview was true when drawn; the second launch reads the filled bucket.
     expect(asked.calculation.hours).toBe(1.5);
     expect(second.hours).toBe(0.75);
   });
 
   it("leaves nothing behind when a launch is refused", async () => {
-    // A pending entry earlier in the canonical order (D32): the launch is
-    // refused, and neither the log nor the ledger row exists afterwards.
-    // Counting the logs matters as much as the ledger — the refusal happens
-    // before the insert, so a ledger assertion alone would pass with no
-    // transaction at all and would be testing the ordering, not the rollback.
+    // D32 refuses before the insert, so counting logs too is what tests the rollback.
     const before = world.logCount();
 
     world.addPending({ activity: BOOK, occurredOn: THAT_DAY });
@@ -305,10 +279,8 @@ describe("the preview is not the write", () => {
   });
 
   it("pays a retroactive launch out of what the days after it spent (D34)", async () => {
-    // The case D34 was written for, through the endpoint: Tuesday's wash is
-    // frozen first and keeps its 3 h; Monday is launched afterwards, reads the
-    // seven-day allowance Tuesday already spent, and is credited half. The
-    // pair costs 4,5 h, which is what the cooldown owes — it used to cost 6 h.
+    // D34's case: Tuesday frozen first keeps 3 h; Monday launched after gets half.
+    // 4,5 h in all, where it used to be 6 h.
     const tuesday = world.addApproved({
       activity: "Lavar o carro",
       occurredOn: "2026-09-08",
@@ -327,18 +299,13 @@ describe("the preview is not the write", () => {
 
     expect(monday.hours).toBe(1.5);
     expect(world.logRow(tuesday).computedHours).toBe(3);
-    // The explanation the adult reads names the rule that halved it.
     expect(monday.calculation.lines.map((line) => line.text)).toContain(
       "metade, você fez isso outra vez em 7 dias",
     );
   });
 
   it("names the same blocker the queue would name (D32, one rule)", async () => {
-    // `pendingBefore` is written twice — once for the approval and once for
-    // the launch — and each copy has a matrix of its own. What no matrix can
-    // see is the two drifting apart, which is the failure this project keeps
-    // finding. So one fixture is put to both: the queue's second entry and a
-    // launch of the same shape have to name the same waiting entry.
+    // `pendingBefore` exists for approval and launch; one fixture keeps them from drifting.
     const first = world.addPending({ activity: BOOK, occurredOn: THAT_DAY });
     world.addPending({ activity: BOOK, occurredOn: THAT_DAY });
 

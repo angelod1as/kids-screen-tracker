@@ -3,15 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import type { TimerScreenData } from "../actions/timer";
 
-/**
- * Every list has a written empty state, never a blank (#29).
- *
- * The lists that already had one are covered where they were written
- * (`screens.test.ts`, `phase-5-screens.test.tsx`, `phase-6-screens.test.tsx`).
- * These are the ones the sweep for #29 found drawing nothing at all: the boy's
- * pending records on the stopwatch, the admin's two balances when there is no
- * boy, and the category list when there is no category.
- */
+/** The lists #29's sweep found drawing nothing; the others are covered where they were written. */
 
 const mocked = vi.hoisted(() => ({
   kids: [] as { id: number; displayName: string }[],
