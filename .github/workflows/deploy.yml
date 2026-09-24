@@ -86,8 +86,10 @@ jobs:
           # Coolify said. The body carries a deployment uuid, not a secret. A
           # refusal here, with both probes green, is a token that authenticates
           # and lacks the deploy ability.
+          # POST: Coolify 4.3 answers the older GET with
+          # `405 This endpoint has changed to a POST request`.
           if ! body="$(curl --silent --show-error --fail-with-body \
-            --request GET \
+            --request POST \
             --header "Authorization: Bearer ${COOLIFY_TOKEN}" \
             "${COOLIFY_URL}/api/v1/deploy?uuid=${COOLIFY_APP_UUID}&force=false")"; then
             echo "${body}" >&2
