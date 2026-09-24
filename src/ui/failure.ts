@@ -8,7 +8,7 @@ import type { Locks } from "../db/pending";
 
 export type FailureKind = "uncertain" | "refused";
 
-/** True outside a browser. */
+/** True outside a browser, so there a `digest` alone decides the kind. */
 function isOnline(): boolean {
   return typeof navigator === "undefined" || navigator.onLine;
 }
