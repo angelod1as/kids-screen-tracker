@@ -4,6 +4,8 @@ import { and, desc, eq } from "drizzle-orm";
 
 import { requireAccess } from "../../auth/guard";
 import { getConnection, getDb } from "../../db";
+import type { NewRequest, RequestableActivity } from "../../db/requests";
+import { listRequestableActivities, requestLog } from "../../db/requests";
 import { activities, activityLogs } from "../../db/schema";
 import type {
   TimedActivity,
@@ -18,9 +20,11 @@ import {
   startTimer,
   stopTimer,
 } from "../../db/timers";
+import { saoPauloDay } from "../../engine/calculate";
 
 /**
- * Even the read is guarded with `proposeTimerLog`: D16 makes a read a write.
+ * Even the read is guarded with `proposeTimerLog`: D16 makes a read a write;
+ * `requestLogAction` is the boy's other write, with its own kind (D49).
  * The clock is read once per action and passed down, so the answer is
  * arithmetic over stamps and not when the app was opened (D16).
  */
@@ -71,6 +75,12 @@ export type TimerScreenData = {
     durationSeconds: number;
   } | null;
   pending: PendingProposal[];
+  /** D49: what the boy may request without the stopwatch. */
+  requestable: RequestableActivity[];
+  /** D13: today in São Paulo, where the request's date field starts. */
+  today: string;
+  /** Set only when this very call filed a request (D49). */
+  requested: { activityName: string; occurredOn: string } | null;
 };
 
 export async function fetchTimerScreenAction(
@@ -148,6 +158,34 @@ export async function stopTimerAction(
   return screen(targetUserId, written.read, written.proposed);
 }
 
+/** The boy's second write (D49); the read after it settles the timer (D16). */
+export async function requestLogAction(
+  targetUserId: number,
+  request: NewRequest,
+): Promise<TimerScreenData> {
+  await requireAccess({ kind: "requestLog", targetUserId });
+
+  const now = new Date();
+  const connection = getConnection();
+
+  requestLog(connection, targetUserId, request, now);
+
+  const requested = getDb()
+    .select({ name: activities.name })
+    .from(activities)
+    .where(eq(activities.id, request.activityId))
+    .get();
+
+  return screen(
+    targetUserId,
+    readTimer(connection, targetUserId, now),
+    null,
+    requested === undefined
+      ? null
+      : { activityName: requested.name, occurredOn: request.occurredOn },
+  );
+}
+
 /** Not exported: every export of a `"use server"` file is an endpoint, and this one trusts its user id. */
 async function screen(
   userId: number,
@@ -157,6 +195,7 @@ async function screen(
     durationMinutes: number;
     durationSeconds: number;
   } | null,
+  requested: TimerScreenData["requested"] = null,
 ): Promise<TimerScreenData> {
   const connection = getConnection();
 
@@ -167,6 +206,9 @@ async function screen(
     settlement: read.settlement,
     proposed,
     pending: pendingProposals(userId),
+    requestable: listRequestableActivities(connection),
+    today: saoPauloDay(new Date()),
+    requested,
   };
 }
 

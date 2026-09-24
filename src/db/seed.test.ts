@@ -203,7 +203,7 @@ const EXPECTED_ROWS: ExpectedActivity[] = [
   ],
   ["Corpo", "Bicicleta", "duration", 1.5, 180, false, 0, 2],
   ["Corpo", "Corrida ou caminhada", "duration", 1.5, 180, false, 0, 3],
-  ["Corpo", "Treino em casa", "duration", 1.5, 180, false, 0, 4],
+  ["Corpo", "Academia", "fixed", 1, null, false, 0, 4],
 
   ["Mente", "Ler livro", "duration", 1.5, 120, false, 0, 1],
   ["Mente", "Ler quadrinhos ou HQ", "duration", 1.5, 120, false, 0, 2],

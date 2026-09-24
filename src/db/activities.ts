@@ -25,6 +25,8 @@ export type ActivityRow = {
   maxSessionMinutes: number | null;
   /** D44. */
   minSessionMinutes: number;
+  /** #18: the minutes a request starts from. Not a pricing field (D37). */
+  presumedMinutes?: number | null;
   qualityGraded: boolean;
   repeatCooldownDays: number;
   sortOrder: number;
@@ -40,6 +42,7 @@ export type ActivityInput = {
   value: number | null;
   maxSessionMinutes: number | null;
   minSessionMinutes: number;
+  presumedMinutes?: number | null;
   qualityGraded: boolean;
   repeatCooldownDays: number;
   sortOrder: number;
@@ -69,6 +72,7 @@ export function listActivities(
       value: activities.value,
       maxSessionMinutes: activities.maxSessionMinutes,
       minSessionMinutes: activities.minSessionMinutes,
+      presumedMinutes: activities.presumedMinutes,
       qualityGraded: activities.qualityGraded,
       repeatCooldownDays: activities.repeatCooldownDays,
       sortOrder: activities.sortOrder,
@@ -127,6 +131,11 @@ function requireActivity(input: ActivityInput): ActivityInput {
       ? requireCount(input.minSessionMinutes, "a minimum session", { min: 1 })
       : DEFAULT_MIN_SESSION_MINUTES;
 
+  const presumedMinutes =
+    input.calcMode === "duration" && input.presumedMinutes != null
+      ? requireCount(input.presumedMinutes, "a presumed duration", { min: 1 })
+      : null;
+
   // D44.
   if (maxSessionMinutes !== null && minSessionMinutes > maxSessionMinutes) {
     throw new Error(
@@ -144,6 +153,7 @@ function requireActivity(input: ActivityInput): ActivityInput {
         : requireNonNegativeHours(input.value, "an activity value"),
     maxSessionMinutes,
     minSessionMinutes,
+    presumedMinutes,
     qualityGraded: input.qualityGraded,
     repeatCooldownDays: requireCount(
       input.repeatCooldownDays,
@@ -213,6 +223,7 @@ export function createActivity(
         value: checked.value,
         maxSessionMinutes: checked.maxSessionMinutes,
         minSessionMinutes: checked.minSessionMinutes,
+        presumedMinutes: checked.presumedMinutes,
         qualityGraded: checked.qualityGraded,
         repeatCooldownDays: checked.repeatCooldownDays,
         sortOrder: checked.sortOrder,
@@ -261,6 +272,7 @@ export function updateActivity(
         value: checked.value,
         maxSessionMinutes: checked.maxSessionMinutes,
         minSessionMinutes: checked.minSessionMinutes,
+        presumedMinutes: checked.presumedMinutes,
         qualityGraded: checked.qualityGraded,
         repeatCooldownDays: checked.repeatCooldownDays,
         sortOrder: checked.sortOrder,

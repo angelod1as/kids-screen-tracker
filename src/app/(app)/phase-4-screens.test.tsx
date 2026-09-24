@@ -76,6 +76,9 @@ function screen(open: TimerScreenData["open"]): TimerScreenData {
     settlement: null,
     proposed: null,
     pending: [],
+    requestable: [],
+    today: "2026-09-10",
+    requested: null,
   };
 }
 
@@ -92,6 +95,8 @@ function entry(overrides: Partial<QueueEntry> = {}): QueueEntry {
     durationSeconds: 60 * 60,
     note: null,
     autoStopped: false,
+    source: "timer",
+    calcMode: "duration",
     preview: { hours: 3, lines: [] },
     unpriceable: null,
     qualityGraded: false,

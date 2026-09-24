@@ -43,6 +43,13 @@
       "when": 1790208767041,
       "tag": "0005_users_password_hash",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1790268938149,
+      "tag": "0006_kid_requests",
+      "breakpoints": true
     }
   ]
 }

@@ -76,8 +76,8 @@ export function QueueList({ initial }: { initial: QueueData }) {
       >
         {data.entries.length === 0 ? (
           <PanelText>
-            Nada esperando. O que os meninos propuserem pelo cronômetro aparece
-            aqui.
+            Nada esperando. O que os meninos propuserem pelo cronômetro ou
+            pedirem sem ele aparece aqui.
           </PanelText>
         ) : (
           <ul className="divide-y-2 divide-black">
@@ -104,17 +104,26 @@ export function QueueList({ initial }: { initial: QueueData }) {
 
 /** A rule, not layout: an entry blocked by one above cannot be frozen (D32), and a correction needs a valid duration. */
 export function canApprove(
-  entry: Pick<QueueEntry, "blockedBy" | "qualityGraded" | "quality">,
+  entry: Pick<QueueEntry, "blockedBy" | "qualityGraded" | "quality"> &
+    Partial<Pick<QueueEntry, "durationMinutes" | "calcMode">>,
   editing: boolean,
   minutes: string,
   grade: number | null = null,
+  value = "",
 ): boolean {
   if (entry.blockedBy !== null) return false;
 
   // The stopwatch never grades, so a graded activity waits for the adult's grade (D37).
   const graded = entry.qualityGraded && (grade ?? entry.quality) === null;
 
-  if (!editing) return !graded;
+  // D49: a `free` activity a boy requested has no value until an adult types one.
+  const priced =
+    entry.calcMode !== "free" || Number(value.replace(",", ".")) >= 0.01;
+
+  if (!editing) return !graded && entry.calcMode !== "free";
+
+  // An untimed request of a non-`duration` activity has no minutes to correct.
+  if (entry.durationMinutes === null) return !graded && priced;
 
   const typed = Number(minutes);
 
@@ -139,6 +148,7 @@ type Edits = {
   activityId?: number;
   durationMinutes?: number;
   quality?: number | null;
+  freeValue?: number;
   note?: string | null;
 };
 
@@ -162,8 +172,10 @@ function Card({
   const [grade, setGrade] = useState<number | null>(entry.quality);
   const [note, setNote] = useState(entry.note ?? "");
   const [reason, setReason] = useState("");
+  const [value, setValue] = useState("");
 
   const typed = Number(minutes);
+  const timed = entry.durationMinutes !== null;
 
   return (
     <li className="flex flex-col gap-3 p-3">
@@ -178,6 +190,7 @@ function Card({
               ? ""
               : ` · ${formatRecordedDuration(entry.durationSeconds)}`}
             {entry.autoStopped ? " · parou sozinha" : ""}
+            {entry.source === "request" ? " · pedido sem cronômetro" : ""}
           </span>
         </span>
         {entry.preview === null ? null : (
@@ -214,27 +227,42 @@ function Card({
             />
           ) : null}
 
-          <Select
-            id={`atividade-${entry.id}`}
-            label="Atividade"
-            onChange={(value) => setActivityId(Number(value))}
-            value={String(activityId)}
-          >
-            {activities.map((activity) => (
-              <option key={activity.id} value={activity.id}>
-                {activity.categoryName} · {activity.name}
-              </option>
-            ))}
-          </Select>
+          {entry.calcMode === "free" ? (
+            <Field
+              id={`valor-${entry.id}`}
+              inputMode="decimal"
+              label="Valor em horas"
+              onChange={(event) => setValue(event.target.value)}
+              type="text"
+              value={value}
+            />
+          ) : null}
 
-          <Field
-            id={`duracao-${entry.id}`}
-            inputMode="numeric"
-            label="Duração em minutos"
-            onChange={(event) => setMinutes(event.target.value)}
-            type="text"
-            value={minutes}
-          />
+          {timed ? (
+            <>
+              <Select
+                id={`atividade-${entry.id}`}
+                label="Atividade"
+                onChange={(value) => setActivityId(Number(value))}
+                value={String(activityId)}
+              >
+                {activities.map((activity) => (
+                  <option key={activity.id} value={activity.id}>
+                    {activity.categoryName} · {activity.name}
+                  </option>
+                ))}
+              </Select>
+
+              <Field
+                id={`duracao-${entry.id}`}
+                inputMode="numeric"
+                label="Duração em minutos"
+                onChange={(event) => setMinutes(event.target.value)}
+                type="text"
+                value={minutes}
+              />
+            </>
+          ) : null}
 
           <Field
             id={`nota-${entry.id}`}
@@ -270,13 +298,17 @@ function Card({
       <div className="flex flex-col gap-2 lg:flex-row lg:gap-3">
         <div className="lg:flex-1">
           <Button
-            disabled={busy || !canApprove(entry, editing, minutes, grade)}
+            disabled={
+              busy || !canApprove(entry, editing, minutes, grade, value)
+            }
             onClick={() =>
               onApprove(
                 editing
                   ? {
-                      activityId,
-                      durationMinutes: typed,
+                      ...(timed ? { activityId, durationMinutes: typed } : {}),
+                      ...(entry.calcMode === "free"
+                        ? { freeValue: Number(value.replace(",", ".")) }
+                        : {}),
                       quality: grade,
                       note: note.trim() === "" ? null : note.trim(),
                     }

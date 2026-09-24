@@ -52,6 +52,8 @@ export type ActivityDraft = {
   value: string;
   maxSessionMinutes: string;
   minSessionMinutes: string;
+  /** #18: empty means the boy types the minutes of a request himself. */
+  presumedMinutes?: string;
   qualityGraded: boolean;
   repeatCooldownDays: string;
   sortOrder: string;
@@ -111,6 +113,9 @@ export function activityInputOf(
   const minSessionMinutes = timed
     ? parseTypedCount(draft.minSessionMinutes)
     : DEFAULT_MIN_SESSION_MINUTES;
+  const presumedTyped = (draft.presumedMinutes ?? "").trim();
+  const presumedMinutes =
+    !timed || presumedTyped === "" ? null : parseTypedCount(presumedTyped);
   const repeatCooldownDays = parseTypedCount(draft.repeatCooldownDays);
   const sortOrder = parseTypedCount(draft.sortOrder);
 
@@ -123,6 +128,9 @@ export function activityInputOf(
     minSessionMinutes === null ||
     minSessionMinutes < 1 ||
     (maxSessionMinutes !== null && minSessionMinutes > maxSessionMinutes) ||
+    (timed &&
+      presumedTyped !== "" &&
+      (presumedMinutes === null || presumedMinutes < 1)) ||
     repeatCooldownDays === null ||
     sortOrder === null
   ) {
@@ -136,6 +144,7 @@ export function activityInputOf(
     value,
     maxSessionMinutes,
     minSessionMinutes,
+    presumedMinutes,
     qualityGraded: draft.qualityGraded,
     repeatCooldownDays,
     sortOrder,
@@ -171,6 +180,8 @@ function draftOf(activity: ActivityRow): ActivityDraft {
         ? ""
         : String(activity.maxSessionMinutes),
     minSessionMinutes: String(activity.minSessionMinutes),
+    presumedMinutes:
+      activity.presumedMinutes === null ? "" : String(activity.presumedMinutes),
     qualityGraded: activity.qualityGraded,
     repeatCooldownDays: String(activity.repeatCooldownDays),
     sortOrder: String(activity.sortOrder),
@@ -201,6 +212,10 @@ export function activitySummary(activity: ActivityRow): string {
 
   if (activity.maxSessionMinutes !== null) {
     parts.push(`até ${formatDuration(activity.maxSessionMinutes)} por sessão`);
+  }
+
+  if (activity.presumedMinutes != null) {
+    parts.push(`pedido vale ${formatDuration(activity.presumedMinutes)}`);
   }
 
   if (activity.repeatCooldownDays > 0) {
@@ -527,6 +542,19 @@ function ActivityFields({
           }
           type="text"
           value={draft.minSessionMinutes}
+        />
+      ) : null}
+
+      {draft.calcMode === "duration" ? (
+        <Field
+          id={`${prefix}-presumida`}
+          inputMode="numeric"
+          label="Duração presumida do pedido, em minutos (vazio: o menino digita)"
+          onChange={(event) =>
+            onChange({ ...draft, presumedMinutes: event.target.value })
+          }
+          type="text"
+          value={draft.presumedMinutes ?? ""}
         />
       ) : null}
 

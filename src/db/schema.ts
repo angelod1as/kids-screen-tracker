@@ -155,6 +155,8 @@ export const activities = sqliteTable(
     maxSessionMinutes: integer("max_session_minutes"),
     /** D44. */
     minSessionMinutes: integer("min_session_minutes").notNull().default(5),
+    /** D49: the minutes a boy's request starts from when nobody timed it. */
+    presumedMinutes: integer("presumed_minutes"),
     qualityGraded: integer("quality_graded", { mode: "boolean" })
       .notNull()
       .default(false),
@@ -191,6 +193,16 @@ export const activities = sqliteTable(
     check(
       "activities_min_session_minutes_check",
       numeric(table.minSessionMinutes, { min: 1, max: COUNT, integers: true }),
+    ),
+    check(
+      "activities_presumed_minutes_check",
+      numeric(table.presumedMinutes, {
+        min: 0,
+        exclusiveMin: true,
+        max: COUNT,
+        integers: true,
+        nullable: true,
+      }),
     ),
     // D44: a limit under the floor would discard every session it cuts.
     check(
@@ -230,7 +242,8 @@ export const activityLogs = sqliteTable(
     status: text("status", { enum: ["pending", "approved", "rejected"] })
       .notNull()
       .default("pending"),
-    source: text("source", { enum: ["timer", "admin"] }).notNull(),
+    /** D49: `request` is a boy's own proposal, made without the stopwatch. */
+    source: text("source", { enum: ["timer", "request", "admin"] }).notNull(),
     /** D13. */
     occurredOn: text("occurred_on").notNull(),
     startedAt: integer("started_at", { mode: "timestamp_ms" }),
@@ -281,7 +294,7 @@ export const activityLogs = sqliteTable(
     ),
     check(
       "activity_logs_source_check",
-      sql`${table.source} in ('timer', 'admin')`,
+      sql`${table.source} in ('timer', 'request', 'admin')`,
     ),
     check("activity_logs_occurred_on_check", calendarDate(table.occurredOn)),
     // The spec's five grades, as a list: a range let 0,4 in.

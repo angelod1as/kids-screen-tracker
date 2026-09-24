@@ -1,0 +1,958 @@
+{
+  "version": "6",
+  "dialect": "sqlite",
+  "id": "28a7f947-87ed-4b61-b7f6-6cbbbef89ecc",
+  "prevId": "6d89ca10-16c6-4997-a04c-46faffb5a8bb",
+  "tables": {
+    "activities": {
+      "name": "activities",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "category_id": {
+          "name": "category_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "calc_mode": {
+          "name": "calc_mode",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "value": {
+          "name": "value",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "max_session_minutes": {
+          "name": "max_session_minutes",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "min_session_minutes": {
+          "name": "min_session_minutes",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 5
+        },
+        "presumed_minutes": {
+          "name": "presumed_minutes",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "quality_graded": {
+          "name": "quality_graded",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": false
+        },
+        "repeat_cooldown_days": {
+          "name": "repeat_cooldown_days",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 0
+        },
+        "sort_order": {
+          "name": "sort_order",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 0
+        },
+        "active": {
+          "name": "active",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": true
+        }
+      },
+      "indexes": {
+        "activities_category_id_idx": {
+          "name": "activities_category_id_idx",
+          "columns": ["category_id"],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "activities_category_id_categories_id_fk": {
+          "name": "activities_category_id_categories_id_fk",
+          "tableFrom": "activities",
+          "tableTo": "categories",
+          "columnsFrom": ["category_id"],
+          "columnsTo": ["id"],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "activities_calc_mode_check": {
+          "name": "activities_calc_mode_check",
+          "value": "\"activities\".\"calc_mode\" in ('duration', 'fixed', 'delivery', 'free')"
+        },
+        "activities_value_check": {
+          "name": "activities_value_check",
+          "value": "(\"activities\".\"calc_mode\" = 'free' and \"activities\".\"value\" is null) or (\"activities\".\"calc_mode\" <> 'free' and \"activities\".\"value\" is not null)"
+        },
+        "activities_value_range_check": {
+          "name": "activities_value_range_check",
+          "value": "\"activities\".\"value\" is null or (typeof(\"activities\".\"value\") in ('integer', 'real') and \"activities\".\"value\" >= 0 and \"activities\".\"value\" <= 1000000)"
+        },
+        "activities_max_session_minutes_check": {
+          "name": "activities_max_session_minutes_check",
+          "value": "\"activities\".\"max_session_minutes\" is null or (typeof(\"activities\".\"max_session_minutes\") = 'integer' and \"activities\".\"max_session_minutes\" > 0 and \"activities\".\"max_session_minutes\" <= 1000000)"
+        },
+        "activities_min_session_minutes_check": {
+          "name": "activities_min_session_minutes_check",
+          "value": "typeof(\"activities\".\"min_session_minutes\") = 'integer' and \"activities\".\"min_session_minutes\" >= 1 and \"activities\".\"min_session_minutes\" <= 1000000"
+        },
+        "activities_presumed_minutes_check": {
+          "name": "activities_presumed_minutes_check",
+          "value": "\"activities\".\"presumed_minutes\" is null or (typeof(\"activities\".\"presumed_minutes\") = 'integer' and \"activities\".\"presumed_minutes\" > 0 and \"activities\".\"presumed_minutes\" <= 1000000)"
+        },
+        "activities_min_under_max_session_check": {
+          "name": "activities_min_under_max_session_check",
+          "value": "\"activities\".\"max_session_minutes\" is null or \"activities\".\"min_session_minutes\" <= \"activities\".\"max_session_minutes\""
+        },
+        "activities_repeat_cooldown_days_check": {
+          "name": "activities_repeat_cooldown_days_check",
+          "value": "typeof(\"activities\".\"repeat_cooldown_days\") = 'integer' and \"activities\".\"repeat_cooldown_days\" >= 0 and \"activities\".\"repeat_cooldown_days\" <= 1000000"
+        }
+      }
+    },
+    "activity_logs": {
+      "name": "activity_logs",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "activity_id": {
+          "name": "activity_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "category_id": {
+          "name": "category_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'pending'"
+        },
+        "source": {
+          "name": "source",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "occurred_on": {
+          "name": "occurred_on",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "started_at": {
+          "name": "started_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "ended_at": {
+          "name": "ended_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "duration_seconds": {
+          "name": "duration_seconds",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "duration_minutes": {
+          "name": "duration_minutes",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "quality": {
+          "name": "quality",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "free_value": {
+          "name": "free_value",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "computed_hours": {
+          "name": "computed_hours",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "note": {
+          "name": "note",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "auto_stopped": {
+          "name": "auto_stopped",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": false
+        },
+        "created_by": {
+          "name": "created_by",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "reviewed_by": {
+          "name": "reviewed_by",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(cast(unixepoch('subsec') * 1000 as integer))"
+        },
+        "reviewed_at": {
+          "name": "reviewed_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "activity_logs_user_day_idx": {
+          "name": "activity_logs_user_day_idx",
+          "columns": ["user_id", "occurred_on", "created_at", "id"],
+          "isUnique": false
+        },
+        "activity_logs_status_idx": {
+          "name": "activity_logs_status_idx",
+          "columns": ["status"],
+          "isUnique": false
+        },
+        "activity_logs_activity_id_idx": {
+          "name": "activity_logs_activity_id_idx",
+          "columns": ["activity_id"],
+          "isUnique": false
+        },
+        "activity_logs_category_id_idx": {
+          "name": "activity_logs_category_id_idx",
+          "columns": ["category_id"],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "activity_logs_user_id_users_id_fk": {
+          "name": "activity_logs_user_id_users_id_fk",
+          "tableFrom": "activity_logs",
+          "tableTo": "users",
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        },
+        "activity_logs_activity_id_activities_id_fk": {
+          "name": "activity_logs_activity_id_activities_id_fk",
+          "tableFrom": "activity_logs",
+          "tableTo": "activities",
+          "columnsFrom": ["activity_id"],
+          "columnsTo": ["id"],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        },
+        "activity_logs_category_id_categories_id_fk": {
+          "name": "activity_logs_category_id_categories_id_fk",
+          "tableFrom": "activity_logs",
+          "tableTo": "categories",
+          "columnsFrom": ["category_id"],
+          "columnsTo": ["id"],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        },
+        "activity_logs_created_by_users_id_fk": {
+          "name": "activity_logs_created_by_users_id_fk",
+          "tableFrom": "activity_logs",
+          "tableTo": "users",
+          "columnsFrom": ["created_by"],
+          "columnsTo": ["id"],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        },
+        "activity_logs_reviewed_by_users_id_fk": {
+          "name": "activity_logs_reviewed_by_users_id_fk",
+          "tableFrom": "activity_logs",
+          "tableTo": "users",
+          "columnsFrom": ["reviewed_by"],
+          "columnsTo": ["id"],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "activity_logs_status_check": {
+          "name": "activity_logs_status_check",
+          "value": "\"activity_logs\".\"status\" in ('pending', 'approved', 'rejected')"
+        },
+        "activity_logs_source_check": {
+          "name": "activity_logs_source_check",
+          "value": "\"activity_logs\".\"source\" in ('timer', 'request', 'admin')"
+        },
+        "activity_logs_occurred_on_check": {
+          "name": "activity_logs_occurred_on_check",
+          "value": "\"activity_logs\".\"occurred_on\" glob '[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]' and date(\"activity_logs\".\"occurred_on\") is not null and \"activity_logs\".\"occurred_on\" = date(\"activity_logs\".\"occurred_on\")"
+        },
+        "activity_logs_quality_check": {
+          "name": "activity_logs_quality_check",
+          "value": "\"activity_logs\".\"quality\" is null or \"activity_logs\".\"quality\" in (0, 0.3, 0.5, 0.7, 1.0)"
+        },
+        "activity_logs_started_at_check": {
+          "name": "activity_logs_started_at_check",
+          "value": "\"activity_logs\".\"started_at\" is null or (typeof(\"activity_logs\".\"started_at\") = 'integer' and \"activity_logs\".\"started_at\" >= 0 and \"activity_logs\".\"started_at\" <= 1000000000000000)"
+        },
+        "activity_logs_ended_at_check": {
+          "name": "activity_logs_ended_at_check",
+          "value": "\"activity_logs\".\"ended_at\" is null or (typeof(\"activity_logs\".\"ended_at\") = 'integer' and \"activity_logs\".\"ended_at\" >= 0 and \"activity_logs\".\"ended_at\" <= 1000000000000000)"
+        },
+        "activity_logs_duration_seconds_check": {
+          "name": "activity_logs_duration_seconds_check",
+          "value": "\"activity_logs\".\"duration_seconds\" is null or (typeof(\"activity_logs\".\"duration_seconds\") = 'integer' and \"activity_logs\".\"duration_seconds\" >= 0 and \"activity_logs\".\"duration_seconds\" <= 60000000)"
+        },
+        "activity_logs_duration_minutes_check": {
+          "name": "activity_logs_duration_minutes_check",
+          "value": "\"activity_logs\".\"duration_minutes\" is null or (typeof(\"activity_logs\".\"duration_minutes\") = 'integer' and \"activity_logs\".\"duration_minutes\" > 0 and \"activity_logs\".\"duration_minutes\" <= 1000000)"
+        },
+        "activity_logs_free_value_check": {
+          "name": "activity_logs_free_value_check",
+          "value": "\"activity_logs\".\"free_value\" is null or (typeof(\"activity_logs\".\"free_value\") in ('integer', 'real') and \"activity_logs\".\"free_value\" >= 0 and \"activity_logs\".\"free_value\" <= 1000000)"
+        },
+        "activity_logs_computed_hours_check": {
+          "name": "activity_logs_computed_hours_check",
+          "value": "\"activity_logs\".\"computed_hours\" is null or (typeof(\"activity_logs\".\"computed_hours\") in ('integer', 'real') and \"activity_logs\".\"computed_hours\" >= 0 and \"activity_logs\".\"computed_hours\" <= 1000000)"
+        },
+        "activity_logs_computed_hours_status_check": {
+          "name": "activity_logs_computed_hours_status_check",
+          "value": "(\"activity_logs\".\"status\" = 'approved') = (\"activity_logs\".\"computed_hours\" is not null)"
+        },
+        "activity_logs_category_id_status_check": {
+          "name": "activity_logs_category_id_status_check",
+          "value": "(\"activity_logs\".\"status\" = 'approved') = (\"activity_logs\".\"category_id\" is not null)"
+        },
+        "activity_logs_created_at_check": {
+          "name": "activity_logs_created_at_check",
+          "value": "typeof(\"activity_logs\".\"created_at\") = 'integer' and \"activity_logs\".\"created_at\" >= 0 and \"activity_logs\".\"created_at\" <= 1000000000000000"
+        },
+        "activity_logs_session_check": {
+          "name": "activity_logs_session_check",
+          "value": "\"activity_logs\".\"ended_at\" is null or (\"activity_logs\".\"started_at\" is not null and \"activity_logs\".\"ended_at\" > \"activity_logs\".\"started_at\")"
+        },
+        "activity_logs_review_check": {
+          "name": "activity_logs_review_check",
+          "value": "(\"activity_logs\".\"status\" = 'pending') = (\"activity_logs\".\"reviewed_by\" is null) and (\"activity_logs\".\"reviewed_by\" is null) = (\"activity_logs\".\"reviewed_at\" is null)"
+        },
+        "activity_logs_reviewed_at_check": {
+          "name": "activity_logs_reviewed_at_check",
+          "value": "\"activity_logs\".\"reviewed_at\" is null or (typeof(\"activity_logs\".\"reviewed_at\") = 'integer' and \"activity_logs\".\"reviewed_at\" >= 0 and \"activity_logs\".\"reviewed_at\" <= 1000000000000000)"
+        }
+      }
+    },
+    "categories": {
+      "name": "categories",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "base_rate": {
+          "name": "base_rate",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "decay_step_hours": {
+          "name": "decay_step_hours",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "return_bonus_pct": {
+          "name": "return_bonus_pct",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 0
+        },
+        "return_bonus_after_days": {
+          "name": "return_bonus_after_days",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 0
+        },
+        "sort_order": {
+          "name": "sort_order",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 0
+        },
+        "active": {
+          "name": "active",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": true
+        }
+      },
+      "indexes": {
+        "categories_name_unique": {
+          "name": "categories_name_unique",
+          "columns": ["name"],
+          "isUnique": true,
+          "where": "\"categories\".\"active\" = 1"
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "categories_decay_step_hours_check": {
+          "name": "categories_decay_step_hours_check",
+          "value": "\"categories\".\"decay_step_hours\" is null or (typeof(\"categories\".\"decay_step_hours\") in ('integer', 'real') and \"categories\".\"decay_step_hours\" > 0 and \"categories\".\"decay_step_hours\" <= 1000000)"
+        },
+        "categories_base_rate_check": {
+          "name": "categories_base_rate_check",
+          "value": "\"categories\".\"base_rate\" is null or (typeof(\"categories\".\"base_rate\") in ('integer', 'real') and \"categories\".\"base_rate\" >= 0 and \"categories\".\"base_rate\" <= 1000000)"
+        },
+        "categories_return_bonus_pct_check": {
+          "name": "categories_return_bonus_pct_check",
+          "value": "typeof(\"categories\".\"return_bonus_pct\") in ('integer', 'real') and \"categories\".\"return_bonus_pct\" >= 0 and \"categories\".\"return_bonus_pct\" <= 1000000"
+        },
+        "categories_return_bonus_after_days_check": {
+          "name": "categories_return_bonus_after_days_check",
+          "value": "typeof(\"categories\".\"return_bonus_after_days\") = 'integer' and \"categories\".\"return_bonus_after_days\" >= 0 and \"categories\".\"return_bonus_after_days\" <= 1000000"
+        }
+      }
+    },
+    "ledger": {
+      "name": "ledger",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "kind": {
+          "name": "kind",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "hours": {
+          "name": "hours",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "occurred_on": {
+          "name": "occurred_on",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "destination": {
+          "name": "destination",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "note": {
+          "name": "note",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "activity_log_id": {
+          "name": "activity_log_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "created_by": {
+          "name": "created_by",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(cast(unixepoch('subsec') * 1000 as integer))"
+        }
+      },
+      "indexes": {
+        "ledger_user_day_idx": {
+          "name": "ledger_user_day_idx",
+          "columns": ["user_id", "occurred_on"],
+          "isUnique": false
+        },
+        "ledger_activity_log_id_unique": {
+          "name": "ledger_activity_log_id_unique",
+          "columns": ["activity_log_id"],
+          "isUnique": true,
+          "where": "\"ledger\".\"activity_log_id\" is not null"
+        }
+      },
+      "foreignKeys": {
+        "ledger_user_id_users_id_fk": {
+          "name": "ledger_user_id_users_id_fk",
+          "tableFrom": "ledger",
+          "tableTo": "users",
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        },
+        "ledger_activity_log_id_activity_logs_id_fk": {
+          "name": "ledger_activity_log_id_activity_logs_id_fk",
+          "tableFrom": "ledger",
+          "tableTo": "activity_logs",
+          "columnsFrom": ["activity_log_id"],
+          "columnsTo": ["id"],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        },
+        "ledger_created_by_users_id_fk": {
+          "name": "ledger_created_by_users_id_fk",
+          "tableFrom": "ledger",
+          "tableTo": "users",
+          "columnsFrom": ["created_by"],
+          "columnsTo": ["id"],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "ledger_kind_check": {
+          "name": "ledger_kind_check",
+          "value": "\"ledger\".\"kind\" in ('earn', 'spend', 'refund')"
+        },
+        "ledger_hours_check": {
+          "name": "ledger_hours_check",
+          "value": "typeof(\"ledger\".\"hours\") in ('integer', 'real') and \"ledger\".\"hours\" > 0 and \"ledger\".\"hours\" <= 1000000"
+        },
+        "ledger_created_at_check": {
+          "name": "ledger_created_at_check",
+          "value": "typeof(\"ledger\".\"created_at\") = 'integer' and \"ledger\".\"created_at\" >= 0 and \"ledger\".\"created_at\" <= 1000000000000000"
+        },
+        "ledger_occurred_on_check": {
+          "name": "ledger_occurred_on_check",
+          "value": "\"ledger\".\"occurred_on\" glob '[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]' and date(\"ledger\".\"occurred_on\") is not null and \"ledger\".\"occurred_on\" = date(\"ledger\".\"occurred_on\")"
+        }
+      }
+    },
+    "regimes": {
+      "name": "regimes",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "label": {
+          "name": "label",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "hours_per_day": {
+          "name": "hours_per_day",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "active": {
+          "name": "active",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": true
+        },
+        "started_on": {
+          "name": "started_on",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "note": {
+          "name": "note",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "regimes_user_active_idx": {
+          "name": "regimes_user_active_idx",
+          "columns": ["user_id", "active"],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "regimes_user_id_users_id_fk": {
+          "name": "regimes_user_id_users_id_fk",
+          "tableFrom": "regimes",
+          "tableTo": "users",
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "regimes_started_on_check": {
+          "name": "regimes_started_on_check",
+          "value": "\"regimes\".\"started_on\" glob '[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]' and date(\"regimes\".\"started_on\") is not null and \"regimes\".\"started_on\" = date(\"regimes\".\"started_on\")"
+        },
+        "regimes_hours_per_day_check": {
+          "name": "regimes_hours_per_day_check",
+          "value": "typeof(\"regimes\".\"hours_per_day\") in ('integer', 'real') and \"regimes\".\"hours_per_day\" >= 0 and \"regimes\".\"hours_per_day\" <= 1000000"
+        }
+      }
+    },
+    "timers": {
+      "name": "timers",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "activity_id": {
+          "name": "activity_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "started_at": {
+          "name": "started_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "paused_at": {
+          "name": "paused_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "accumulated_seconds": {
+          "name": "accumulated_seconds",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 0
+        },
+        "max_session_minutes": {
+          "name": "max_session_minutes",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "min_session_minutes": {
+          "name": "min_session_minutes",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 0
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "timers_user_status_idx": {
+          "name": "timers_user_status_idx",
+          "columns": ["user_id", "status"],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "timers_user_id_users_id_fk": {
+          "name": "timers_user_id_users_id_fk",
+          "tableFrom": "timers",
+          "tableTo": "users",
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        },
+        "timers_activity_id_activities_id_fk": {
+          "name": "timers_activity_id_activities_id_fk",
+          "tableFrom": "timers",
+          "tableTo": "activities",
+          "columnsFrom": ["activity_id"],
+          "columnsTo": ["id"],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "timers_status_check": {
+          "name": "timers_status_check",
+          "value": "\"timers\".\"status\" in ('running', 'paused', 'stopped', 'abandoned')"
+        },
+        "timers_accumulated_seconds_check": {
+          "name": "timers_accumulated_seconds_check",
+          "value": "typeof(\"timers\".\"accumulated_seconds\") = 'integer' and \"timers\".\"accumulated_seconds\" >= 0 and \"timers\".\"accumulated_seconds\" <= 1000000"
+        },
+        "timers_started_at_check": {
+          "name": "timers_started_at_check",
+          "value": "typeof(\"timers\".\"started_at\") = 'integer' and \"timers\".\"started_at\" >= 0 and \"timers\".\"started_at\" <= 1000000000000000"
+        },
+        "timers_max_session_minutes_check": {
+          "name": "timers_max_session_minutes_check",
+          "value": "\"timers\".\"max_session_minutes\" is null or (typeof(\"timers\".\"max_session_minutes\") = 'integer' and \"timers\".\"max_session_minutes\" > 0 and \"timers\".\"max_session_minutes\" <= 1000000)"
+        },
+        "timers_min_session_minutes_check": {
+          "name": "timers_min_session_minutes_check",
+          "value": "typeof(\"timers\".\"min_session_minutes\") = 'integer' and \"timers\".\"min_session_minutes\" >= 0 and \"timers\".\"min_session_minutes\" <= 1000000"
+        },
+        "timers_paused_at_check": {
+          "name": "timers_paused_at_check",
+          "value": "\"timers\".\"paused_at\" is null or (typeof(\"timers\".\"paused_at\") = 'integer' and \"timers\".\"paused_at\" >= 0 and \"timers\".\"paused_at\" <= 1000000000000000)"
+        }
+      }
+    },
+    "users": {
+      "name": "users",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "username": {
+          "name": "username",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "display_name": {
+          "name": "display_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "role": {
+          "name": "role",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "active": {
+          "name": "active",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": true
+        },
+        "password_hash": {
+          "name": "password_hash",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "users_username_unique": {
+          "name": "users_username_unique",
+          "columns": ["username"],
+          "isUnique": true,
+          "where": "\"users\".\"active\" = 1"
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "users_role_check": {
+          "name": "users_role_check",
+          "value": "\"users\".\"role\" in ('admin', 'kid')"
+        }
+      }
+    }
+  },
+  "views": {},
+  "enums": {},
+  "_meta": {
+    "schemas": {},
+    "tables": {},
+    "columns": {}
+  },
+  "internal": {
+    "indexes": {}
+  }
+}

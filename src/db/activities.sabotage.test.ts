@@ -87,7 +87,7 @@ const MUTATIONS: readonly Mutation[] = [
     name: "an edit writes the name and leaves every number as it was",
     file: "activities.ts",
     // `.set({` in front: the same field list is also the insert's `.values({`.
-    find: "    tx.update(activities)\n      .set({\n        categoryId: checked.categoryId,\n        name: checked.name,\n        calcMode: checked.calcMode,\n        value: checked.value,\n        maxSessionMinutes: checked.maxSessionMinutes,\n        minSessionMinutes: checked.minSessionMinutes,\n        qualityGraded: checked.qualityGraded,\n        repeatCooldownDays: checked.repeatCooldownDays,\n        sortOrder: checked.sortOrder,",
+    find: "    tx.update(activities)\n      .set({\n        categoryId: checked.categoryId,\n        name: checked.name,\n        calcMode: checked.calcMode,\n        value: checked.value,\n        maxSessionMinutes: checked.maxSessionMinutes,\n        minSessionMinutes: checked.minSessionMinutes,\n        presumedMinutes: checked.presumedMinutes,\n        qualityGraded: checked.qualityGraded,\n        repeatCooldownDays: checked.repeatCooldownDays,\n        sortOrder: checked.sortOrder,",
     replace:
       "    tx.update(activities)\n      .set({\n        name: checked.name,",
   },
@@ -126,9 +126,9 @@ const MUTATIONS: readonly Mutation[] = [
   {
     name: "the value the form sent is not the value that is stored",
     file: "activities.ts",
-    find: "        calcMode: checked.calcMode,\n        value: checked.value,\n        maxSessionMinutes: checked.maxSessionMinutes,\n        minSessionMinutes: checked.minSessionMinutes,\n        qualityGraded: checked.qualityGraded,\n        repeatCooldownDays: checked.repeatCooldownDays,\n        sortOrder: checked.sortOrder,\n        active: true,",
+    find: "        calcMode: checked.calcMode,\n        value: checked.value,\n        maxSessionMinutes: checked.maxSessionMinutes,\n        minSessionMinutes: checked.minSessionMinutes,\n        presumedMinutes: checked.presumedMinutes,\n        qualityGraded: checked.qualityGraded,\n        repeatCooldownDays: checked.repeatCooldownDays,\n        sortOrder: checked.sortOrder,\n        active: true,",
     replace:
-      "        calcMode: checked.calcMode,\n        value: checked.value === null ? null : 2,\n        maxSessionMinutes: checked.maxSessionMinutes,\n        minSessionMinutes: checked.minSessionMinutes,\n        qualityGraded: checked.qualityGraded,\n        repeatCooldownDays: checked.repeatCooldownDays,\n        sortOrder: checked.sortOrder,\n        active: true,",
+      "        calcMode: checked.calcMode,\n        value: checked.value === null ? null : 2,\n        maxSessionMinutes: checked.maxSessionMinutes,\n        minSessionMinutes: checked.minSessionMinutes,\n        presumedMinutes: checked.presumedMinutes,\n        qualityGraded: checked.qualityGraded,\n        repeatCooldownDays: checked.repeatCooldownDays,\n        sortOrder: checked.sortOrder,\n        active: true,",
   },
 
   {

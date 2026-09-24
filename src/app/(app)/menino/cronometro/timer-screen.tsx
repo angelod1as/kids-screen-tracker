@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useTransition } from "react";
 
+import type { NewRequest } from "../../../../db/requests";
 import type { TimerSettlement } from "../../../../db/timers";
 import { reachesMinimum } from "../../../../engine/timer";
 import { Button } from "../../../../ui/button";
@@ -21,6 +22,7 @@ import type { OpenSessionView, TimerScreenData } from "../../../actions/timer";
 import {
   fetchTimerScreenAction,
   pauseTimerAction,
+  requestLogAction,
   resumeTimerAction,
   startTimerAction,
   stopTimerAction,
@@ -94,20 +96,29 @@ export function TimerScreen({ initial }: { initial: TimerScreenData }) {
       )}
 
       {open === null ? (
-        <Idle
-          busy={busy}
-          chosen={chosen}
-          data={data}
-          onChoose={setChosen}
-          onStart={() =>
-            act(
-              () => startTimerAction(data.userId, chosen),
-              () => {
-                setNote("");
-              },
-            )
-          }
-        />
+        <div className="flex flex-col gap-4">
+          <Idle
+            busy={busy}
+            chosen={chosen}
+            data={data}
+            onChoose={setChosen}
+            onStart={() =>
+              act(
+                () => startTimerAction(data.userId, chosen),
+                () => {
+                  setNote("");
+                },
+              )
+            }
+          />
+          <RequestPanel
+            busy={busy}
+            data={data}
+            onRequest={(request, done) =>
+              act(() => requestLogAction(data.userId, request), done)
+            }
+          />
+        </div>
       ) : confirming ? (
         <Confirm
           busy={busy}
@@ -370,6 +381,131 @@ function Idle({
 }
 
 /**
+ * A request for an activity nobody timed (D49): two taps for anything but a
+ * `duration`, which also asks how long, starting from the presumed minutes (#18).
+ */
+function RequestPanel({
+  busy,
+  data,
+  onRequest,
+}: {
+  busy: boolean;
+  data: TimerScreenData;
+  onRequest: (request: NewRequest, done: () => void) => void;
+}) {
+  const [chosen, setChosen] = useState(data.requestable[0]?.id ?? 0);
+  const [occurredOn, setOccurredOn] = useState(data.today);
+  const [minutes, setMinutes] = useState(
+    String(data.requestable[0]?.presumedMinutes ?? ""),
+  );
+  const [note, setNote] = useState("");
+
+  const activity = data.requestable.find((item) => item.id === chosen);
+  const timed = activity?.calcMode === "duration";
+  const typed = Number(minutes);
+  const ready =
+    activity !== undefined &&
+    occurredOn !== "" &&
+    (!timed || (Number.isInteger(typed) && typed >= 1));
+  const categories = [
+    ...new Map(
+      data.requestable.map((item) => [item.categoryId, item.categoryName]),
+    ),
+  ];
+
+  if (data.requestable.length === 0) return null;
+
+  return (
+    <section className="flex flex-col gap-4">
+      {data.requested === null ? null : (
+        <Box>
+          Pedido enviado para aprovação: {data.requested.activityName} ·{" "}
+          {formatDay(data.requested.occurredOn)}.
+        </Box>
+      )}
+
+      <Panel title="Pedir sem cronômetro">
+        <div className="flex flex-col gap-3 p-3">
+          <Select
+            id="pedido-atividade"
+            label="O que você fez"
+            onChange={(value) => {
+              const next = Number(value);
+              setChosen(next);
+              setMinutes(
+                String(
+                  data.requestable.find((item) => item.id === next)
+                    ?.presumedMinutes ?? "",
+                ),
+              );
+            }}
+            value={String(chosen)}
+          >
+            {categories.map(([id, name]) => (
+              <optgroup key={id} label={name}>
+                {data.requestable
+                  .filter((item) => item.categoryId === id)
+                  .map((item) => (
+                    <option key={item.id} value={item.id}>
+                      {item.name}
+                    </option>
+                  ))}
+              </optgroup>
+            ))}
+          </Select>
+
+          <Field
+            id="pedido-dia"
+            label="Quando"
+            onChange={(event) => setOccurredOn(event.target.value)}
+            type="date"
+            value={occurredOn}
+          />
+
+          {timed ? (
+            <Field
+              id="pedido-duracao"
+              inputMode="numeric"
+              label="Quantos minutos"
+              onChange={(event) => setMinutes(event.target.value)}
+              type="text"
+              value={minutes}
+            />
+          ) : null}
+
+          <Field
+            id="pedido-nota"
+            label="Quer contar alguma coisa? (opcional)"
+            maxLength={500}
+            onChange={(event) => setNote(event.target.value)}
+            type="text"
+            value={note}
+          />
+
+          <Button
+            disabled={busy || !ready}
+            onClick={() =>
+              onRequest(
+                {
+                  activityId: chosen,
+                  occurredOn,
+                  durationMinutes: timed ? typed : null,
+                  note: note.trim() === "" ? null : note.trim(),
+                },
+                () => setNote(""),
+              )
+            }
+            type="button"
+          >
+            Pedir
+          </Button>
+        </div>
+      </Panel>
+    </section>
+  );
+}
+
+/**
  * Four endings, four sentences: an ending that files nothing and does not admit
  * it is how a boy comes to believe the app eats his afternoons. `tooShort` names
  * the floor (D44).
@@ -413,8 +549,8 @@ function PendingList({ data }: { data: TimerScreenData }) {
     >
       {data.pending.length === 0 ? (
         <PanelText>
-          Nada esperando. Quando você enviar uma sessão, ela aparece aqui até um
-          adulto decidir.
+          Nada esperando. Quando você enviar uma sessão ou um pedido, ele
+          aparece aqui até um adulto decidir.
         </PanelText>
       ) : (
         <ul>

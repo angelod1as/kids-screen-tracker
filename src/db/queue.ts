@@ -12,6 +12,7 @@ import {
 import type { Connection, Transaction } from "./client";
 import { writeTransaction } from "./client";
 import { categoryFirstDay, pendingDebutBefore } from "./debut";
+import { requireHours } from "./input";
 import { activities, activityLogs, categories, ledger, users } from "./schema";
 
 /**
@@ -35,6 +36,10 @@ export type QueueEntry = {
   note: string | null;
   /** D16: the boy did not end this session; the limit or the day did. */
   autoStopped: boolean;
+  /** D49: the stopwatch or the boy's untimed request. */
+  source: "timer" | "request" | "admin";
+  /** A `free` activity needs the adult to type its value (D49). */
+  calcMode: "duration" | "fixed" | "delivery" | "free";
   /** The stopwatch never grades, so an entry may need one at approval (D37). */
   qualityGraded: boolean;
   quality: number | null;
@@ -62,6 +67,8 @@ export type LogEdits = {
   durationMinutes?: number;
   /** For a `quality_graded` entry the stopwatch could not grade (D37). */
   quality?: number | null;
+  /** D49: the value of a `free` activity a boy requested; only an adult types it. */
+  freeValue?: number;
   note?: string | null;
 };
 
@@ -274,6 +281,7 @@ export function listPendingLogs(connection: Connection): QueueEntry[] {
       durationSeconds: activityLogs.durationSeconds,
       autoStopped: activityLogs.autoStopped,
       qualityGraded: activities.qualityGraded,
+      calcMode: activities.calcMode,
     })
     .from(activityLogs)
     .innerJoin(users, eq(activityLogs.userId, users.id))
@@ -299,6 +307,8 @@ export function listPendingLogs(connection: Connection): QueueEntry[] {
     durationSeconds: row.durationSeconds,
     note: row.note,
     autoStopped: row.autoStopped,
+    source: row.source,
+    calcMode: row.calcMode,
     qualityGraded: row.qualityGraded,
     quality: row.quality,
     ...priceOrExplain(connection.db, row),
@@ -424,6 +434,11 @@ export function approveLog(
     requireDuration(edits.durationMinutes);
   }
 
+  const freeValue =
+    edits.freeValue === undefined
+      ? undefined
+      : requireHours(edits.freeValue, "a free activity's value");
+
   return writeTransaction(connection, (tx) => {
     const log = takePending(tx, logId);
 
@@ -432,6 +447,7 @@ export function approveLog(
       activityId: edits.activityId ?? log.activityId,
       durationMinutes: edits.durationMinutes ?? log.durationMinutes,
       quality: edits.quality === undefined ? log.quality : edits.quality,
+      freeValue: freeValue ?? log.freeValue,
     };
 
     requireEditableActivity(tx, edited, edited.activityId);
@@ -450,6 +466,7 @@ export function approveLog(
       .set({
         activityId: edited.activityId,
         quality: edited.quality,
+        freeValue: edited.freeValue,
         // D37: the bucket is frozen with the value, and follows a correction.
         categoryId: categoryOf(tx, edited.activityId),
         durationMinutes: edited.durationMinutes,
