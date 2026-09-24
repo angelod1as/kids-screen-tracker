@@ -8,7 +8,7 @@
   },
   "scripts": {
     "dev": "next dev",
-    "build": "next build && node scripts/strip-build-env.mjs",
+    "build": "varlock run -- node scripts/check-env-keys.mjs && next build && node scripts/strip-build-env.mjs",
     "start": "varlock run -- node .next/standalone/server.js",
     "lint": "biome check --error-on-warnings .",
     "typecheck": "varlock codegen && tsc --noEmit",

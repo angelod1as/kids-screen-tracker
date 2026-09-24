@@ -39,6 +39,14 @@ ainda atribuir um literal a `__VARLOCK_ENV`, ou se não houver nenhum
 `[turbopack]_runtime.js` para limpar — é assim que uma mudança de formato numa
 atualização do varlock aparece, em vez de passar em silêncio.
 
+Antes do `next build`, o `pnpm build` roda `scripts/check-env-keys.mjs` (#4),
+que reprova se o `.env` tiver uma variável que o `.env.schema` não declara, como
+um `AUTH_*` que sobrou da D45. Pelo `@defaultSensitive=true`, uma variável assim
+vira item sensível, e o varlock procura o valor dela, como texto, em todo chunk
+de cliente. Um valor curto casa com código comum — o runtime do próprio varlock
+vai para todo chunk — e o build cai acusando vazamento sem que nada tenha sido
+inlinado. A guarda imprime só o nome.
+
 O que segura isso (D40):
 
 - **CI:** `pnpm check:secrets` reprova o job de build se o valor de qualquer
