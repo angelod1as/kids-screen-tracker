@@ -16,12 +16,7 @@ import {
   users,
 } from "./schema";
 
-/**
- * Every test here runs against a database built the way production builds one:
- * `pnpm db:migrate` on an empty directory, then a connection from
- * `openDatabase`. Nothing is created with `CREATE TABLE` inline, so the
- * committed migration is what is under test and not a second copy of the DDL.
- */
+/** Built by the committed migration, never inline DDL, so the migration is under test. */
 
 let root: string;
 let databasePath: string;
@@ -29,8 +24,7 @@ let connection: ReturnType<typeof openDatabase>;
 
 beforeEach(() => {
   root = mkdtempSync(join(tmpdir(), "kids-screen-tracker-"));
-  // Two levels below an empty directory: the migration has to create the path,
-  // not just the file.
+  // Two levels down: the migration creates the path, not just the file.
   databasePath = join(root, "data", "kids.db");
 
   migrateDatabase(databasePath);
@@ -42,7 +36,7 @@ afterEach(() => {
   rmSync(root, { recursive: true, force: true });
 });
 
-/** The rows the foreign keys need before anything interesting can be inserted. */
+/** The rows the foreign keys need first. */
 function seedMinimum() {
   const { db } = connection;
 
@@ -110,14 +104,8 @@ describe("migrations", () => {
 });
 
 describe("foreign keys", () => {
-  // The connection's pragmas, including `foreign_keys`, are covered in
-  // `client.test.ts`. The test that used to live here asserted
-  // `pragma("foreign_keys") === 1` and passed with the pragma deleted from
-  // `openDatabase`, because better-sqlite3 turns it on by itself — it measured
-  // the driver's default and read as if it measured this project's guarantee.
-  // What is left here is the part of that guarantee the DDL owns: the four
-  // tests below all go red when the FOREIGN KEY clauses come out of the
-  // migration.
+  // The pragma is `client.test.ts`'s: better-sqlite3 turns it on by itself.
+  // These four go red when the FOREIGN KEY clauses leave the migration.
 
   it("rejects a log pointing at a user that does not exist", () => {
     const { admin, activity } = seedMinimum();
@@ -181,7 +169,6 @@ describe("foreign keys", () => {
   });
 });
 
-/** An approved log, ready to be credited. */
 function seedApprovedLog() {
   const seed = seedMinimum();
   const [log] = connection.db
@@ -189,7 +176,7 @@ function seedApprovedLog() {
     .values({
       userId: seed.kid.id,
       activityId: seed.activity.id,
-      // D37: `activity_logs_category_id_status_check` ties this to `status`.
+      // D37.
       categoryId: seed.category.id,
       status: "approved",
       source: "admin",
@@ -224,7 +211,7 @@ describe("an approval is creditable exactly once", () => {
 
     earn();
 
-    // The retry after a SQLITE_BUSY, the double tap, the second admin.
+    // A retry after SQLITE_BUSY, a double tap, a second admin.
     expect(earn).toThrowError(/UNIQUE constraint failed/);
     expect(
       connection.sqlite
@@ -234,10 +221,7 @@ describe("an approval is creditable exactly once", () => {
   });
 
   it("indexes only the rows that carry a log", () => {
-    // SQLite counts nulls as distinct, so the WHERE clause changes no insert
-    // the schema accepts and no behavioural test can see it. What it does is
-    // keep the spend and refund rows out of the index and say in the DDL which
-    // rows the rule is about, so this reads the index back from the database.
+    // No insert can see the WHERE (nulls are distinct), so read the DDL back.
     expect(
       connection.sqlite
         .prepare(
@@ -348,10 +332,7 @@ describe("dates are text, never timestamps (D13)", () => {
     },
   ];
 
-  // The shape was already guarded; the calendar was not. Each of these was
-  // accepted by all three columns before the check grew its other two terms,
-  // and each one fails for a different reason: 2026-13-45 makes date() return
-  // null, 2026-02-30 makes it return 2026-03-02, and 0000-00-00 both.
+  // Each fails a different term: 2026-13-45, 2026-02-30, and 0000-00-00 both.
   for (const value of ["2026-13-45", "2026-02-30", "0000-00-00"]) {
     it.each(dateColumns)(`$column rejects ${value}`, ({ insert }) => {
       expect(() => insert(value)).toThrowError(/CHECK constraint failed/);
@@ -389,12 +370,7 @@ describe("dates are text, never timestamps (D13)", () => {
   });
 });
 
-/**
- * One row per numeric column that enters a sum or a formula, with the two
- * values SQLite lets through a one-sided range CHECK: text, which sorts above
- * every number, and `9e999`, which is `Infinity`. Every one of these was
- * accepted before the `typeof` guards existed.
- */
+/** Text sorts above every number and `9e999` is Infinity: both pass a one-sided CHECK. */
 const numericColumns: ReadonlyArray<{
   column: string;
   insert: (value: unknown) => void;
@@ -616,7 +592,7 @@ const numericColumns: ReadonlyArray<{
 ];
 
 describe("a ledger row belongs to its log's owner and status", () => {
-  /** Kid1 and Kid2, plus one approved log of Kid1's. */
+  /** Kid1, Kid2 and one approved log of Kid1's. */
   function seedBothKids() {
     const base = seedApprovedLog();
     const [other] = connection.db
@@ -691,11 +667,7 @@ describe("a ledger row belongs to its log's owner and status", () => {
     expect(() =>
       connection.sqlite
         .prepare(
-          // `category_id` goes with `computed_hours`: both exist exactly when
-          // the entry is frozen (D37), and an entry that is refused was never
-          // frozen. `rejectLog` never meets this case — it only ever moves a
-          // *pending* row, which carries neither — but the raw update here is
-          // the trigger's own test and has to leave a legal row behind.
+          // D37: `category_id` goes with `computed_hours`, so the row stays legal.
           "update activity_logs set status = 'rejected', computed_hours = null, category_id = null where id = ?",
         )
         .run(log.id),
@@ -728,9 +700,7 @@ describe("a log cannot describe an impossible session or review", () => {
   it("refuses a stored duration of zero minutes (D17, #71)", () => {
     const { admin, kid, activity } = seedMinimum();
 
-    // #71 took the floor out of the *rounding*, not out of the record: a
-    // session that rounds to no minutes is refused by `stopTimer` and never
-    // reaches a row, and the column is where that guarantee lives.
+    // D17: a session rounding to zero never reaches a row (`stopTimer`).
     expect(() =>
       insertLog(
         "user_id, activity_id, source, occurred_on, duration_seconds, duration_minutes, created_by",
@@ -752,10 +722,7 @@ describe("a log cannot describe an impossible session or review", () => {
         [kid.id, activity.id, 1, admin.id],
       ),
     ).not.toThrow();
-    // The seconds beside them are held to the same shape, and are asked about
-    // with minutes the column accepts: paired with zero minutes the row is
-    // refused whatever the seconds say, and the case would pass with no check
-    // on `duration_seconds` at all.
+    // With legal minutes: zero minutes would refuse the row whatever the seconds.
     expect(() =>
       insertLog(
         "user_id, activity_id, source, occurred_on, duration_seconds, duration_minutes, created_by",
@@ -1032,17 +999,8 @@ describe("numeric columns are guarded by type, not only by range", () => {
   );
 
   /**
-   * Measured, and worth writing down: with both bounds in place the `typeof`
-   * half is behaviourally redundant. Text and blobs sort above every number in
-   * SQLite, so the ceiling rejects them on its own — neutralising every
-   * `typeof(...)` in the migration leaves this whole file green. The reverse is
-   * not true: dropping the ceilings fails eight of the cases above, because
-   * `Infinity` passes `>= 0` and only the `typeof` of an integer column catches
-   * it.
-   *
-   * The guard stays because the two halves fail differently and a later hand
-   * that widens one range should not be left with nothing. Since no INSERT can
-   * see it, this reads it out of the DDL the database actually holds.
+   * The `typeof` half is redundant while the ceilings stand (text sorts above
+   * numbers); it stays so a widened range is not left bare. Read from the DDL.
    */
   it.each(numericColumns)(
     "$column states its type in the DDL",
@@ -1131,9 +1089,7 @@ describe("column-level guarantees", () => {
         const { admin, kid, activity } = seedMinimum();
         connection.sqlite
           .prepare(
-            // Reviewed and uncomputed, so that the review and computed_hours
-            // invariants are both satisfied and only the status list can
-            // reject the row.
+            // Reviewed and uncomputed, so only the status list can reject it.
             "insert into activity_logs (user_id, activity_id, status, source, occurred_on, created_by, reviewed_by, reviewed_at) values (?, ?, ?, 'timer', '2026-03-14', ?, ?, 1)",
           )
           .run(kid.id, activity.id, value, admin.id, admin.id);
@@ -1174,10 +1130,7 @@ describe("column-level guarantees", () => {
     },
   ];
 
-  // The `enum` option on a drizzle column is a TypeScript refinement and never
-  // reaches the database. Only `users_role_check` had a test that inserted a
-  // value outside the list, so a typo in any of the other five — 'aproved' for
-  // 'approved' — would have compiled, generated and migrated cleanly.
+  // A drizzle `enum` never reaches the database; a typo would migrate cleanly.
   it.each(enums)(
     "$constraint rejects a value outside its list",
     ({ insert }) => {
@@ -1228,12 +1181,7 @@ describe("column-level guarantees", () => {
   });
 
   it("rejects a free activity that carries a value (D11, D12)", () => {
-    // The other half of `activities_value_check`, and it had no case at all:
-    // measured, deleting this half of the constraint from the migration and
-    // both snapshots left all 1344 tests green, and a raw insert of
-    // `calc_mode = 'free', value = 5` went from refused to accepted. A `free`
-    // activity's value is typed at launch (D11); a stored one is a number that
-    // would never be read and would contradict the one that is.
+    // The `free` half of `activities_value_check`, which had no case (D11).
     const { category } = seedMinimum();
 
     expect(() =>
@@ -1250,15 +1198,8 @@ describe("column-level guarantees", () => {
   });
 
   it("rejects a decay step of exactly zero (D2)", () => {
-    // `categories_decay_step_hours_check` is `> 0` exclusive, and nothing
-    // tested the exclusivity: measured, relaxing it to `>= 0` left all 1344
-    // green. Null is D2's off switch; zero would divide by zero in the decay.
-    //
-    // Note this is the CHECK, not D35's floor. The floor lives in
-    // `src/engine/limits.ts` and refuses anything under 0,25h with a sentence;
-    // it is precisely because the floor now makes zero unreachable through the
-    // CRUD that the constraint needs a case of its own — a guard that hides a
-    // constraint is a constraint nobody would notice losing.
+    // Exclusive of zero. D35's floor makes zero unreachable via the CRUD, which
+    // is why the CHECK needs a case of its own.
     expect(() =>
       connection.db
         .insert(categories)
@@ -1268,9 +1209,7 @@ describe("column-level guarantees", () => {
   });
 
   it("rejects a session limit of exactly zero (D16)", () => {
-    // `activities_max_session_minutes_check` is `> 0` exclusive, and the same
-    // measurement applies: relaxing it left all 1344 green, because
-    // `requireCount(..., { min: 1 })` covers it from above.
+    // Exclusive of zero; `requireCount` covers it from above.
     const { category } = seedMinimum();
 
     expect(() =>
@@ -1302,11 +1241,7 @@ describe("column-level guarantees", () => {
     const { admin, kid } = seedMinimum();
     const before = Date.now();
 
-    // Through `connection.sqlite`, not through drizzle: drizzle inlines the
-    // column default into the INSERT it emits, so the DDL's DEFAULT is never
-    // reached and the test would pass with the migration's default set to 0.
-    // The seed and any raw script take this path, and so does anyone who
-    // touches the file with the sqlite3 CLI.
+    // Raw SQL: drizzle inlines the default, so it would never test the DDL's.
     connection.sqlite
       .prepare(
         "insert into ledger (user_id, kind, hours, occurred_on, destination, created_by) values (?, 'spend', 1, '2026-03-14', 'Xbox', ?)",

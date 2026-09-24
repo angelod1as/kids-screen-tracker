@@ -22,21 +22,9 @@ import { migrateDatabase } from "./migrate";
 import { seedWithTestUsers } from "./test-users";
 
 /**
- * The sabotage matrix for the configuration of the activities (#27).
- *
- * Same argument as `config.sabotage.test.ts`, and one addition specific to this
- * half. The rule that matters most here is D11's — the value is explicit and is
- * never taken from the category — and it is the hardest rule in this phase to
- * test by ordinary means, because breaking it produces *correct-looking
- * numbers*: most activities are priced at their category's rate anyway, so an
- * activity that silently fell back to `base_rate` would agree with the seed
- * everywhere it was checked. The cases that catch it are the ones about an
- * activity priced away from its category and about a category that declares no
- * rate at all.
- *
- * **The control has to come back uncaught**, for the reason the other matrix
- * gives: without it, a matrix whose loader quietly failed would report every
- * rule protected.
+ * Sabotage matrix for the activity configuration (#27). A D11 fallback to
+ * `base_rate` looks correct wherever the rates agree, so the cases price away
+ * from the category. The control must come back uncaught.
  */
 
 const DB_DIR = import.meta.dirname;
@@ -54,23 +42,11 @@ type Mutation = {
   file: File;
   find: string;
   replace: string;
-  /**
-   * A second edit in the same file, applied after the first.
-   *
-   * One mutation needs it, and it is the one D15 is about. Every other rule
-   * here is broken by *removing* something, so a single edit reaches it — but
-   * "editing recalculates nothing already credited" is a rule about absence,
-   * and nothing that can be deleted from this module introduces a
-   * recalculation. Breaking it means adding one, and adding one means adding
-   * the import it needs as well. Without this the coverage case below reported
-   * that rule as having no mutation at all, which is exactly the report it
-   * exists to produce.
-   */
+  /** A second edit: D15 is broken by adding a recalculation and its import. */
   andThen?: Edit;
 };
 
 const MUTATIONS: readonly Mutation[] = [
-  // --- criar, editar, desativar --------------------------------------------
   {
     name: "an activity is born switched off",
     file: "activities.ts",
@@ -110,8 +86,7 @@ const MUTATIONS: readonly Mutation[] = [
   {
     name: "an edit writes the name and leaves every number as it was",
     file: "activities.ts",
-    // `tx.update(...).set({` in front, because the identical field list is
-    // also the insert's `.values({`.
+    // `.set({` in front: the same field list is also the insert's `.values({`.
     find: "    tx.update(activities)\n      .set({\n        categoryId: checked.categoryId,\n        name: checked.name,\n        calcMode: checked.calcMode,\n        value: checked.value,\n        maxSessionMinutes: checked.maxSessionMinutes,\n        minSessionMinutes: checked.minSessionMinutes,\n        qualityGraded: checked.qualityGraded,\n        repeatCooldownDays: checked.repeatCooldownDays,\n        sortOrder: checked.sortOrder,",
     replace:
       "    tx.update(activities)\n      .set({\n        name: checked.name,",
@@ -130,7 +105,6 @@ const MUTATIONS: readonly Mutation[] = [
     replace: "    qualityGraded: false,",
   },
 
-  // --- D11: o value é explícito, e é quem manda ----------------------------
   {
     name: "a non-free activity may be stored with no value at all",
     file: "activities.ts",
@@ -157,7 +131,6 @@ const MUTATIONS: readonly Mutation[] = [
       "        calcMode: checked.calcMode,\n        value: checked.value === null ? null : 2,\n        maxSessionMinutes: checked.maxSessionMinutes,\n        minSessionMinutes: checked.minSessionMinutes,\n        qualityGraded: checked.qualityGraded,\n        repeatCooldownDays: checked.repeatCooldownDays,\n        sortOrder: checked.sortOrder,\n        active: true,",
   },
 
-  // --- D16: o limite só existe onde há sessão ------------------------------
   {
     name: "a session limit is kept on a mode that has no session",
     file: "activities.ts",
@@ -177,7 +150,6 @@ const MUTATIONS: readonly Mutation[] = [
     replace: '      ? requireCount(input.maxSessionMinutes, "a session limit")',
   },
 
-  // --- D44: a sessão mínima -------------------------------------------------
   {
     name: "a duration activity loses the floor it was given",
     file: "activities.ts",
@@ -199,7 +171,6 @@ const MUTATIONS: readonly Mutation[] = [
     replace: "  if (false) {",
   },
 
-  // --- D33: a guarda de categoria inativa vale no endpoint -----------------
   {
     name: "an activity can be created under a switched-off category",
     file: "activities.ts",
@@ -238,7 +209,6 @@ const MUTATIONS: readonly Mutation[] = [
     replace: "    requireLiveCategory(tx, found.categoryId);",
   },
 
-  // --- os contadores -------------------------------------------------------
   {
     name: "a cooldown is not checked at all",
     file: "activities.ts",
@@ -291,7 +261,6 @@ const MUTATIONS: readonly Mutation[] = [
     replace: "  if (false) {",
   },
 
-  // --- a lista que a tela desenha ------------------------------------------
   {
     name: "the switched-off ones are not sorted to the end",
     file: "activities.ts",
@@ -311,7 +280,6 @@ const MUTATIONS: readonly Mutation[] = [
     replace: "    .orderBy(",
   },
 
-  // --- D37: nada muda de preço debaixo de uma entrada que já espera ---------
   {
     name: "a waiting entry does not stop a repricing edit",
     file: "activities.ts",
@@ -382,44 +350,25 @@ const MUTATIONS: readonly Mutation[] = [
     replace: '        inArray(timers.status, ["running"]),\n',
   },
 
-  // --- D15: mudar a taxa não reescreve o passado ---------------------------
   {
     name: "an edit recalculates what it already paid",
     file: "activities.ts",
-    // The rule this whole phase rests on, broken the only way it can be: by
-    // adding the recalculation that D15 forbids. `config.test.ts` and
-    // `activities.test.ts` both scan this module's source for the two tables it
-    // must never name; this is the same rule seen from the behavioural side.
+    // D15, from the behavioural side; the source scans are in the unit tests.
     find: 'import { asc, desc, eq } from "drizzle-orm";',
     replace: 'import { asc, desc, eq, sql } from "drizzle-orm";',
     andThen: {
-      // The last field of the `.set({...})` in front: `setActivityActive` ends
-      // with the same three lines.
+      // `setActivityActive` ends with the same three lines.
       find: "        sortOrder: checked.sortOrder,\n      })\n      .where(eq(activities.id, activityId))\n      .run();\n  });\n}",
       replace:
         "        sortOrder: checked.sortOrder,\n      })\n      .where(eq(activities.id, activityId))\n      .run();\n\n    tx.run(\n      sql`update activity_logs set computed_hours = computed_hours * 2 where activity_id = " +
-        // Assembled rather than written out: the mutant's source needs a real
-        // template placeholder, and Biome reads one inside a plain string as a
-        // mistake wherever it appears.
+        // Assembled: Biome flags a template placeholder inside a plain string.
         "${" +
         "activityId}`,\n    );\n  });\n}",
     },
   },
 ];
 
-/**
- * The rewrite that has to come back uncaught.
- *
- * The two guards at the top of `updateActivity`'s transaction, swapped. Neither
- * reads the other and both throw before anything is written, so which of them
- * refuses first is not a rule — an update that names a missing activity *and* a
- * dead category is refused either way, and no case in the table asks which
- * sentence it got.
- *
- * It sits between two edits that are rules: dropping either guard is caught
- * above, and the case below drops one of them the same way to show the matrix
- * tells the reorder from the removal.
- */
+/** The control: two independent guards swapped; order is not a rule, presence is. */
 const CONTROL: Mutation = {
   name: "the two guards on an edit run in the other order",
   file: "activities.ts",
@@ -431,20 +380,7 @@ const CONTROL: Mutation = {
     "    const found = requireActivityRow(tx, activityId);",
 };
 
-/**
- * How long one mutant gets: compile it, load it, and run the whole table on a
- * migrated and seeded database of its own.
- *
- * Three minutes, not one, and the margin is the point. Measured on a developer
- * laptop under a parallel suite run, the slowest mutation here took **53,7 s**
- * against a 60 s limit — it passed, and it would have failed on any machine a
- * little slower, which CI's shared runner routinely is. A matrix that goes red
- * because a runner was busy teaches whoever sees it to re-run rather than to
- * read, and a mutation nobody reads is a rule nobody is protecting.
- *
- * The cost of being wrong in this direction is a slower failure; in the other
- * it is a flaky one.
- */
+/** Three minutes: the slowest mutant measured 53,7 s against the old 60 s. */
 const ONE_MUTANT_MS = 180_000;
 
 const sources = new Map<File, string>();
@@ -523,13 +459,8 @@ function mutate(mutation: Mutation, source: string): string {
   ];
 
   return edits.reduce((text, edit) => {
-    // Exactly once, and not merely present. `String.replace` takes the first
-    // match, so an ambiguous needle silently mutates a different function from
-    // the one the mutation is named after — measured here: "an activity that
-    // does not exist is not noticed" matched `requireLiveCategory` rather than
-    // `requireActivityRow`, making it a duplicate of another mutation and
-    // leaving `requireActivityRow`'s guard untouched by the whole matrix, while
-    // every test stayed green.
+    // Exactly once: `replace` takes the first match, and an ambiguous needle
+    // once mutated the wrong function with every test green.
     const occurrences = text.split(edit.find).length - 1;
 
     expect(
@@ -603,9 +534,6 @@ describe("the control: the matrix can still say no", () => {
   it("catches the removal the reorder is a control for", {
     timeout: ONE_MUTANT_MS,
   }, async () => {
-    // The same two lines, with one of them deleted instead of moved. Order is
-    // not a rule and presence is; that the matrix tells them apart is what
-    // the control's silence is worth.
     const failures = failingActivityCases(
       await loadMutant(2 * MUTATIONS.length + 1, {
         name: "the category guard is dropped from the edit",

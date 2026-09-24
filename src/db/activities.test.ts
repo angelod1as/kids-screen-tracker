@@ -19,16 +19,7 @@ import { REVIEWED_AT } from "./queue.rules";
 import { seedWithTestUsers } from "./test-users";
 import { startTimer, stopTimer } from "./timers";
 
-/**
- * The configuration of the activities (#27), against the real module.
- *
- * The table is `activities.rules.ts`, shared with the sabotage matrix. What is
- * here beyond running it is the second half of D15's proof — the source scan —
- * written the same way `config.test.ts` writes it, and for the same reason: a
- * recalculation added by somebody thinking about something else has to survive
- * both a balance assertion and a scan, and only the second cannot be satisfied
- * by accident.
- */
+/** #27 against the real module, plus the source scan half of D15's proof. */
 
 const MODULE: ActivityModule = {
   listActivities,
@@ -80,7 +71,7 @@ describe("configuring the activities (#27)", () => {
   );
 
   it("covers every acceptance criterion of the issue", () => {
-    // A table that quietly lost a whole rule still passes every case it kept.
+    // A table that lost a whole rule still passes every case it kept.
     expect([...new Set(ACTIVITY_CASES.map((one) => one.rule))].sort()).toEqual([
       "a waiting entry is priced by the table it was written under",
       "an activity can be created, edited and switched off",
@@ -100,35 +91,25 @@ describe("changing the rate does not rewrite the past (D15)", () => {
       readFileSync(join(import.meta.dirname, "activities.ts"), "utf8"),
     );
 
-    // Both spellings, and both tables. The camelCase names are drizzle's; the
-    // snake_case ones are what raw SQL uses, and a recalculation written as
-    // `connection.sqlite.prepare("update activity_logs set computed_hours ...")`
-    // passed this scan and the balance case beside it — measured, 1300 tests
-    // green with every pending entry's frozen value doubled on any category
-    // edit. The behavioural half missed it because it credited only an
-    // *approved* entry; the scan missed it because it only knew one spelling.
+    // Both spellings: a raw-SQL recalculation passed a camelCase-only scan.
     for (const forbidden of [
       "activityLogs",
       "activity_logs",
       "ledger",
       "calculateEarnedHours",
-      // The two ways to reach raw SQL from a module that has a connection.
       "sqlite.prepare",
       "tx.run(",
     ]) {
       expect(source, forbidden).not.toContain(forbidden);
     }
 
-    // And the scan is looking at real code, not a file it stripped to nothing.
+    // And the scan is reading real code, not an emptied file.
     expect(source).toContain("activities");
     expect(source).toContain("categories");
   });
 
   it("never reads the category's rate, which D11 keeps out of the calculation", () => {
-    // The suggestion is the screen's (`suggestedValue`, in `activity-list.tsx`).
-    // A fallback here would be a number nobody typed governing a boy's
-    // afternoon, and it would be invisible: the activity would simply pay the
-    // category's rate, which is what most of them do anyway.
+    // D11: the suggestion is the screen's (`suggestedValue`); a fallback would be invisible.
     const source = stripComments(
       readFileSync(join(import.meta.dirname, "activities.ts"), "utf8"),
     );
@@ -137,32 +118,9 @@ describe("changing the rate does not rewrite the past (D15)", () => {
   });
 });
 
-/**
- * What a Configuration edit must not do to an entry that is already waiting.
- *
- * #26 and #27 make `calc_mode` and `active` editable without a deploy, which is
- * the point of the phase — and it re-opened D33's measured exploit from the
- * other end. The guard in `approveLog` used to run only when an adult *moved*
- * the entry, which was sound for exactly as long as an activity could not
- * change under a pending one.
- *
- * The fix is in `src/db/queue.ts`, where the number is frozen. The case lives
- * here, because this is the module that made it reachable.
- */
+/** D33's guard in `approveLog`, now asked of every approval, not only a move. */
 describe("a pending entry is not re-priced by an edit made under it", () => {
-  /**
-   * A filed session whose activity was then forced into a state the CRUD would
-   * refuse to create.
-   *
-   * D37 now closes every route an adult has to these states: the edit is
-   * refused while a session is open *and* while an entry waits. That is the
-   * point of it — and it means `requireEditableActivity` in `approveLog` no
-   * longer has a reachable case of its own. It is kept, and tested here against
-   * a state written straight to the column, because it is the thing that
-   * catches these if D37 ever has a hole: one guard stops the state being
-   * built, the other stops it being frozen, and the second is worth nothing if
-   * nothing ever exercises it.
-   */
+  /** A state written straight to the column, so the backstop behind D37 is exercised. */
   function fileASessionThenForce(
     world: ActivityWorld,
     patch: Record<string, unknown>,
@@ -182,15 +140,7 @@ describe("a pending entry is not re-priced by an edit made under it", () => {
     return world.newestLogId();
   }
 
-  /**
-   * A graded activity's session, built the way an adult really reaches it.
-   *
-   * This one needs no forcing: turning the grade on with nothing running and
-   * nothing waiting is a legitimate edit, and the boy's next session then files
-   * an entry the engine cannot price, because the stopwatch has no grade to
-   * give. It is the one unpriceable state D37 does not prevent, which is why
-   * `LogEdits.quality` exists.
-   */
+  /** A legitimate edit leaves an unpriceable entry: why `LogEdits.quality` exists (D37). */
   function fileAGradedSession(world: ActivityWorld): number {
     const id = world.activityId("Ler livro");
 
@@ -232,15 +182,12 @@ describe("a pending entry is not re-priced by an edit made under it", () => {
         maxSessionMinutes: null,
       });
 
-      // Measured before the guard was widened: this paid 4,5 h — three fixed
-      // hours and the return bonus — for one minute of reading, with the
-      // duration ignored, and nobody forged or edited anything.
+      // Unguarded, one minute of reading paid 4,5 h.
       expect(() =>
         approveLog(world.connection, logId, world.adminId, {}, REVIEWED_AT),
       ).toThrow(/not measured by duration/);
 
-      // And it is still waiting rather than half-decided: an adult has to move
-      // it or refuse it (D19), which is the decision D33 says a person makes.
+      // Still waiting: an adult moves or refuses it (D19, D33).
       expect(world.logRow(logId).status).toBe("pending");
       expect(world.ledgerRows()).toHaveLength(0);
     } finally {
@@ -264,11 +211,7 @@ describe("a pending entry is not re-priced by an edit made under it", () => {
   });
 
   it("leaves a queue it cannot price as one row with a sentence, not a 500", () => {
-    // Measured before `preview` was nullable: this returned HTTP 500 for
-    // `/admin/fila`, for both boys at once, behind the generic error screen —
-    // with the home page still counting one pendency and no path in the app to
-    // see it, explain it or undo it. The one screen that can refuse it (D19)
-    // was the screen that had stopped existing.
+    // Unguarded, `/admin/fila` returned HTTP 500 for both boys.
     const world = freshWorld();
 
     try {
@@ -280,8 +223,7 @@ describe("a pending entry is not re-priced by an edit made under it", () => {
       expect(rows[0]?.preview).toBeNull();
       expect(rows[0]?.unpriceable).toMatch(/needs quality/);
 
-      // And the endpoint still refuses loudly: the tolerance is the list's, not
-      // the approval's (D33).
+      // The endpoint still refuses (D33); the tolerance is the list's.
       expect(() =>
         approveLog(world.connection, logId, world.adminId, {}, REVIEWED_AT),
       ).toThrow(/needs quality/);
@@ -302,8 +244,7 @@ describe("a pending entry is not re-priced by an edit made under it", () => {
   });
 
   it("refuses the edit itself once the entry is in the queue (D37)", () => {
-    // The other half, and the one an adult actually meets: with the entry
-    // already filed, the Configuration screen refuses and names it.
+    // With the entry filed, the Configuration screen refuses and names it.
     const world = freshWorld();
 
     try {
@@ -331,8 +272,7 @@ describe("a pending entry is not re-priced by an edit made under it", () => {
   });
 
   it("lets the floor move with an entry in the queue, and leaves the entry as it was (D37, D44)", () => {
-    // The floor decides whether a session is filed, never what a filed one is
-    // worth, so it is not among the fields D37 refuses.
+    // The floor decides filing, not price, so D37 does not lock it.
     const world = freshWorld();
 
     try {
@@ -391,8 +331,7 @@ describe("a pending entry is not re-priced by an edit made under it", () => {
   });
 
   it("still approves one nothing was done to", () => {
-    // The bound that makes the two cases above mean something: the guard is not
-    // simply refusing every approval.
+    // The guard does not simply refuse every approval.
     const world = freshWorld();
 
     try {

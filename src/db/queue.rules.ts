@@ -5,22 +5,11 @@ import type { LogEdits, QueueEntry } from "./queue";
 import { activities, activityLogs, ledger, users } from "./schema";
 
 /**
- * The rules of #20, written out one case at a time.
- *
- * Same shape and same reason as `src/auth/access.rules.ts` and
- * `src/engine/timer.rules.ts`: two files run this table. `queue.test.ts`
- * asserts the real module answers every case, and `queue.sabotage.test.ts`
- * rewrites `src/db/queue.ts` one clause at a time and asserts each mutant gets
- * at least one case wrong.
- *
- * These cases touch a database, which the other two tables do not, because the
- * rules they are about are rules *of* the writing: "congela `computed_hours` e
- * grava o ledger na MESMA transação" is not a statement any pure function can
- * be asked about. Each case is handed a freshly migrated and seeded database of
- * its own and answers with one string.
+ * The rules of #20, one case at a time, run by `queue.test.ts` and by
+ * `queue.sabotage.test.ts`. Each case gets its own migrated, seeded database,
+ * because the rules are about the writing.
  */
 
-/** The part of `src/db/queue.ts` a case may call. */
 export type QueueModule = {
   listPendingLogs: (connection: Connection) => QueueEntry[];
   approveLog: (
@@ -41,20 +30,12 @@ export type QueueModule = {
   rejectionReason: (note: string | null) => string | null;
 };
 
-/**
- * The moment every case is reviewed at.
- *
- * Fixed, and deliberately a different day from any entry being approved: the
- * rule under test is that the value comes from the day the entry happened (D8),
- * and a table that reviewed things on the day they happened could not tell the
- * two apart.
- */
+/** A different day from the entries', so D8's "day it happened" is visible. */
 export const REVIEWED_AT = new Date("2026-09-13T15:00:00.000Z");
 
-/** The São Paulo day `REVIEWED_AT` falls on. */
 export const TODAY = "2026-09-13";
 
-/** Three days earlier: the day the entries under review happened. */
+/** Three days earlier: the day the entries happened. */
 export const THAT_DAY = "2026-09-10";
 
 export type World = {
@@ -68,7 +49,7 @@ export type World = {
     activity: string;
     occurredOn?: string;
     durationMinutes?: number | null;
-    /** Defaults to the minutes times sixty, which is what they round back to. */
+    /** Defaults to the minutes times sixty. */
     durationSeconds?: number | null;
     quality?: number | null;
     note?: string | null;
@@ -101,35 +82,23 @@ export type World = {
   }[];
 };
 
-/**
- * `YYYY-MM-DD` shifted by whole days, written out rather than imported.
- *
- * Same argument as the one in `src/engine/cases.ts`: a table that shifts its
- * dates with the engine's own helper cannot see the day the two disagree.
- */
+/** Not the engine's helper: the table must be able to disagree with it. */
 export function shiftDay(date: string, days: number): string {
   const shifted = new Date(Date.parse(`${date}T00:00:00Z`) + days * 86_400_000);
 
   return shifted.toISOString().slice(0, 10);
 }
 
-/** The seeded activities the cases use, by name. */
 export const BOOK = "Ler livro";
 export const COMIC = "Ler quadrinhos ou HQ";
 export const CAR = "Lavar o carro";
-/** `fixed`, three hours whatever the afternoon lasted: nothing to time. */
+/** `fixed`: nothing to time. */
 export const FRIENDS = "Sair com os amigos";
-/** Escola's one timed activity: a daily bucket, no cooldown, no return bonus. */
+/** Escola's one timed activity: a daily bucket, no cooldown, no bonus. */
 export const STUDY = "Estudo para prova";
 
-/**
- * A world around an already migrated and seeded connection.
- *
- * Here rather than in the test files so both of them build the same one — a
- * matrix whose fixtures differ from the ordinary test's fixtures is a matrix
- * about a different program.
- */
-/** The category an activity sits in, for the approved fixtures (D37). */
+/** Shared by both runners, so the matrix tests the same program. */
+/** For the approved fixtures (D37). */
 function categoryOfActivity(
   connection: Connection,
   activityId: number,
@@ -168,7 +137,7 @@ export function makeWorld(connection: Connection): World {
     return row.id;
   };
 
-  /** Distinct, increasing `created_at` values, so D8's order is well defined. */
+  /** Distinct, increasing `created_at`, so D8's order is defined. */
   let stamp = new Date("2026-09-10T12:00:00.000Z").getTime();
 
   return {
@@ -219,8 +188,7 @@ export function makeWorld(connection: Connection): World {
             entry.durationMinutes === undefined ? 60 : entry.durationMinutes,
           quality: entry.quality ?? null,
           computedHours: entry.hours ?? 1,
-          // D37: an approved row carries the bucket it counted under, and
-          // `activity_logs_category_id_status_check` makes that an invariant.
+          // D37: `activity_logs_category_id_status_check`.
           categoryId: categoryOfActivity(
             connection,
             activityId(entry.activity),
@@ -272,14 +240,12 @@ export function makeWorld(connection: Connection): World {
 }
 
 export type QueueCase = {
-  /** Which acceptance criterion of #20 this case belongs to. */
   rule: string;
   name: string;
   run: (queue: QueueModule, world: World) => unknown;
   expected: unknown;
 };
 
-/** The ledger as one comparable line per row. */
 function ledgerText(world: World): string {
   const rows = world.ledgerRows();
 
@@ -293,14 +259,12 @@ function ledgerText(world: World): string {
         .join(" | ");
 }
 
-/** A log row as one comparable line. */
 function logText(world: World, id: number): string {
   const row = world.logRow(id);
 
   return `${row.status} · ${row.computedHours} h · ${row.durationMinutes} min · ${row.activityName} · by ${row.reviewedBy} · ${row.note ?? "no note"}`;
 }
 
-/** Runs `body` and names the refusal instead of letting it escape. */
 function refused(body: () => void): string {
   try {
     body();
@@ -312,7 +276,6 @@ function refused(body: () => void): string {
 }
 
 export const QUEUE_CASES: readonly QueueCase[] = [
-  // --- aprovar congela computed_hours e grava o ledger na mesma transação ---
   {
     rule: "approving freezes the value and credits the ledger",
     name: "one hour of Ler livro is an hour and a half, and a debut has no return bonus",
@@ -362,7 +325,6 @@ export const QUEUE_CASES: readonly QueueCase[] = [
     expected: 1.5,
   },
 
-  // --- aprovar usa o balde do dia em que o log ocorreu (D8) -----------------
   {
     rule: "the value comes from the day the entry happened",
     name: "a second entry of the same day is paid out of the first one's bucket",
@@ -380,21 +342,15 @@ export const QUEUE_CASES: readonly QueueCase[] = [
 
       return ledgerText(world);
     },
-    // The first is 1h × 1,5. The second reads an hour of Mente already in the
-    // bucket, so it halves to 0,75h.
+    // 1h × 1,5, then the second halves to 0,75h.
     expected: `earn 1.5 on ${THAT_DAY} for log 1 by 1 to 3 | earn 0.75 on ${THAT_DAY} for log 2 by 1 to 3`,
   },
   {
     rule: "the value comes from the day the entry happened",
     name: "today's hours do not fill the bucket of three days ago",
     run: (queue, world) => {
-      // Four hours today, which would halve an entry twice over if the bucket
-      // were read from the clock instead of from the day the entry happened.
-      //
-      // Escola and not Mente: D3's bucket is the one rule here that is per day
-      // whatever the freeze order, and Escola has neither a cooldown nor a
-      // return bonus — so this case answers about the bucket alone. With Mente
-      // it would also be answering about D34's window, which is the case below.
+      // Escola, not Mente: a per-day bucket with no cooldown or bonus, so this
+      // case is about the bucket alone (D3), not D34's window.
       world.addApproved({
         activity: STUDY,
         occurredOn: TODAY,
@@ -403,8 +359,7 @@ export const QUEUE_CASES: readonly QueueCase[] = [
       const id = world.addPending({ activity: STUDY, occurredOn: THAT_DAY });
       queue.approveLog(world.connection, id, world.adminId, {}, REVIEWED_AT);
 
-      // 1h × 1,0 on an empty day, and not the 0,25 h four hours in the bucket
-      // would make it.
+      // 1h × 1,0, not the 0,25h four hours in the bucket would make it.
       return world.logRow(id).computedHours;
     },
     expected: 1,
@@ -413,11 +368,7 @@ export const QUEUE_CASES: readonly QueueCase[] = [
     rule: "the value comes from the day the entry happened",
     name: "what was frozen first counts, whenever it happened (D34)",
     run: (queue, world) => {
-      // An hour of the same day and the same category, already approved and so
-      // already frozen, but created *after* this entry. Under D8's canonical
-      // order it was invisible here and this entry read an empty bucket; under
-      // D34 what decides is that it was frozen first, so it fills the bucket
-      // and this entry is halved.
+      // Created after this entry but frozen first, so it fills the bucket (D34).
       const entry = world.addPending({ activity: BOOK });
       world.addApproved({ activity: BOOK });
       queue.approveLog(world.connection, entry, world.adminId, {}, REVIEWED_AT);
@@ -430,12 +381,8 @@ export const QUEUE_CASES: readonly QueueCase[] = [
     rule: "the value comes from the day the entry happened",
     name: "a session that crossed midnight reads today, if today was frozen first (D31, D34)",
     run: (queue, world) => {
-      // The hole round 1 found. D31 settles a session that began at 23:50 onto
-      // the day it began, so this entry carries yesterday's `occurred_on` and
-      // reaches the queue after today's entry is already frozen. Both used to
-      // read an empty bucket and the boy was paid twice over for one afternoon
-      // of Mente. The August hour makes it a return, so the bonus is at stake
-      // (D47).
+      // D31 settles a 23:50 session onto yesterday, reaching the queue after
+      // today's entry froze (D34). The August hour makes it a return (D47).
       world.addApproved({ activity: BOOK, occurredOn: "2026-08-01" });
       world.addApproved({ activity: BOOK, occurredOn: TODAY });
 
@@ -451,15 +398,12 @@ export const QUEUE_CASES: readonly QueueCase[] = [
         REVIEWED_AT,
       );
 
-      // Not 2,25 h: today's hour of Mente was frozen first and it is inside this
-      // entry's three-day return-bonus window, so the bonus is gone. The
-      // bucket is untouched — D3 is per day, and these are two days.
+      // Today's hour froze first and sits in the bonus window; the bucket is per day.
       return world.logRow(yesterday).computedHours;
     },
     expected: 1.5,
   },
 
-  // --- aprovar respeita a ordem canônica (D8, D15) --------------------------
   {
     rule: "an entry is not frozen while an earlier one is undecided",
     name: "the newer of two entries of one day cannot be approved first",
@@ -505,8 +449,7 @@ export const QUEUE_CASES: readonly QueueCase[] = [
     rule: "an entry is not frozen while an earlier one is undecided",
     name: "the cooldown's own window blocks across days too",
     run: (queue, world) => {
-      // "Lavar o carro" repeats on a seven-day cooldown, so Monday is in
-      // Tuesday's window: approving Tuesday first paid 3 h twice.
+      // A seven-day cooldown puts Monday in Tuesday's window.
       world.addPending({
         activity: CAR,
         occurredOn: "2026-09-07",
@@ -593,9 +536,7 @@ export const QUEUE_CASES: readonly QueueCase[] = [
     rule: "an entry is not frozen while an earlier one is undecided",
     name: "an entry outside the calculation's window does not block anything",
     run: (queue, world) => {
-      // Ler livro looks three days back for the return bonus and no further, so
-      // a fortnight-old entry an adult has not decided is none of its business,
-      // once Mente has an approved past it cannot be the debut of (D47).
+      // Outside the three-day bonus window, and Mente already has an approved past (D47).
       world.addApproved({ activity: BOOK, occurredOn: "2026-08-01" });
       world.addPending({ activity: BOOK, occurredOn: "2026-08-27" });
       const today = world.addPending({ activity: BOOK });
@@ -687,7 +628,6 @@ export const QUEUE_CASES: readonly QueueCase[] = [
     expected: `${BOOK}: free | ${COMIC}: ${BOOK}`,
   },
 
-  // --- D10: um valor de zero não gera linha no ledger -----------------------
   {
     rule: "a value of zero is a record with no ledger line",
     name: "a delivery graded zero is approved and credits nothing",
@@ -738,7 +678,6 @@ export const QUEUE_CASES: readonly QueueCase[] = [
     expected: "0 · false",
   },
 
-  // --- D19: rejeitar não cria nada e não conta para nada --------------------
   {
     rule: "a rejected entry creates nothing and counts for nothing",
     name: "it is rejected, reviewed, and has no value",
@@ -767,8 +706,7 @@ export const QUEUE_CASES: readonly QueueCase[] = [
 
       return world.logRow(kept).computedHours;
     },
-    // Full value: the refused hour never happened as far as the bucket, the
-    // cooldown and the return bonus are concerned.
+    // Full value: the refused hour never happened (D19).
     expected: 1.5,
   },
   {
@@ -829,9 +767,7 @@ export const QUEUE_CASES: readonly QueueCase[] = [
   {
     rule: "a rejected entry creates nothing and counts for nothing",
     name: "a reason that stands alone is read back too (#72)",
-    // The other branch of `rejectionReason`: with no note of the boy's, the
-    // marker opens the text instead of following a newline. Nothing exercised
-    // it — every other round-trip case here hands it a note as well.
+    // The other branch: with no note, the marker opens the text.
     run: (queue) =>
       queue.rejectionReason(queue.rejectionNote(null, "Sem capacete")) ??
       "null",
@@ -840,11 +776,7 @@ export const QUEUE_CASES: readonly QueueCase[] = [
   {
     rule: "a rejected entry creates nothing and counts for nothing",
     name: "a reason carrying the marker itself comes back cut, which is known (#72)",
-    // Not the behaviour anybody wants — it is the residual of holding two
-    // voices in one text column, written down here so it is a measured fact
-    // rather than a surprise. `queue.ts` names it beside the other one, and
-    // the fix for both is a column of its own. This case is what an honest
-    // fix deletes.
+    // The accepted two-voices residue `queue.ts` names; a column of its own fixes it.
     run: (queue) =>
       queue.rejectionReason(
         queue.rejectionNote(
@@ -857,11 +789,7 @@ export const QUEUE_CASES: readonly QueueCase[] = [
   {
     rule: "a rejected entry creates nothing and counts for nothing",
     name: "a reason with a line break in it is read back whole (#72)",
-    // The case `rejectionReason` is written for: `rejectLogAction` trims a
-    // reason but does not forbid a newline inside one, so the function reads
-    // from the last marker to the end of the text rather than to the end of
-    // the line. Explained in its docstring, and now watched — a "last line"
-    // implementation would hand back "Você estava no celular" alone.
+    // A reason with a newline: read to the end of the text, not the line.
     run: (queue) =>
       queue.rejectionReason(
         queue.rejectionNote(
@@ -872,7 +800,6 @@ export const QUEUE_CASES: readonly QueueCase[] = [
     expected: "Você estava no celular\ne já tínhamos combinado",
   },
 
-  // --- editar duração, nota ou atividade antes de aprovar -------------------
   {
     rule: "an edit applies before the value is computed",
     name: "half the duration is half the value",
@@ -895,8 +822,7 @@ export const QUEUE_CASES: readonly QueueCase[] = [
     rule: "an edit applies before the value is computed",
     name: "another activity is another rate",
     run: (queue, world) => {
-      // Since #110 the seed prices comics at Mente's rate, so they are moved
-      // off it here: the number has to say which activity paid.
+      // Comics cost Mente's rate since #110, so they move off it to show which paid.
       world.connection.sqlite
         .prepare("update activities set value = 1 where name = ?")
         .run(COMIC);
@@ -967,8 +893,7 @@ export const QUEUE_CASES: readonly QueueCase[] = [
         durationMinutes: 2,
         durationSeconds: 100,
       });
-      // What the correction form sends when the adult opened it for the note
-      // alone: every field it shows, the minutes among them and untouched.
+      // The correction form resends the untouched minutes with a note-only edit.
       queue.approveLog(
         world.connection,
         id,
@@ -1109,7 +1034,6 @@ export const QUEUE_CASES: readonly QueueCase[] = [
       "refused: a duration is a whole number of minutes, between 1 and 1000000; received 1000000000",
   },
 
-  // --- uma decisão por entrada ----------------------------------------------
   {
     rule: "an entry is decided once",
     name: "approving twice is refused, and credits once",
@@ -1149,12 +1073,7 @@ export const QUEUE_CASES: readonly QueueCase[] = [
   },
 ];
 
-/**
- * The cases `queue` gets wrong, each run against a world of its own.
- *
- * A fresh database per case, because these cases write: sharing one would make
- * the answer depend on the order the table happens to be in.
- */
+/** A fresh database per case, since the cases write. */
 export function failingQueueCases(
   queue: QueueModule,
   worlds: () => World,
@@ -1165,8 +1084,7 @@ export function failingQueueCases(
     try {
       return queueCase.run(queue, world) !== queueCase.expected;
     } catch (thrown) {
-      // A mutant that throws where the table expects a value is caught, and
-      // says so instead of taking the whole run down.
+      // A throwing mutant is caught, not fatal to the run.
       return `threw: ${(thrown as Error).message}` !== queueCase.expected;
     } finally {
       world.connection.sqlite.close();

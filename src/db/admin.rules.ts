@@ -6,21 +6,10 @@ import { BOOK, CAR, COMIC, FRIENDS, makeWorld, THAT_DAY } from "./queue.rules";
 import { activities, activityLogs, categories, ledger, users } from "./schema";
 
 /**
- * The rules of #22, written out one case at a time.
- *
- * Same shape and same reason as `queue.rules.ts`, and built on that file's own
- * `World` on purpose: the launch and the approval are the two ways an entry
- * gets frozen, they are governed by the same decisions, and a matrix whose
- * fixtures differ from the neighbouring matrix's fixtures is a matrix about a
- * different program.
- *
- * Two files run this table. `admin.test.ts` asserts the real module answers
- * every case, and `admin.sabotage.test.ts` rewrites one clause of
- * `src/db/admin.ts`, `src/db/input.ts` or `src/db/people.ts` at a time and
- * asserts each mutant gets at least one case wrong.
+ * The rules of #22, on `queue.rules.ts`'s world — launch and approval are the
+ * two ways an entry is frozen — run by `admin.test.ts` and the sabotage matrix.
  */
 
-/** The part of the launch a case may call. */
 export type AdminModule = {
   previewEntry: (
     connection: Connection,
@@ -35,44 +24,28 @@ export type AdminModule = {
   ) => LaunchResult;
 };
 
-/**
- * The moment every case launches at, and the day it falls on in São Paulo.
- *
- * Deliberately a different day from `THAT_DAY`, which is the day the entries
- * happen on: the rule under test is that the value comes from the day the
- * activity happened (D8), and a table that launched everything on the day it
- * happened could not tell the two apart.
- */
+/** A different day from `THAT_DAY`, so D8's "day it happened" is visible. */
 export const LAUNCHED_AT = new Date("2026-09-13T15:00:00.000Z");
 
-/** The São Paulo day `LAUNCHED_AT` falls on. */
 export const TODAY = "2026-09-13";
 
-/** Curinga's one activity: `free`, and the value is typed at launch (D11, D12). */
+/** Curinga's `free` activity (D11, D12). */
 export const FREE = "Atividade avulsa";
 
-/**
- * Escola's one timed activity: a daily bucket, and neither a cooldown nor a
- * return bonus.
- *
- * Which makes it the one activity whose entries read nothing outside their own
- * day — the case that separates "the bucket is the day it happened" from every
- * rule that looks across days.
- */
+/** Escola's timed activity: reads nothing outside its own day. */
 export const STUDY = "Estudo para prova";
 
 export type AdminWorld = World & {
-  /** Kid2, for the case that launches onto the other boy. */
+  /** For launching onto the other boy. */
   otherKidId: number;
   balance: (userId: number) => number;
   pendingCount: () => number;
-  /** Every log of every status, for the assertions about what a refusal left. */
+  /** Every status, for what a refusal left. */
   logCount: () => number;
   reject: (logId: number) => void;
   setActivityActive: (name: string, active: boolean) => void;
   setCategoryActive: (name: string, active: boolean) => void;
   setUserActive: (userId: number, active: boolean) => void;
-  /** One log as a comparable line, including the columns #22 is about. */
   entryText: (logId: number) => string;
   ledgerText: () => string;
 };
@@ -193,14 +166,12 @@ export function makeAdminWorld(connection: Connection): AdminWorld {
 }
 
 export type AdminCase = {
-  /** Which acceptance criterion of #22 this case belongs to. */
   rule: string;
   name: string;
   run: (admin: AdminModule, world: AdminWorld) => unknown;
   expected: unknown;
 };
 
-/** Runs `body` and names the refusal instead of letting it escape. */
 function refused(body: () => void): string {
   try {
     body();
@@ -211,7 +182,7 @@ function refused(body: () => void): string {
   return "not refused";
 }
 
-/** One hour of an activity, for the boy of the world, on the day it happened. */
+/** One hour, for the world's boy, on the day it happened. */
 function entry(world: AdminWorld, overrides: Partial<NewEntry> = {}): NewEntry {
   return {
     userId: world.kidId,
@@ -223,7 +194,6 @@ function entry(world: AdminWorld, overrides: Partial<NewEntry> = {}): NewEntry {
 }
 
 export const ADMIN_CASES: readonly AdminCase[] = [
-  // --- D18: nasce approved, com reviewed_by, e o ledger na mesma transação ---
   {
     rule: "an admin's entry is born approved and credited",
     name: "one hour of Ler livro is an hour and a half, and a debut has no return bonus",
@@ -316,14 +286,11 @@ export const ADMIN_CASES: readonly AdminCase[] = [
     expected: "0 · 1.5",
   },
 
-  // --- D8: o balde é o do dia em que ocorreu, não o de hoje -----------------
   {
     rule: "a retroactive entry reads the day it happened",
     name: "four hours of today do not touch an entry from three days ago",
     run: (admin, world) => {
-      // Escola: a daily bucket, no cooldown and no return bonus, so today's
-      // four hours cannot reach back to a day the launch is landing on. Four
-      // hours read as this entry's bucket would pay 0,25 h instead of 1 h.
+      // Escola: today's four hours would make it 0,25 h if they were read.
       world.addApproved({
         activity: STUDY,
         occurredOn: TODAY,
@@ -354,8 +321,7 @@ export const ADMIN_CASES: readonly AdminCase[] = [
         LAUNCHED_AT,
       );
 
-      // 1h × 1,5, halved by the hour of Mente already done that day, and the
-      // return bonus is gone with it.
+      // 1h × 1,5, halved by the hour already done; the bonus goes with it.
       return hours;
     },
     expected: 0.75,
@@ -379,7 +345,7 @@ export const ADMIN_CASES: readonly AdminCase[] = [
     rule: "a retroactive entry reads the day it happened",
     name: "the seven-day cooldown is read from that day too",
     run: (admin, world) => {
-      // Washed four days before the day being launched: inside Casa's window.
+      // Four days before: inside Casa's window.
       world.addApproved({
         activity: CAR,
         occurredOn: "2026-09-06",
@@ -422,7 +388,6 @@ export const ADMIN_CASES: readonly AdminCase[] = [
     expected: 1.5,
   },
 
-  // --- D32: a ordem não é do adulto ----------------------------------------
   {
     rule: "an entry is not frozen out of the canonical order",
     name: "a pending entry of the same day has to be decided first",
@@ -491,10 +456,8 @@ export const ADMIN_CASES: readonly AdminCase[] = [
     rule: "an entry is not frozen out of the canonical order",
     name: "a pending entry one day outside the window does not block",
     run: (admin, world) => {
-      // Mente reads three days back for the return bonus and no further, so
-      // the window of an entry on the 10th opens on the 7th and this is the
-      // day before it. A window one day wider would swallow this case. The
-      // approved past keeps it from being Mente's debut (D47).
+      // The day before the bonus window opens; the approved past keeps it
+      // from being a debut (D47).
       world.addApproved({ activity: BOOK, occurredOn: "2026-08-01" });
       world.addPending({ activity: BOOK, occurredOn: "2026-09-06" });
 
@@ -565,8 +528,7 @@ export const ADMIN_CASES: readonly AdminCase[] = [
     rule: "an entry is not frozen out of the canonical order",
     name: "a pending entry on the first day of the window does block",
     run: (admin, world) => {
-      // The other side of the same edge: the window of an entry on the 10th
-      // opens on the 7th, so this one is inside it by a day.
+      // Inside the window by a day.
       world.addPending({ activity: BOOK, occurredOn: "2026-09-07" });
 
       return refused(() =>
@@ -584,8 +546,7 @@ export const ADMIN_CASES: readonly AdminCase[] = [
     rule: "an entry is not frozen out of the canonical order",
     name: "a pending entry of a later day does not block",
     run: (admin, world) => {
-      // Nothing after this entry can be read by it, decided or not — and when
-      // that one is approved it will read this one, which is D8 working.
+      // A later entry is not read by this one, decided or not.
       world.addPending({ activity: BOOK, occurredOn: TODAY });
 
       const { hours } = admin.launchEntry(
@@ -611,15 +572,11 @@ export const ADMIN_CASES: readonly AdminCase[] = [
     expected: BOOK,
   },
 
-  // --- D34: a franquia é consumida na ordem de congelamento ----------------
   {
     rule: "a launch reads what its window has already spent",
     name: "the wash of Monday, launched after Tuesday's was frozen, pays half",
     run: (admin, world) => {
-      // Tuesday was frozen first and paid in full: nothing washed in the seven
-      // days before it. Monday is launched afterwards, so it is frozen second
-      // and reads the allowance Tuesday already spent — which is D34, and
-      // which is what closes the door D32 closed on the queue's side.
+      // Tuesday froze first and paid in full; Monday reads what it spent (D34).
       world.addApproved({
         activity: CAR,
         occurredOn: "2026-09-08",
@@ -642,7 +599,7 @@ export const ADMIN_CASES: readonly AdminCase[] = [
 
       return hours;
     },
-    // 3 h × 1,0 for the grade, halved by the cooldown Tuesday already spent.
+    // 3 h × 1,0, halved by the cooldown Tuesday already spent.
     expected: 1.5,
   },
   {
@@ -669,9 +626,7 @@ export const ADMIN_CASES: readonly AdminCase[] = [
         LAUNCHED_AT,
       );
 
-      // The two frozen values, and their sum. Tuesday is untouched beside it:
-      // D15 says a frozen value is never recomputed, and the 6 h this pair used
-      // to cost is the number D32 measured on the queue.
+      // Tuesday does not move (D15).
       const tuesdayHours = world.logRow(tuesday).computedHours ?? 0;
 
       return `${tuesdayHours} + ${hours} = ${tuesdayHours + hours}`;
@@ -682,8 +637,7 @@ export const ADMIN_CASES: readonly AdminCase[] = [
     rule: "a launch reads what its window has already spent",
     name: "the last day the window reaches forward to still counts",
     run: (admin, world) => {
-      // Casa's cooldown is seven days, so a wash on the 8th is inside the
-      // window of a wash on the 1st — by exactly one day of margin.
+      // A wash on the 8th is inside the 1st's seven-day window by one day.
       world.addApproved({
         activity: CAR,
         occurredOn: "2026-09-08",
@@ -724,8 +678,7 @@ export const ADMIN_CASES: readonly AdminCase[] = [
         world.connection,
         entry(world, {
           activityId: world.activityId(CAR),
-          // Eight days earlier: outside the seven-day cooldown, so the two
-          // washes have nothing to do with each other and both pay in full.
+          // Eight days earlier: outside the cooldown, so both pay in full.
           occurredOn: "2026-08-31",
           durationMinutes: null,
           quality: 1,
@@ -785,15 +738,11 @@ export const ADMIN_CASES: readonly AdminCase[] = [
     expected: 1.5,
   },
 
-  // --- D34: o resíduo aceito -----------------------------------------------
   {
     rule: "the residue D34 accepts: a frozen explanation ages, and stands",
     name: "the entry frozen first keeps its number",
     run: (admin, world) => {
-      // Sunday took the return bonus because nothing of Mente had been done in
-      // the three days before it. Thursday is launched afterwards and is
-      // inside that window, so the sentence Sunday was frozen with — "faz mais
-      // de 3 dias que você não faz Mente" — stops being true of the record.
+      // Thursday lands inside the gap Sunday's bonus sentence described.
       const sunday = world.addApproved({
         activity: BOOK,
         occurredOn: TODAY,
@@ -808,9 +757,7 @@ export const ADMIN_CASES: readonly AdminCase[] = [
         LAUNCHED_AT,
       );
 
-      // **Nothing about Sunday moves.** D15 forbids recomputing it, and this
-      // case is here so that nobody "fixes" the stale sentence later by doing
-      // exactly that: the number the boy was credited is the number he keeps.
+      // D34's accepted residue: Sunday's number stays; only its sentence ages (D15).
       return world.logRow(sunday).computedHours;
     },
     expected: 5.63,
@@ -833,8 +780,7 @@ export const ADMIN_CASES: readonly AdminCase[] = [
         LAUNCHED_AT,
       );
 
-      // 1h × 1,5, and no return bonus: Sunday spent the gap first. Under the
-      // old rule this paid 2,25 h and the boy took the bonus twice for one gap.
+      // 1h × 1,5, no bonus: Sunday spent the gap first.
       return hours;
     },
     expected: 1.5,
@@ -859,11 +805,10 @@ export const ADMIN_CASES: readonly AdminCase[] = [
 
       return world.ledgerText();
     },
-    // `addApproved` writes no ledger row, so what is here is the launch's own.
+    // `addApproved` writes no ledger row, so this one is the launch's.
     expected: `earn 1.5 on ${THAT_DAY} for log 2 by 1 to 3`,
   },
 
-  // --- D10: um valor de zero não gera linha no ledger -----------------------
   {
     rule: "a value of zero is a record with no ledger line",
     name: "a delivery graded zero is launched and credits nothing",
@@ -924,7 +869,6 @@ export const ADMIN_CASES: readonly AdminCase[] = [
     expected: `approved admin · 0 h · null min · nota 0 · avulso null · ${CAR} · ${THAT_DAY} · by 1/1 · no note`,
   },
 
-  // --- cada modo guarda o que é seu ----------------------------------------
   {
     rule: "each mode stores what belongs to it",
     name: "a fixed activity keeps no duration, whatever was sent",
@@ -946,8 +890,7 @@ export const ADMIN_CASES: readonly AdminCase[] = [
   },
   {
     rule: "each mode stores what belongs to it",
-    // D17 amended by #71: the row carries seconds as well as minutes, and an
-    // adult typing an hour means an hour in both of them.
+    // D17: an hour typed is an hour in seconds and minutes both.
     name: "a typed duration is stored in seconds too, and only for duration",
     run: (admin, world) => {
       const timed = admin.launchEntry(
@@ -987,7 +930,7 @@ export const ADMIN_CASES: readonly AdminCase[] = [
 
       return world.entryText(logId);
     },
-    // Curinga neither decays nor bonuses (D12), so the typed value is the value.
+    // D12: the typed value is the value.
     expected: `approved admin · 2.5 h · null min · nota null · avulso 2.5 · ${FREE} · ${THAT_DAY} · by 1/1 · no note`,
   },
   {
@@ -1024,11 +967,8 @@ export const ADMIN_CASES: readonly AdminCase[] = [
   },
   {
     rule: "each mode stores what belongs to it",
-    // The refusal has to land on a *missing* duration too, and not only on a
-    // number out of range. `launchEntry` writes `duration_seconds` under an
-    // `entry.durationMinutes != null` guard (D17, #71), and that guard is only
-    // unreachable for as long as this refusal happens first — weaken it and a
-    // duration entry is filed with minutes and no seconds beside them.
+    // A missing duration too: `launchEntry` writes seconds only under a `!= null`
+    // guard this refusal makes unreachable.
     name: "a duration activity with the duration left out is refused too",
     run: (admin, world) =>
       refused(() =>
@@ -1045,8 +985,7 @@ export const ADMIN_CASES: readonly AdminCase[] = [
     rule: "each mode stores what belongs to it",
     name: "another activity is another rate",
     run: (admin, world) => {
-      // Since #110 the seed prices comics at Mente's rate, so they are moved
-      // off it here: the number has to say which activity paid.
+      // Comics cost Mente's rate since #110, so they move off it to show which paid.
       world.connection.sqlite
         .prepare("update activities set value = 1 where name = ?")
         .run(COMIC);
@@ -1100,7 +1039,6 @@ export const ADMIN_CASES: readonly AdminCase[] = [
     expected: `refused: ${CAR}: quality must be one of 0 · 0.3 · 0.5 · 0.7 · 1, received 3`,
   },
 
-  // --- D33: item inativo é recusado pelo endpoint, não só escondido --------
   {
     rule: "an inactive item is refused by the endpoint",
     name: "a deactivated activity cannot be launched",
@@ -1193,7 +1131,6 @@ export const ADMIN_CASES: readonly AdminCase[] = [
     expected: "refused: activity N is not active and cannot be chosen (D14)",
   },
 
-  // --- a data que o adulto digitou -----------------------------------------
   {
     rule: "the date is a real day, and never after today",
     name: "tomorrow is refused",
@@ -1240,7 +1177,6 @@ export const ADMIN_CASES: readonly AdminCase[] = [
       "refused: a date must be a real day in YYYY-MM-DD, received 2026-02-30",
   },
 
-  // --- o preview mostra o valor e não escreve nada --------------------------
   {
     rule: "the preview says what it would pay and writes nothing",
     name: "it answers the same number the launch will",
@@ -1271,12 +1207,7 @@ export const ADMIN_CASES: readonly AdminCase[] = [
   },
 ];
 
-/**
- * The cases `admin` gets wrong, each run against a world of its own.
- *
- * A fresh database per case, because these cases write: sharing one would make
- * the answer depend on the order the table happens to be in.
- */
+/** A fresh database per case, since the cases write. */
 export function failingAdminCases(
   admin: AdminModule,
   worlds: () => AdminWorld,

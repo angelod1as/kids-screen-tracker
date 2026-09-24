@@ -18,50 +18,26 @@ import { failingQueueCases, makeWorld, QUEUE_CASES } from "./queue.rules";
 import { seedWithTestUsers } from "./test-users";
 
 /**
- * The sabotage matrix for the approval (#20).
- *
- * The rules this file protects are the ones the review notes warned about by
- * name — recompute inside the transaction, use the bucket of the day the entry
- * happened, never write a ledger row for a value of zero — and every one of
- * them has the same property: breaking it leaves a program that works. The
- * queue still empties, the boy still gets hours, the screens still render. The
- * number is just wrong, in the boy's favour or against him, and no assertion
- * anybody writes by habit would notice.
- *
- * So each mutation below rewrites one clause of `src/db/queue.ts`, compiles the
- * result, and runs the whole `QUEUE_CASES` table against it on a database of
- * its own.
- *
- * **The control is the point of the file as much as the mutations are.** One
- * rewrite here changes nothing semantically — it removes a `where` bound that
- * only saves the engine from being handed rows it would discard — and it has to
- * come back *uncaught*. Without that, a matrix whose loader quietly failed
- * would report every rule protected, and this project has been handed exactly
- * that report before.
+ * Sabotage matrix for the approval (#20): a broken rule leaves a working
+ * queue with a wrong number. One control rewrite must come back uncaught.
  */
 
 const SOURCE_PATH = join(import.meta.dirname, "queue.ts");
 const MUTANT_DIR = join(import.meta.dirname, "..", "..", ".sabotage-queue");
 
-/**
- * The two interpolations as they appear in the source being mutated, assembled
- * from halves so the linter does not read this file's own strings as template
- * strings somebody forgot to mark. `screens.sabotage.test.ts` does the same.
- */
+/** Assembled from halves so Biome does not read them as unmarked templates. */
 const NOTE = `$${"{note}"}`;
 const WRITTEN = `$${"{written}"}`;
 
-/** `\n${marker}`, as `rejectionReason` writes it, assembled for the same reason. */
+/** `\n${marker}`, assembled likewise. */
 const NEWLINE_MARKER = `${"\\n"}$${"{marker}"}`;
 
 type Mutation = {
   name: string;
-  /** One or more exact rewrites, all of which have to apply. */
   edits: { find: string; replace: string }[];
 };
 
 const MUTATIONS: readonly Mutation[] = [
-  // --- o balde é o do dia em que o log ocorreu, em ordem canônica (D8) ------
   {
     name: "the history stops at the entry's own day (D34)",
     edits: [
@@ -115,7 +91,6 @@ const MUTATIONS: readonly Mutation[] = [
     ],
   },
 
-  // --- D19: rejeitado não conta ---------------------------------------------
   {
     name: "pending and rejected entries fill the bucket too",
     edits: [
@@ -173,7 +148,6 @@ const MUTATIONS: readonly Mutation[] = [
     ],
   },
 
-  // --- congelar o valor e gravar o ledger ------------------------------------
   {
     name: "the frozen value is zero",
     edits: [
@@ -220,7 +194,6 @@ const MUTATIONS: readonly Mutation[] = [
     ],
   },
 
-  // --- editar antes de aprovar ----------------------------------------------
   {
     name: "the corrected duration is ignored",
     edits: [
@@ -267,7 +240,6 @@ const MUTATIONS: readonly Mutation[] = [
     ],
   },
 
-  // --- uma decisão por entrada ----------------------------------------------
   {
     name: "an entry can be reviewed twice",
     edits: [
@@ -278,7 +250,6 @@ const MUTATIONS: readonly Mutation[] = [
     ],
   },
 
-  // --- aprovar respeita a ordem canônica (D8, D15) --------------------------
   {
     name: "an entry can be approved while an earlier one is still waiting",
     edits: [
@@ -317,7 +288,6 @@ const MUTATIONS: readonly Mutation[] = [
     ],
   },
 
-  // --- a atividade para a qual o adulto move a entrada -----------------------
   {
     name: "the activity an entry is moved to is not checked at all",
     edits: [
@@ -355,7 +325,6 @@ const MUTATIONS: readonly Mutation[] = [
     ],
   },
 
-  // --- a fila mostra o que está esperando ------------------------------------
   {
     name: "the queue shows entries that were already decided",
     edits: [
@@ -396,19 +365,7 @@ const MUTATIONS: readonly Mutation[] = [
   },
 ];
 
-/**
- * The rewrite that has to come back uncaught.
- *
- * `lte(occurred_on, log.occurred_on)` is a bound on the *query*, not a rule:
- * the engine's `isEarlier` already drops every row from a later day, so
- * removing it changes which rows are fetched and not which rows are counted. It
- * is a real optimisation, it looks exactly like the `where` clause above it
- * that *is* a rule (D19's `status = 'approved'`, which the matrix does catch),
- * and it is the shape of thing a reviewer would flag as suspicious.
- *
- * Which is what makes it the control: same file, same loader, same table, same
- * kind of edit — and the answer is no.
- */
+/** The control: a `where` bound `isEarlier` already enforces, removed. */
 const CONTROL: Mutation = {
   name: "the query stops bounding the history at the entry's own day",
   edits: [
@@ -546,9 +503,7 @@ describe("the control: the matrix can still say no", () => {
   it("catches the neighbouring clause that is a rule", {
     timeout: 30_000,
   }, async () => {
-    // The line above the control's, in the same `where`, edited the same way.
-    // One is an optimisation and one is D19; the matrix has to tell them
-    // apart, and that it does is what the control's silence is worth.
+    // Edited like the control, but D19: the matrix must tell them apart.
     const failures = failingQueueCases(
       await loadMutant(
         2 * MUTATIONS.length + 1,

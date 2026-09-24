@@ -12,27 +12,10 @@ import {
 import type { TimedActivity, TimerRead, TimerWrite } from "./timers";
 
 /**
- * The rules of the settlement — the part of #18 and #19 that writes — one case
- * at a time.
- *
- * Same shape and same reason as `queue.rules.ts`: `timers.test.ts` asserts the
- * real module answers every case and `timers.sabotage.test.ts` rewrites
- * `src/db/timers.ts` one clause at a time and asserts each mutant gets at least
- * one case wrong.
- *
- * It exists because round 1 measured what nothing here could see: three
- * mutations of this module survived the whole suite. The rounding of the banked
- * seconds, the instant a stop is dated at, and — worst of the three — the
- * re-read inside `readTimer`'s transaction, which is the only thing standing
- * between two tabs and two records for one session, and which could be deleted
- * whole with 799 tests still green.
- *
- * The cases touch a database, like the queue's, because these rules are rules
- * *of* the writing. Each is handed a freshly migrated and seeded database of
- * its own and answers with one string.
+ * The settlement rules of #18 and #19, one case at a time, run by
+ * `timers.test.ts` and the sabotage matrix, each on its own migrated database.
  */
 
-/** The part of `src/db/timers.ts` a case may call. */
 export type TimersModule = {
   readTimer: (connection: Connection, userId: number, now: Date) => TimerRead;
   startTimer: (
@@ -60,33 +43,26 @@ const SECOND = 1000;
 const MINUTE = 60 * SECOND;
 const HOUR = 60 * MINUTE;
 
-/** A Tuesday, 14:00 in São Paulo. Ten hours short of the turn of the day. */
+/** A Tuesday, 14:00 in São Paulo: ten hours before the day turns. */
 export const START = new Date("2026-09-01T17:00:00.000Z");
 
-/** 08:00 in São Paulo, so a pause has its twelve hours inside the day. */
+/** 08:00, so a twelve-hour pause fits inside the day. */
 export const MORNING = new Date("2026-09-01T11:00:00.000Z");
 
 /** "Ler livro": Mente, two hours a session. */
 export const BOOK = "Ler livro";
-/** "Sair com os amigos": Convívio, `fixed`, nothing to time. */
+/** "Sair com os amigos": `fixed`, nothing to time. */
 export const FRIENDS = "Sair com os amigos";
 
 export type World = {
   connection: Connection;
-  /** Kid1. */
   kidId: number;
   activityId: (name: string) => number;
-  /** A second connection to the same file, for the two-tabs cases. */
+  /** For the two-tabs cases. */
   open: () => Connection;
-  /** Closes this world's connections, the extra ones included. */
+  /** The extra connections included. */
   closeAll: () => void;
-  /**
-   * The same connection, with one thing happening between the read that decides
-   * a settlement is due and the transaction that writes it.
-   *
-   * That gap is the whole reason `readTimer` reads the row again inside its own
-   * transaction, and nothing else in the suite can stand in it.
-   */
+  /** Something happens between `readTimer`'s unlocked read and its transaction. */
   racing: (interleave: () => void) => Connection;
   timerRow: () => { status: string; accumulatedSeconds: number } | undefined;
   logs: () => {
@@ -101,10 +77,7 @@ export type World = {
   }[];
 };
 
-/**
- * A world around an already migrated and seeded connection, plus the path it
- * was opened from so a case can open a second one.
- */
+/** Keeps the path so a case can open a second connection. */
 export function makeWorld(connection: Connection, databasePath: string): World {
   const kid = connection.db
     .select({ id: users.id })
@@ -168,16 +141,7 @@ export function makeWorld(connection: Connection, databasePath: string): World {
   };
 }
 
-/**
- * A connection that lets somebody else in once, just before the first
- * transaction it is asked for begins.
- *
- * The proxy is on `transaction` alone and every other member is handed back
- * bound to the real handle, so what the module under test does with it is what
- * it would do with any connection. `writeTransaction` is what calls
- * `transaction`, so this is exactly the gap between `readTimer`'s first,
- * unlocked read and the write lock it then takes.
- */
+/** Lets another tab in once, just before the first `transaction` call. */
 function racingConnection(
   connection: Connection,
   interleave: () => void,
@@ -208,14 +172,12 @@ function racingConnection(
 }
 
 export type TimersCase = {
-  /** Which acceptance criterion of #18 or #19 this case belongs to. */
   rule: string;
   name: string;
   run: (timers: TimersModule, world: World) => unknown;
   expected: unknown;
 };
 
-/** Every record the boy has, as one comparable line each. */
 function logsText(world: World): string {
   const rows = world.logs();
 
@@ -229,7 +191,6 @@ function logsText(world: World): string {
         .join(" | ");
 }
 
-/** Runs `body` and names the refusal instead of letting it escape. */
 function refused(body: () => void): string {
   try {
     body();
@@ -240,13 +201,11 @@ function refused(body: () => void): string {
   return "not refused";
 }
 
-/** Starts a session of `activity` at `START` and hands back nothing. */
 function startBook(timers: TimersModule, world: World, at: Date = START): void {
   timers.startTimer(world.connection, world.kidId, world.activityId(BOOK), at);
 }
 
 export const TIMERS_CASES: readonly TimersCase[] = [
-  // --- o registro sai dos carimbos, e só deles ------------------------------
   {
     rule: "the record is written from the stamps",
     name: "a stop writes one pending record, from the timer, with the note",
@@ -293,8 +252,7 @@ export const TIMERS_CASES: readonly TimersCase[] = [
     rule: "the record is written from the stamps",
     name: "a stop is dated at the pause it froze, not at the confirmation",
     run: (timers, world) => {
-      // *Parar* pauses first and the boy then types a note. The record has to
-      // end where he stopped reading, however long the typing took.
+      // *Parar* pauses first; the typing afterwards must not lengthen the record.
       startBook(timers, world);
       timers.pauseTimer(
         world.connection,
@@ -346,14 +304,12 @@ export const TIMERS_CASES: readonly TimersCase[] = [
 
       timers.stopTimer(world.connection, world.kidId, null, new Date(now));
 
-      // A hundred seconds of reading is one minute forty, and nothing the boy
-      // taps may make it three.
+      // 100 s of reading is 1 min 40, and no tapping may make it three.
       return (world.logs()[0]?.durationMinutes ?? 0) <= 7;
     },
     expected: true,
   },
 
-  // --- uma sessão por menino, e só o que dá para cronometrar ----------------
   {
     rule: "one session at a time, and only what a stopwatch can measure",
     name: "a second session is refused while one is open",
@@ -415,7 +371,6 @@ export const TIMERS_CASES: readonly TimersCase[] = [
       "false — refused: activity N cannot be timed: it must be active and measured by duration",
   },
 
-  // --- a liquidação acontece uma vez, por mais que se leia -------------------
   {
     rule: "a settlement is written once, however many tabs are looking",
     name: "reading the same finished session twice writes one record",
@@ -433,9 +388,7 @@ export const TIMERS_CASES: readonly TimersCase[] = [
     rule: "a settlement is written once, however many tabs are looking",
     name: "a tab that settles it between the two reads does not get a second record",
     run: (timers, world) => {
-      // The gap `readTimer` re-reads to close: this connection settles the
-      // session on another one after the first, unlocked read has already
-      // decided a settlement is due.
+      // Another connection settles the session inside the gap.
       startBook(timers, world);
       const late = new Date(START.getTime() + 5 * HOUR);
       const racing = world.racing(() => {
@@ -469,15 +422,8 @@ export const TIMERS_CASES: readonly TimersCase[] = [
     rule: "a settlement is written once, however many tabs are looking",
     name: "a limit lengthened between the two reads leaves the session running",
     run: (timers, world) => {
-      // The settlement is decided on what the transaction sees, not on what the
-      // unlocked read saw: a limit lengthened in that gap must not have a
-      // record written for a session that is still going.
-      //
-      // The race is run against the *timer's own* limit, because that is the
-      // number the transaction reads now (D38). Lengthening the activity's
-      // limit no longer reaches an open session at all — that is the whole of
-      // D38 — so racing it would be racing something inert, and the case would
-      // pass without exercising anything.
+      // Decided on what the transaction sees. Raced on the timer's own limit: the
+      // activity's no longer reaches an open session (D38).
       startBook(timers, world);
       const late = new Date(START.getTime() + 5 * HOUR);
       const racing = world.racing(() => {
@@ -495,7 +441,6 @@ export const TIMERS_CASES: readonly TimersCase[] = [
     expected: "open · no record",
   },
 
-  // --- o limite, o abandono e a virada do dia -------------------------------
   {
     rule: "the limit, the abandonment and the turn of the day",
     name: "a stop that arrives after the limit settles it instead of ending it by hand",
@@ -587,7 +532,6 @@ export const TIMERS_CASES: readonly TimersCase[] = [
     expected: "closed · dayEnded · 2026-09-01",
   },
 
-  // --- D44: a sessão mínima -------------------------------------------------
   {
     rule: "a session under its floor is not filed",
     name: "a stop one second under the floor files nothing, and names the floor",
@@ -644,11 +588,7 @@ export const TIMERS_CASES: readonly TimersCase[] = [
   },
 ];
 
-/**
- * The cases `timers` gets wrong, each run against a world of its own.
- *
- * A fresh database per case, because every one of these writes.
- */
+/** A fresh database per case, since every one writes. */
 export function failingTimersCases(
   timers: TimersModule,
   worlds: () => World,

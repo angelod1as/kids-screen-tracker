@@ -12,15 +12,8 @@ import { activityLogs, ledger, users } from "./schema";
 import { seedWithTestUsers } from "./test-users";
 
 /**
- * The demo path, and the three promises that make it safe to have at all.
- *
- * 1. it is not the seed, and it does not touch what the seed writes;
- * 2. every row it writes carries the stamp, so the removal can be surgical;
- * 3. `clearDemoData` puts the database back exactly as `seedDatabase` left it.
- *
- * The third is the one somebody will depend on without this context, before
- * launch, so it is checked by comparing whole table counts rather than by
- * trusting the delete's own report.
+ * The demo is not the seed, every row is stamped, and clearing it restores
+ * the seeded state, checked by whole table counts.
  */
 
 const TODAY = "2026-09-02";
@@ -77,7 +70,7 @@ function idOf(username: string): number {
   return row.id;
 }
 
-/** The same sum `fetchBalanceAction` computes, over the demo's rows. */
+/** The same sum `fetchBalanceAction` computes. */
 function balanceOf(username: string): number {
   const rows = connection.db
     .select({ kind: ledger.kind, hours: ledger.hours })
@@ -95,7 +88,6 @@ function balanceOf(username: string): number {
   );
 }
 
-/** How many ledger rows a boy has. */
 function entriesOf(username: string): number {
   return connection.db
     .select({ id: ledger.id })
@@ -117,11 +109,7 @@ describe("the demo is not the seed", () => {
   });
 
   it("writes one week however many times it is run", () => {
-    // `db:seed` is idempotent and sits in the same table of commands in
-    // `docs/demo-data.md`, so this one is too. It was not: running it twice
-    // wrote the week twice — measured at 22 logs and 36 ledger rows, with
-    // Kid1's balance doubled — and the only warning was a sentence in a
-    // docstring.
+    // Idempotent, like `db:seed` beside it.
     const first = seedDemoData(connection, TODAY);
     const afterFirst = counts();
 
@@ -134,15 +122,13 @@ describe("the demo is not the seed", () => {
       ledger: first.ledger,
     });
 
-    // And the way back is still one command, from either state.
     clearDemoData(connection);
 
     expect(countDemoRows(connection)).toEqual({ logs: 0, ledger: 0 });
   });
 
   it("writes nothing until it is called", () => {
-    // `seedDatabase` on its own leaves every screen of Phase 3 empty, which is
-    // the state a real installation is in on day one.
+    // The seed alone is a real installation's day one: empty screens.
     expect(counts()).toMatchObject({
       activity_logs: 0,
       ledger: 0,
@@ -154,8 +140,7 @@ describe("the demo is not the seed", () => {
 
 describe("the demo week", () => {
   it("gives one boy a positive balance and the other a negative one", () => {
-    // Both are needed to look at the boy's home screen: the ink of a negative
-    // balance, and an ordinary positive one beside it.
+    // A negative balance and a positive one, for the boy's home screen.
     seedDemoData(connection, TODAY);
 
     expect(balanceOf("kid1")).toBeGreaterThan(0);
@@ -217,8 +202,7 @@ describe("the demo week", () => {
   });
 
   it("credits the ledger with what the engine says, and nothing else", () => {
-    // The demo runs the engine, so the ledger on the home screen and the
-    // calculator on the next tab cannot disagree about the same day.
+    // The engine priced it, so the ledger and the calculator agree.
     seedDemoData(connection, TODAY);
 
     const credited = connection.db
@@ -272,8 +256,7 @@ describe("the demo comes back out", () => {
   });
 
   it("leaves a row that is not the demo's alone", () => {
-    // The removal has to be safe after Phase 4 and Phase 5 have written real
-    // rows next to these, and whoever runs it will not have read this file.
+    // Safe after real rows exist beside the demo's.
     seedDemoData(connection, TODAY);
 
     const admin1 = connection.db

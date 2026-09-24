@@ -7,30 +7,11 @@ import { activities, activityLogs, categories, ledger } from "./schema";
 import { startTimer } from "./timers";
 
 /**
- * The rules of #26, written out one case at a time.
- *
- * Same shape and same reason as `queue.rules.ts` and `admin.rules.ts`, and
- * built on the first one's `World` for the same reason `admin.rules.ts` is: the
- * decisive case in this file is that editing a category leaves a credited entry
- * exactly where it was frozen (D15), and that case needs a credited entry, a
- * ledger row and a balance — which is what that fixture already is. A matrix
- * whose world differs from the neighbouring matrix's world is a matrix about a
- * different program.
- *
- * Two files run this table. `config.test.ts` asserts the real modules answer
- * every case, and `config.sabotage.test.ts` rewrites one clause of
- * `src/db/categories.ts`, `src/db/input.ts` or `src/engine/limits.ts` at a time
- * and asserts each mutant gets at least one case wrong.
- *
- * **The rules here are mostly refusals**, which is what makes the matrix worth
- * the machinery. A validation that has quietly stopped validating leaves a
- * program that works perfectly: the category saves, the screen redraws, the
- * list is right. What changes is a number in the engine, three weeks later, on
- * a boy's screen. There is no assertion anybody writes by habit that notices
- * that, so each rule is broken on purpose here and watched.
+ * The rules of #26, on `queue.rules.ts`'s world, run by `config.test.ts` and
+ * the sabotage matrix. Mostly refusals: a validation that stopped validating
+ * shows up weeks later as a wrong number, so each is broken on purpose.
  */
 
-/** The part of the configuration a case may call. */
 export type ConfigModule = {
   listCategories: (connection: Connection) => CategoryRow[];
   createCategory: (connection: Connection, input: CategoryInput) => number;
@@ -46,32 +27,23 @@ export type ConfigModule = {
   ) => void;
 };
 
-/** Mente, which decays at a one-hour step and pays a return bonus. */
+/** A one-hour step and a return bonus. */
 export const MENTE = "Mente";
 
-/** Convívio, which declares no rate and never decays (D5, D11). */
+/** No rate, no decay (D5, D11). */
 export const CONVIVIO = "Convívio";
 
 export type ConfigWorld = World & {
   categoryId: (name: string) => number;
-  /** Opens a stopwatch session, for the cases about D37's earlier line. */
+  /** For D37's `startTimer` line. */
   startSession: (activityName: string) => void;
   categoryText: (name: string) => string;
-  /** Every category as one comparable line, switched-off ones included. */
+  /** Switched-off ones included. */
   listText: (module: ConfigModule) => string;
   balance: () => number;
   /** One log's frozen value and the ledger row beside it. */
   frozenText: (logId: number) => string;
-  /**
-   * An approved entry **with its ledger row**, which is what D15 freezes.
-   *
-   * `addApproved`, inherited from `queue.rules.ts`, writes the log alone: that
-   * table's cases are about what an approval does, so the ledger row is the
-   * thing under test there rather than part of the fixture. Here the ledger row
-   * *is* the fixture — "nada já creditado" is a statement about a balance, and
-   * a balance with no ledger row behind it is zero before and after any edit,
-   * which is a case that passes for the wrong reason.
-   */
+  /** With its ledger row: without one, the balance is zero either way (D15). */
   credit: (activity: string, hours: number) => number;
 };
 
@@ -186,14 +158,12 @@ export function makeConfigWorld(connection: Connection): ConfigWorld {
 }
 
 export type ConfigCase = {
-  /** Which acceptance criterion of #26 this case belongs to. */
   rule: string;
   name: string;
   run: (module: ConfigModule, world: ConfigWorld) => unknown;
   expected: unknown;
 };
 
-/** Runs `body` and names the refusal instead of letting it escape. */
 function refused(body: () => void): string {
   try {
     body();
@@ -204,12 +174,12 @@ function refused(body: () => void): string {
   return "not refused";
 }
 
-/** Whether a refusal happened at all, without pinning its wording. */
+/** Without pinning its wording. */
 function wasRefused(body: () => void): boolean {
   return refused(body).startsWith("refused:");
 }
 
-/** A category as the form hands it over, with one field changed at a time. */
+/** One field changed at a time. */
 function input(overrides: Partial<CategoryInput> = {}): CategoryInput {
   return {
     name: "Oficina",
@@ -223,7 +193,6 @@ function input(overrides: Partial<CategoryInput> = {}): CategoryInput {
 }
 
 export const CONFIG_CASES: readonly ConfigCase[] = [
-  // --- criar, editar, desativar --------------------------------------------
   {
     rule: "a category can be created, edited and switched off",
     name: "a new category is stored with every field the form sent",
@@ -303,11 +272,7 @@ export const CONFIG_CASES: readonly ConfigCase[] = [
   {
     rule: "a category can be created, edited and switched off",
     name: "two live categories may not share a name, and are told which",
-    // The sentence and not merely the refusal: `categories_name_unique` makes
-    // the collision impossible on its own, so a case that only asked "was it
-    // refused" could not tell the friendly message from the constraint name —
-    // and the sabotage matrix proved exactly that by surviving the removal of
-    // `requireNameIsFree`. What this rule adds to the index is the sentence.
+    // The sentence: the unique index refuses the collision on its own.
     run: (module, world) =>
       refused(() =>
         module.createCategory(world.connection, input({ name: "Mente" })),
@@ -352,10 +317,7 @@ export const CONFIG_CASES: readonly ConfigCase[] = [
   {
     rule: "a category can be created, edited and switched off",
     name: "renaming a live category onto a taken name is refused, in words",
-    // The edit path's own case. The create path has one above it, and the two
-    // are not the same code — measured: dropping the check from the edit alone
-    // left every other case green, because the unique index still refuses the
-    // rename, with a constraint name instead of a sentence.
+    // The edit path's own case: the index alone still refuses the rename.
     run: (module, world) =>
       refused(() =>
         module.updateCategory(
@@ -370,11 +332,7 @@ export const CONFIG_CASES: readonly ConfigCase[] = [
   {
     rule: "a category can be created, edited and switched off",
     name: "a switched-off category can still be corrected under a taken name",
-    // The name rule is the partial index's: it is about the live rows (D14).
-    // Enforcing it on a switched-off row too locked an adult out of his own
-    // data — switch "Mente" off, create a new one, and the old row could not be
-    // edited at all, not even to fix its sort order. The invariant is kept at
-    // the moment it matters, by the case below this one.
+    // Only live rows clash (D14); the next case keeps the invariant.
     run: (module, world) => {
       const id = world.categoryId(MENTE);
       module.setCategoryActive(world.connection, id, false);
@@ -418,14 +376,10 @@ export const CONFIG_CASES: readonly ConfigCase[] = [
       "refused: there is already a category called Mente; switch that one off first, or pick another name",
   },
 
-  // --- D37: a categoria também é segurada enquanto algo está em curso -------
   {
     rule: "a category's numbers are held while something is under way",
     name: "an open stopwatch session refuses a decay change",
-    // The line is `startTimer`, not `stopTimer`. Left at the filing, a category
-    // edit made with the clock running repriced the session that was already
-    // being run — 120 min of Ler livro went from 4,50 h to 120,00 h with three
-    // fields on one screen.
+    // D37: the line is `startTimer`, not `stopTimer`.
     run: (module, world) => {
       world.startSession(BOOK);
 
@@ -458,9 +412,7 @@ export const CONFIG_CASES: readonly ConfigCase[] = [
   {
     rule: "a category's numbers are held while something is under way",
     name: "a rename and a sort order go through anyway",
-    // The bound: `name`, `sort_order` and `base_rate` cannot change a price —
-    // D11 keeps the last one out of every calculation — so the screen does not
-    // freeze because a boy touched the stopwatch.
+    // Labels and `base_rate` (D11) price nothing.
     run: (module, world) => {
       world.startSession(BOOK);
 
@@ -482,7 +434,6 @@ export const CONFIG_CASES: readonly ConfigCase[] = [
     expected: "Mente renomeada · taxa 9 · passo 1 · bônus 0.5/3 · ordem 4 · on",
   },
 
-  // --- D14: desativar não apaga, e o histórico continua legível -------------
   {
     rule: "switching a category off deletes nothing",
     name: "the row is still there, switched off",
@@ -512,7 +463,7 @@ export const CONFIG_CASES: readonly ConfigCase[] = [
         .map((row) => `${row.name}(${row.active ? "on" : "off"})`)
         .join(" | ");
     },
-    // Switched-on first, then `sort_order` then `id` — Mente moves to the end.
+    // Switched-on first, then `sort_order`, then `id`: Mente moves to the end.
     expected:
       "Corpo(on) | Criativo(on) | Convívio(on) | Escola(on) | Casa(on) | Curinga(on) | Mente(off)",
   },
@@ -560,7 +511,6 @@ export const CONFIG_CASES: readonly ConfigCase[] = [
     expected: 4,
   },
 
-  // --- D15: editar não recalcula nada já creditado --------------------------
   {
     rule: "editing recalculates nothing already credited",
     name: "the frozen value of an entry does not move when the rate doubles",
@@ -631,7 +581,6 @@ export const CONFIG_CASES: readonly ConfigCase[] = [
     expected: 1,
   },
 
-  // --- o piso do passo (comentário da #26, medido no PR #46) ----------------
   {
     rule: "a decay step below the floor is refused",
     name: "the 0,1 h that inverts the engine is refused",
@@ -703,11 +652,8 @@ export const CONFIG_CASES: readonly ConfigCase[] = [
   {
     rule: "a decay step below the floor is refused",
     name: "a step that is not a number at all is refused, in words",
-    // The sentence, and NaN rather than Infinity: the column's own ceiling
-    // refuses Infinity without help, so a case using it passed with
-    // `requireNonNegativeHours` deleted from the call site — measured. NaN
-    // clears every comparison and SQLite stores it as null, so without the
-    // guard the category would save with no decay at all and no error.
+    // NaN, not Infinity: the column's ceiling refuses Infinity unaided, and
+    // SQLite stores NaN as null, which would save a category with no decay.
     run: (module, world) =>
       refused(() =>
         module.createCategory(
@@ -748,7 +694,6 @@ export const CONFIG_CASES: readonly ConfigCase[] = [
     expected: "Mente · taxa 1.5 · passo 1 · bônus 0.5/3 · ordem 2 · on",
   },
 
-  // --- o bônus de retorno que vira permanente (comentário da #26) -----------
   {
     rule: "a return bonus with no threshold is refused",
     name: "a bonus above zero at zero days is refused",
@@ -832,7 +777,7 @@ export const CONFIG_CASES: readonly ConfigCase[] = [
   {
     rule: "a return bonus with no threshold is refused",
     name: "a fractional threshold is refused rather than rounded, in words",
-    // The sentence, because `typeof(col) = 'integer'` refuses 1,5 on its own.
+    // The sentence: `typeof(col) = 'integer'` refuses 1,5 on its own.
     run: (module, world) =>
       refused(() =>
         module.createCategory(
@@ -846,9 +791,7 @@ export const CONFIG_CASES: readonly ConfigCase[] = [
   {
     rule: "a return bonus with no threshold is refused",
     name: "a negative bonus is refused, in words",
-    // The sentence, because `categories_return_bonus_pct_check` refuses -0,5 on
-    // its own: measured, dropping `requireBonusFraction` from the call site left
-    // every case in this table green.
+    // The sentence: the column CHECK refuses -0,5 on its own.
     run: (module, world) =>
       refused(() =>
         module.createCategory(
@@ -862,10 +805,7 @@ export const CONFIG_CASES: readonly ConfigCase[] = [
   {
     rule: "a return bonus with no threshold is refused",
     name: "a bonus above the column ceiling is refused, in words",
-    // The twin of the base rate's case, and it was missing: measured, the
-    // ceiling clause of `requireBonusFraction` could be deleted whole and all
-    // 1344 tests stayed green, because `categories_return_bonus_pct_check`
-    // refuses it too — with a constraint name where an adult needed a sentence.
+    // The ceiling's sentence: the column CHECK refuses it too.
     run: (module, world) =>
       refused(() =>
         module.createCategory(
@@ -886,18 +826,13 @@ export const CONFIG_CASES: readonly ConfigCase[] = [
           input({ returnBonusPct: "" as unknown as number }),
         ),
       ),
-    // Reachable only through a forged admin POST — the screen sends `null` for
-    // an empty field — but `Math.round("" * 100)` is 0, so without this the
-    // bonus an adult set would quietly become no bonus at all.
+    // Forged POST only, but `Math.round("" * 100)` is 0: no bonus, silently.
     expected: "refused: a return bonus is a number, received string ()",
   },
   {
     rule: "a return bonus with no threshold is refused",
     name: "a bonus is held to a hundredth of a percentage point, not to a whole one",
-    // 12,5% is a fraction of 0,125. Held to the two decimals an *hour* is held
-    // to — which is what this used to borrow — it became 0,13, and a bonus of
-    // 0,4% became no bonus at all, silently. The field offers two decimals of a
-    // percent; the column now keeps them.
+    // Two decimals of a percent: at an hour's precision 0,4% became no bonus.
     run: (module, world) => {
       module.createCategory(
         world.connection,
@@ -922,16 +857,9 @@ export const CONFIG_CASES: readonly ConfigCase[] = [
     expected: "Oficina · taxa 2 · passo 1 · bônus 0.001/3 · ordem 8 · on",
   },
 
-  // --- os outros números que o motor consome -------------------------------
   {
     rule: "every number the engine reads is checked here",
-    // These three assert the sentence rather than only the refusal, and the
-    // reason is `input.ts`'s own: every rule there is also a CHECK on the
-    // column, and the CHECK is the backstop. A case that asked "was it
-    // refused" would pass with the friendly guard deleted — measured, the
-    // sabotage matrix survived all three — because the constraint refuses it
-    // too, with a sentence naming neither the field nor an acceptable value,
-    // on a screen where an adult is trying to work out what to type.
+    // Sentences, not only refusals: every rule here is also a column CHECK.
     name: "a negative base rate is refused, in words",
     run: (module, world) =>
       refused(() =>
@@ -956,10 +884,7 @@ export const CONFIG_CASES: readonly ConfigCase[] = [
   {
     rule: "every number the engine reads is checked here",
     name: "a base rate that is not a number is refused, not coerced",
-    // `Math.round("" * 100)` is 0, so without the type guard an empty string in
-    // a forged admin POST becomes a rate of zero. Reachable only that way — the
-    // screen sends `null` for an empty field — but a `duration` activity that
-    // silently starts paying nothing is worth a sentence.
+    // Forged POST only, but `""` would silently become a rate of zero.
     run: (module, world) =>
       refused(() =>
         module.createCategory(
@@ -972,10 +897,7 @@ export const CONFIG_CASES: readonly ConfigCase[] = [
   {
     rule: "every number the engine reads is checked here",
     name: "a base rate that is not a number at all is refused",
-    // The case `Number.isFinite` is actually for. Infinity above is caught by
-    // the ceiling either way; NaN clears every comparison — `NaN < 0` and
-    // `NaN > MAX_HOURS` are both false — and SQLite stores it as NULL, so
-    // without this the category would save with no rate at all and no error.
+    // NaN clears every comparison and SQLite stores it as NULL.
     run: (module, world) =>
       refused(() =>
         module.createCategory(
@@ -1059,7 +981,6 @@ export const CONFIG_CASES: readonly ConfigCase[] = [
     expected: 7,
   },
 
-  // --- a lista que a tela desenha ------------------------------------------
   {
     rule: "the list is the one the screen draws",
     name: "switched-on first, then sort order, then id",
@@ -1075,9 +996,7 @@ export const CONFIG_CASES: readonly ConfigCase[] = [
 
       return world.listText(module);
     },
-    // Two things at once, and both have been got wrong by the obvious query: an
-    // inner join drops the new row entirely, and `count(*)` over a left join
-    // counts the row with the null on the right and answers 1.
+    // An inner join drops the new row; `count(*)` over a left join answers 1.
     expected:
       "Corpo(on, 4) | Mente(on, 4) | Criativo(on, 6) | Convívio(on, 8) | " +
       "Escola(on, 3) | Casa(on, 6) | Curinga(on, 1) | Oficina(on, 0)",
@@ -1093,8 +1012,7 @@ export const CONFIG_CASES: readonly ConfigCase[] = [
         .map((row) => row.name)
         .join(",");
     },
-    // `sort_order` 0 ties with Corpo, and `id` breaks the tie: the new row is
-    // last among the zeroes.
+    // `sort_order` 0 ties with Corpo; `id` puts the new row last.
     expected: "Oficina,Corpo,Mente,Criativo,Convívio,Escola,Casa,Curinga",
   },
 ];

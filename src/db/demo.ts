@@ -12,56 +12,21 @@ import type { NewActivityLog, NewLedgerEntry } from "./schema";
 import { activities, activityLogs, categories, ledger, users } from "./schema";
 
 /**
- * A plausible week of Kid1's and Kid2's, written so the screens of Phase 3
- * can be looked at with something in them.
- *
- * **This is not the seed.** `seed.ts` writes the seven
- * categories and the thirty-two activities: it is idempotent, it runs in
- * production, and no invented ledger row or log belongs in it. This
- * module is a separate path behind its own command (`pnpm db:demo`) that
- * nothing else calls, and every row it writes is stamped so the same command
- * can take them all back out again (`pnpm db:demo:clear`).
- *
- * **It is idempotent, like the seed beside it.** `seedDemoData` deletes the
- * stamped rows before writing, so running the command twice leaves one week
- * rather than two. It used to leave two — Kid1's balance doubled and Kid2's
- * spends counted twice — and the only warning was a sentence in a docstring,
- * while `docs/demo-data.md`, the file `CLAUDE.md` links to, said nothing.
- *
- * **The empty screens are still the deliverable.** Nothing writes to the
- * ledger before Phase 4 and Phase 5, so a real installation on its first day
- * shows exactly the empty states #16 asks for. This exists because an empty
- * screen cannot demonstrate a screen: the sort order of the history, the five
- * that "os últimos cinco" picks out of eleven and the ink of a negative
- * balance are all invisible until there are rows. Both states are verified,
- * and each one is named where it is.
- *
- * **The numbers are the engine's.** Every `computed_hours` below comes out of
- * `calculateEarnedHours`, run over the history built so far, exactly as the
- * admin's approval will run it in Phase 5. Typing plausible-looking numbers by
- * hand would produce a demo whose ledger disagrees with the calculator on the
- * same screen, which is worse than no demo at all.
+ * A demo week for the boys' screens (`docs/demo-data.md`). Not the seed: its
+ * own command, every row stamped so `pnpm db:demo:clear` takes it back out.
+ * Every `computed_hours` comes from the engine, so the ledger agrees with the
+ * calculator.
  */
 
-/**
- * The stamp every demo row carries, in the `note` column the three tables
- * already have.
- *
- * `clearDemoData` deletes by this and by nothing else, so the removal is
- * surgical rather than a `delete from ledger`: it takes back what this module
- * wrote and leaves a real approval from Phase 5 alone. Whoever removes the demo
- * before launch will not have this context, so the removal has to be safe
- * without it.
- */
+/** `clearDemoData` deletes by this stamp alone, so real rows beside it survive. */
 export const DEMO_NOTE =
   "[demo] dado de demonstração — remover antes do uso real";
 
-/** The `like` pattern that finds the stamp. */
 const DEMO_NOTE_PATTERN = "[demo]%";
 
 type DemoLog = {
   username: string;
-  /** The seed's activity id (`SEED_CATEGORIES` writes them out). */
+  /** The seed's activity id. */
   activityId: number;
   daysAgo: number;
   durationMinutes?: number;
@@ -76,15 +41,7 @@ type DemoSpend = {
   kind: "spend" | "refund";
 };
 
-/**
- * Kid1's week, ending on the Saturday the demo calls today.
- *
- * It is a week rather than a pile of rows because the screens answer questions
- * about *sequence*: today's second hour of Mente is worth half of the first
- * (D1–D3) only if the first one is there; today's football pays the return
- * bonus (D7) only because the last Corpo was six days ago; and "os últimos
- * cinco lançamentos" only means something when there are eleven.
- */
+/** A week, not a pile: decay (D1–D3), return bonus (D7) and "últimos cinco" need sequence. */
 const KID1_LOGS: readonly DemoLog[] = [
   // A week ago: football, so today's football has a gap to come back from.
   { username: "kid1", activityId: 1, daysAgo: 6, durationMinutes: 90 },
@@ -140,10 +97,7 @@ const KID1_SPENDS: readonly DemoSpend[] = [
   },
 ];
 
-/**
- * Kid2's, which is the other state the boy's home screen has: a balance below
- * zero, which a seeded database has no way of showing.
- */
+/** Kid2 is the negative balance a seeded database cannot show. */
 const KID2_LOGS: readonly DemoLog[] = [
   { username: "kid2", activityId: 3, daysAgo: 5, durationMinutes: 30 },
 ];
@@ -170,41 +124,20 @@ export type DemoResult = {
   ledger: number;
 };
 
-/**
- * Midday São Paulo on `day`, as the `created_at` of a demo log.
- *
- * The canonical order is `(occurred_on, created_at, id)` (D8), so two logs on
- * the same day need distinct stamps or the order they are read back in is the
- * order SQLite happens to return. `index` spaces them a minute apart, which is
- * also what makes the decay land on the second hour of Mente and not the first.
- */
+/** Midday São Paulo, a minute apart per `index`, so D8's order is defined. */
 function demoCreatedAt(day: string, index: number): Date {
   return new Date(Date.parse(`${day}T15:00:00Z`) + index * 60_000);
 }
 
 /**
- * Writes the demo week, with every `computed_hours` computed by the engine.
- *
- * `today` is a parameter and not `saoPauloDay(new Date())` so the tests can
- * pin a day; the CLI passes the real one, because a demo dated last March
- * shows an empty "hoje" on every screen.
- *
- * Idempotent: the stamped rows of any previous run go first, in this same
- * transaction. Running it twice writes one week, not two.
- *
- * One `IMMEDIATE` transaction, so an interrupted run leaves nothing behind.
+ * `today` is a parameter so tests can pin a day. Idempotent: the previous
+ * run's stamped rows go first, in this same transaction.
  */
 export function seedDemoData(
   connection: Connection,
   today: string,
 ): DemoResult {
   return writeTransaction(connection, (tx) => {
-    // Idempotent, like `db:seed` next to it in the same table of commands.
-    // Running `pnpm db:demo` twice used to write the week twice — measured at
-    // 22 logs and 36 ledger rows, with Kid1's balance doubled — and the only
-    // warning was a sentence in this file's docstring, which is not where
-    // anybody looks. The stamp makes taking the previous run back out exact,
-    // so the second run starts from the state the first one did.
     deleteDemoRows(tx);
 
     const userIds = new Map(
@@ -254,8 +187,7 @@ export function seedDemoData(
       .all();
     const categoryById = new Map(categoryRows.map((row) => [row.id, row]));
 
-    // What the engine sees as it goes: each log is calculated against the ones
-    // already written, which is the same thing an approval does in D8's order.
+    // Each log is calculated against the ones already written, in D8's order.
     const history = new Map<string, ApprovedLog[]>();
     let logs = 0;
     let ledgerRows = 0;
@@ -288,8 +220,7 @@ export function seedDemoData(
         occurredOn,
         durationMinutes: entry.durationMinutes,
         quality: entry.quality,
-        // D34: the demo writes its week in order, so `own` holds exactly what
-        // was frozen before this entry — which is what the engine counts.
+        // D34: written in order, so `own` is exactly what was frozen before.
         history: own.filter(
           (log) =>
             log.occurredOn >=
@@ -309,14 +240,13 @@ export function seedDemoData(
       const log: NewActivityLog = {
         userId,
         activityId: activity.id,
-        // D37: born approved is born frozen, so the bucket comes with it.
+        // D37.
         categoryId: activity.categoryId,
         status: "approved",
-        // D18: an admin's entry is born approved, with the review stamps on it.
+        // D18.
         source: "admin",
         occurredOn,
-        // The demo writes round minutes, so its seconds are those minutes
-        // exactly (D17, #71).
+        // D17.
         durationSeconds:
           entry.durationMinutes === undefined
             ? null
@@ -350,8 +280,7 @@ export function seedDemoData(
       });
       history.set(entry.username, own);
 
-      // D10: a calculation that comes to zero is an approved log with no line
-      // in the ledger. `ledger_hours_check` is exclusive of zero anyway.
+      // D10.
       if (calculation.hours > 0) {
         tx.insert(ledger)
           .values({
@@ -391,30 +320,12 @@ export function seedDemoData(
   });
 }
 
-/**
- * Takes every demo row back out, and nothing else.
- *
- * The order is the foreign keys' order: `ledger` points at `activity_logs`
- * with `onDelete: "restrict"`, so the ledger rows go first or the delete is
- * refused. Which is the right shape of failure — a half-removed demo leaving a
- * credit behind with no log under it is the state nobody would notice.
- *
- * Matching on the stamp rather than emptying the tables is what makes this safe
- * to run after Phase 4 and Phase 5 have written real rows next to these.
- */
+/** Only the stamped rows. Ledger first: it references the logs with `restrict`. */
 export function clearDemoData(connection: Connection): DemoResult {
   return writeTransaction(connection, deleteDemoRows);
 }
 
-/**
- * The deletes themselves, inside somebody else's transaction.
- *
- * `seedDemoData` runs them first so that writing the week twice leaves one
- * week, and it has to be the same code: two copies of "which rows are the
- * demo's" is how a demo half survives its own removal. SQLite has no nested
- * `BEGIN IMMEDIATE`, so this takes the open transaction rather than opening
- * one.
- */
+/** One copy of "which rows are the demo's", run inside the caller's transaction. */
 function deleteDemoRows(tx: Transaction): DemoResult {
   const removedLedger = tx
     .delete(ledger)
@@ -431,7 +342,6 @@ function deleteDemoRows(tx: Transaction): DemoResult {
   };
 }
 
-/** How many demo rows the database holds right now. */
 export function countDemoRows(connection: Connection): DemoResult {
   const db = connection.db;
 

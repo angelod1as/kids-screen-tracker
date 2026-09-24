@@ -4,34 +4,13 @@ import type { NewActivity, NewCategory } from "./schema";
 import { activities, categories } from "./schema";
 
 /**
- * The rows the app needs to open working: the seven categories and every
- * activity of the table in `docs/spec.md`. No people: `users` is written only
- * by hand, with SQL (D45).
- *
- * Two things are worth reading before changing a number here.
- *
- * - **`decay_step_hours` comes from the calibration table in
- *   `docs/decisions.md`, not from the thresholds in `docs/spec.md`.** The spec
- *   is a historical annex: its `full_up_to` / `half_up_to` weekly bands were
- *   replaced by a daily geometric decay in D1, D2 and D4. What survives from
- *   the spec is the list of activities and their values.
- * - **`value` is always explicit (D11).** `base_rate` is null for the three
- *   categories that declare no rate and is only a suggestion for the
- *   Configuration screen elsewhere. The engine reads the activity's own
- *   `value`, so every non-`free` row carries one even when it repeats the
- *   category's rate.
+ * The seven categories and every activity of `docs/spec.md`; no people (D45).
+ * `decay_step_hours` comes from `decisions.md` (D1, D2, D4), not the spec's bands.
  */
 
 /**
- * A category as written below: `sort_order` is not typed here because it is
- * derived from the position in the list, and `active` follows the schema
- * default. One less number to keep in step by hand.
- *
- * `id`, on the other hand, is written out and never derived from the position.
- * It is the seed's identity for the row (see `seedDatabase`), so it has to
- * survive a reordering of this list as well as a rename on the Configuration
- * screen. A new category takes the next unused number; the existing ones keep
- * theirs forever.
+ * `sort_order` comes from the list position. `id` is written out: it is the
+ * seed's identity for the row, so it survives a reorder and a rename.
  */
 type SeedCategory = Omit<NewCategory, "sortOrder" | "active"> & {
   id: number;
@@ -43,23 +22,15 @@ type SeedActivity = Omit<NewActivity, "categoryId" | "sortOrder" | "active"> & {
 };
 
 /**
- * The seven categories and their activities, in the order the pickers show
- * them — which is the order of the seed table in the spec.
- *
- * `return_bonus_pct` is a fraction, not percentage points: the spec's rule is
- * "multiply by (1 + pct)", so the 50% bonus of Corpo, Mente and Criativo is
- * `0.5`. Convívio, Escola and Casa have no return bonus, and Curinga has none
- * by D12 — for all four the pair is `(0, 0)`, which is also the schema default
- * and is written out anyway, because a bonus left implicit is a bonus nobody
- * checks.
+ * In the pickers' order. `return_bonus_pct` is a fraction (0,5 is +50%), and
+ * `(0, 0)` is written out anyway: a bonus left implicit is a bonus nobody checks.
  */
 export const SEED_CATEGORIES: readonly SeedCategory[] = [
   {
     id: 1,
     name: "Corpo",
     baseRate: 1.5,
-    // Twice the step of Mente and Criativo, on purpose: a football match runs
-    // two hours and has to pay in full. Asymptote 1.5 × 2 × 2 = ~6h a day.
+    // Twice Mente's step so a two-hour match pays in full. Asymptote ~6h a day.
     decayStepHours: 2,
     returnBonusPct: 0.5,
     returnBonusAfterDays: 3,
@@ -112,7 +83,6 @@ export const SEED_CATEGORIES: readonly SeedCategory[] = [
       },
       {
         id: 6,
-        // The spec priced it below its category's rate; since #110 it equals it.
         name: "Ler quadrinhos ou HQ",
         calcMode: "duration",
         value: 1.5,
@@ -188,8 +158,7 @@ export const SEED_CATEGORIES: readonly SeedCategory[] = [
     ],
   },
   {
-    // D5 and D11: only `fixed` activities here. Nothing has a duration to
-    // accumulate, so there is no decay, and no rate to suggest either.
+    // D5, D11.
     id: 4,
     name: "Convívio",
     baseRate: null,
@@ -223,8 +192,7 @@ export const SEED_CATEGORIES: readonly SeedCategory[] = [
     ],
   },
   {
-    // D5: the decay applies to "Estudo para prova" alone, which is the only
-    // activity here that has a duration. Asymptote 1 × 2 × 2 = ~4h a day.
+    // D5: only "Estudo para prova" has a duration. Asymptote 1 × 2 × 2 = ~4h a day.
     id: 5,
     name: "Escola",
     baseRate: 1,
@@ -255,8 +223,7 @@ export const SEED_CATEGORIES: readonly SeedCategory[] = [
     ],
   },
   {
-    // D5: no decay here either — the seven-day cooldown on every activity is
-    // the brake this category gets, and it is the only category that has one.
+    // D5: the seven-day cooldown is this category's brake.
     id: 6,
     name: "Casa",
     baseRate: null,
@@ -315,8 +282,7 @@ export const SEED_CATEGORIES: readonly SeedCategory[] = [
     ],
   },
   {
-    // D12: the admin's escape hatch for the case the table did not foresee.
-    // Decaying or bonusing it would defeat the only reason it exists.
+    // D12.
     id: 7,
     name: "Curinga",
     baseRate: null,
@@ -324,53 +290,20 @@ export const SEED_CATEGORIES: readonly SeedCategory[] = [
     returnBonusPct: 0,
     returnBonusAfterDays: 0,
     activities: [
-      // `free` is the one mode whose value is typed at launch time, and the
-      // schema requires the column to be null for it.
       { id: 32, name: "Atividade avulsa", calcMode: "free", value: null },
     ],
   },
 ];
 
-/** How many rows each table gained. Zero everywhere on a second run. */
+/** Zero everywhere on a second run. */
 export type SeedResult = {
   categories: number;
   activities: number;
 };
 
 /**
- * Writes whatever of the seed is missing, and nothing else.
- *
- * Idempotent by **primary key** and **insert-only**: a row that is already there
- * is left exactly as it is. Two rules force that shape.
- *
- * - D15 says the table will change a lot in the first months and that editing
- *   it never rewrites the past. A seed that upserted would undo, on the next
- *   deploy, the tuning an admin did on the Configuration screen.
- * - D14 says a category or activity is deactivated, never deleted. So the
- *   match deliberately ignores `active`: a `Corpo` the admin switched off is
- *   still a `Corpo`, and re-inserting it would resurrect it as a duplicate —
- *   which the partial unique index of the schema, scoped to the live rows,
- *   would happily accept.
- *
- * **Why the id and not the name.** The name was the natural key here until it
- * turned out to be editable: the Configuration screen does full CRUD on
- * categories and activities (`docs/spec.md`, "Configuração"), so a rename made
- * the seed re-create the row it had just renamed — `Corpo` renamed to `Físico`
- * came back with its four activities, eight live categories, two of them on
- * `sort_order` 1. And the name is not even unique in the database: the partial
- * unique index of the schema is scoped to the live rows on purpose, so that a
- * deactivated `Corpo` can coexist with a live one, and a lookup by name then
- * has two rows to choose from.
- *
- * The primary key is the one thing about a seeded row that no screen can
- * change: `id` survives a rename, a deactivation, and a second row of the same
- * name. So the ids of the seven categories and the thirty-two activities are
- * written out in `SEED_CATEGORIES` and are part of the data, not of the
- * insertion order — which is also why the activities carry a single 1–32
- * sequence rather than numbering restarting per category.
- *
- * The whole thing runs in one `IMMEDIATE` transaction, so a seed interrupted
- * halfway leaves no half-populated category behind.
+ * Insert-only, by primary key: an upsert would undo the admin's tuning (D15),
+ * and a name is editable and not unique (D14). One transaction.
  */
 export function seedDatabase(connection: Connection): SeedResult {
   return writeTransaction(connection, (tx) => {

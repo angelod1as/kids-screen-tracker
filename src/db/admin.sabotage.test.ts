@@ -18,35 +18,14 @@ import { migrateDatabase } from "./migrate";
 import { seedWithTestUsers } from "./test-users";
 
 /**
- * The sabotage matrix for the launch (#22).
- *
- * The rules it protects all have the same property: breaking one leaves a
- * program that works. The entry still appears, the boy still gets hours, every
- * screen still renders. The number is just wrong, in the boy's favour or
- * against him, and no assertion anybody writes by habit would notice.
- *
- * So each mutation below rewrites one clause of the launch, compiles the
- * result, and runs the whole `ADMIN_CASES` table against it on a database of
- * its own.
- *
- * **Three files, not one.** The launch is `admin.ts`, but two of its rules live
- * beside it — what an adult may type (`input.ts`) and who may be written for
- * (`people.ts`) — and a matrix that stopped at one file would report those two
- * as protected without ever having touched them. So a mutant is a directory of
- * all three, with the imports between them pointing at each other, and any of
- * the three may be the one that is broken.
- *
- * **The control is the point of the file as much as the mutations are.** One
- * rewrite here changes nothing semantically, and it has to come back
- * *uncaught*. Without it a matrix whose loader quietly failed would report
- * every rule protected, and this project has been handed exactly that report
- * before.
+ * Sabotage matrix for the launch (#22): a broken rule leaves a working program
+ * with a wrong number. Mutants span `admin.ts`, `input.ts` and `people.ts`,
+ * and one control rewrite must come back uncaught.
  */
 
 const DB_DIR = import.meta.dirname;
 const MUTANT_DIR = join(DB_DIR, "..", "..", ".sabotage-admin");
 
-/** The three files a mutant is made of, copied together so they can be mutated. */
 const FILES = ["admin.ts", "input.ts", "people.ts"] as const;
 
 type File = (typeof FILES)[number];
@@ -54,14 +33,11 @@ type File = (typeof FILES)[number];
 type Mutation = {
   name: string;
   file: File;
-  /** The exact text to find in it. */
   find: string;
-  /** What to put in its place. */
   replace: string;
 };
 
 const MUTATIONS: readonly Mutation[] = [
-  // --- D18: nasce approved, com reviewed_by, e o ledger na mesma transação ---
   {
     name: "the entry is born pending, like a boy's proposal",
     file: "admin.ts",
@@ -111,7 +87,6 @@ const MUTATIONS: readonly Mutation[] = [
     replace: "        note: null,",
   },
 
-  // --- D8: o balde é o do dia em que ocorreu -------------------------------
   {
     name: "the value is computed for today instead of the day it happened",
     file: "admin.ts",
@@ -150,7 +125,6 @@ const MUTATIONS: readonly Mutation[] = [
     find: "  const historyTo = historyWindowEnd(\n    entry.occurredOn,\n    found.activity,\n    found.category,\n  );",
     replace: "  const historyTo = entry.occurredOn;",
   },
-  // --- D32: a ordem não é do adulto ----------------------------------------
   {
     name: "an entry is frozen while an earlier one is still waiting",
     file: "admin.ts",
@@ -177,9 +151,6 @@ const MUTATIONS: readonly Mutation[] = [
     replace: "    blockedBy: null,",
   },
 
-  // --- a launch never changes a value that is already frozen ---------------
-
-  // --- cada modo guarda o que é seu ----------------------------------------
   {
     name: "a duration is stored whatever the mode",
     file: "admin.ts",
@@ -205,7 +176,6 @@ const MUTATIONS: readonly Mutation[] = [
     replace: "    if (false) {",
   },
 
-  // --- D33: item inativo é recusado pelo endpoint --------------------------
   {
     name: "a deactivated activity can be launched",
     file: "admin.ts",
@@ -238,7 +208,6 @@ const MUTATIONS: readonly Mutation[] = [
     replace: '  if (found.role !== "kid") {',
   },
 
-  // --- a data que o adulto digitou -----------------------------------------
   {
     name: "an entry can be dated tomorrow",
     file: "input.ts",
@@ -278,18 +247,7 @@ const MUTATIONS: readonly Mutation[] = [
   },
 ];
 
-/**
- * The rewrite that has to come back uncaught.
- *
- * Two `const` declarations swapped, neither reading the other: the window's
- * near end and its far end are computed from the same three values and the
- * order they are written in changes nothing. It sits between two edits that
- * *are* rules — narrowing either end is caught above — and it is the shape of
- * tidying a reviewer suggests.
- *
- * Which is what makes it the control: same file, same loader, same table, same
- * kind of edit — and the answer is no.
- */
+/** The control: the window's two ends computed in swapped order. */
 const CONTROL: Mutation = {
   name: "the two ends of the window are computed in the other order",
   file: "admin.ts",
@@ -351,14 +309,7 @@ function freshWorld(): AdminWorld {
   return makeAdminWorld(connection);
 }
 
-/**
- * Points a copied file's imports at the right place: at its two siblings in the
- * mutant directory, and at the real module for everything else.
- *
- * The siblings are the reason a mutation of `input.ts` is visible at all — with
- * every specifier rehomed to the real tree, `admin.ts` would import the
- * unmutated original and the matrix would report a rule it never touched.
- */
+/** Siblings stay siblings, or a mutation of `input.ts` would never load. */
 function rehome(mutated: string, dir: string): string {
   return mutated.replace(/from "(\.[^"]*)"/g, (_whole, specifier: string) => {
     const resolved = resolve(DB_DIR, specifier);
@@ -462,9 +413,7 @@ describe("the control: the matrix can still say no", () => {
   it("catches the neighbouring clause that is a rule", {
     timeout: 60_000,
   }, async () => {
-    // The line above the control's, in the same `where`, edited the same way.
-    // One is an optimisation and one is D19; the matrix has to tell them
-    // apart, and that it does is what the control's silence is worth.
+    // Edited like the control, but D19: the matrix must tell them apart.
     const failures = failingAdminCases(
       await loadMutant(2 * MUTATIONS.length + 1, {
         name: "the approved-only filter is dropped from the same where",
