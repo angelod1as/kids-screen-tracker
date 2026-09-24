@@ -5,7 +5,12 @@ name: CI
 #
 # It runs on main as well, because the deploy hangs off this run: `deploy.yml`
 # only fires when this workflow finishes green on main (D43).
-# A docs-only merge skips CI and so the deploy: the code in production is the same.
+# A docs-only merge skips CI and so the deploy: the code in production is the
+# same. The ruleset on main requires these two checks by name, so a pull request
+# the filter excludes reports nothing and stays blocked — measured on the first
+# pull request of the public repository, which changed no file at all. That is
+# accepted: the owner merges those by bypassing the ruleset, and paying five
+# minutes of pipeline for a typo is the worse trade.
 on:
   pull_request:
     branches: [main]
