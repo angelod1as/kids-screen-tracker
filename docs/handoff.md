@@ -52,7 +52,7 @@ Unauthenticated` do Coolify), sete no arquivo. Confira
 |---|---|
 | `/menino` | Saldo. Maior elemento da tela. |
 | `/menino/historico` | Ganhos e gastos, inclusive a recusa com motivo. |
-| `/menino/cronometro` | Única escrita do menino: vira entrada pendente. Abaixo da sessão mínima não vira registro (D44). |
+| `/menino/cronometro` | As duas escritas do menino, ambas viram entrada pendente: o cronômetro (abaixo da sessão mínima não vira registro, D44) e o pedido sem cronômetro (D49). |
 | `/menino/calculadora` | Quanto uma atividade vale hoje, conta linha a linha. |
 | `/admin` | Saldo dos dois. Tocar abre `/admin/historico/[userId]`. |
 | `/admin/fila` | Aprova, corrige ou recusa na ordem canônica (D32). |

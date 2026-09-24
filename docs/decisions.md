@@ -1,8 +1,8 @@
 # Decisões — Quanto Tempo Vale?
 
 Vinte e cinco ambiguidades da spec, resolvidas e justificadas antes da primeira
-linha de código, mais as que cada fase mediu depois. Hoje são quarenta e oito,
-D1–D48, mais nove emendas e as duas declarações da Fase 4, uma delas revogada.
+linha de código, mais as que cada fase mediu depois. Hoje são quarenta e nove,
+D1–D49, mais nove emendas e as duas declarações da Fase 4, uma delas revogada.
 
 **Onde este documento e `spec.md` discordarem, este documento vence.**
 
@@ -1481,3 +1481,87 @@ depois, contra ~345 mil por dia antes. Com 50 mil chaves, o mapa ocupa 8,7 MiB
   repositório.
 - **Quem tem o celular do adulto na mão** usa a chave com cookie do adulto, que
   é limitada do mesmo jeito.
+
+---
+
+## A decisão que veio da #17 e da #18
+
+### D49 — O menino também pede, sem cronômetro
+
+Até aqui a única escrita do menino era propor um registro pelo cronômetro.
+Culto, academia e sair com os amigos não se cronometram, então só existiam se o
+adulto lançasse (D18).
+
+**Decisão.** Existe uma segunda escrita do menino: o **pedido**. Ele escolhe a
+atividade, o dia e, se a atividade for `duration`, quantos minutos. A entrada
+nasce `pending`, com `source = 'request'`, na mesma fila do cronômetro, e o
+adulto aprova, corrige ou recusa com motivo como já faz (D19, D32, D33). A fila
+mostra a origem ("pedido sem cronômetro").
+
+Decisões do dono (24/09/2026):
+
+- **Qualquer dia.** Sem limite para trás nem para frente no servidor: *"a gente
+  conversa"*. A data continua `TEXT` `YYYY-MM-DD` em `America/Sao_Paulo` (D13),
+  e só uma data que não existe é recusada. O preço de uma entrada num dia
+  passado segue a D8 e a D34 como qualquer outra: quem congela depois lê o que
+  a janela já gastou, e nada congelado se move (D15).
+- **Todas as atividades ativas aparecem**, as de duração inclusive, com o
+  menino digitando os minutos. *"Tudo passa por aprovação de qualquer jeito."*
+  O menino nunca manda valor nem nota: `delivery` chega sem nota e o adulto dá
+  a nota na aprovação (D37); `free` chega sem valor e o adulto digita o valor
+  na aprovação (`LogEdits.freeValue`), que é o que a D12 já dizia do Curinga.
+  Minutos mandados para atividade que não é `duration` são descartados.
+- **Nenhum limite de pedidos.** Sem contador, cota nem espera.
+- **O servidor só recusa o que a D33 recusa:** pedido em nome de outra pessoa
+  (a guarda `requestLog` só deixa o menino pedir para si), atividade inexistente
+  ou desativada, categoria desativada, menino desativado, e corpo mal formado —
+  data que não existe, minutos que não são inteiros de 1 a 1.000.000, nota
+  acima de 500 caracteres. A recusa sai como as outras hoje (#7).
+
+**Consequência que o dono precisa ler.** A D32 não deixa aprovar uma entrada
+enquanto houver pendência anterior na janela dela, e a D47 estende isso à
+estreia de uma categoria. Vinte pedidos empilhados viram **vinte decisões antes
+de qualquer entrada posterior** que caia na janela deles: a sessão de hoje fica
+atrás deles na fila até cada um ser aprovado ou recusado. Recusar libera, como
+sempre (D19). Medido em teste: vinte pedidos de Mente num domingo, depois uma
+sessão cronometrada hoje — as vinte e uma chegam à fila, vinte com "Aprove
+antes", e a de hoje só fica livre depois de o adulto decidir as vinte.
+
+**Duração presumida (#18).** `activities.presumed_minutes`, nulo ou inteiro de
+1 em diante, editável na Configuração só para `duration`. É de onde o campo de
+minutos do pedido parte; se o menino não manda minutos, a entrada nasce com
+ela. "Curso ou aula extra" tem 60: o pedido chega valendo uma hora pela taxa da
+categoria — não vira prêmio fixo — e o adulto corrige a duração na aprovação,
+o que reprecifica (D8, D15). **Não é campo que precifica (D37):** a entrada já
+tem os seus minutos na linha, então mudar a duração presumida com pedido na
+fila é permitido e não mexe nele. **A sessão mínima (D44) não vale para o
+pedido:** ela protege a fila contra o toque do cronômetro; um pedido é uma
+afirmação que o adulto confere.
+
+**Seed: "Treino em casa" vira "Academia", 1 h fixa** (decisão do dono, mesmo
+dia). A linha de id 4 de Corpo é renomeada e passa a `fixed` com valor 1 — a
+mesma linha, nunca desativada e recriada (D14), para o histórico ficar no mesmo
+id. O seed só vale para banco novo; em produção o dono já fez a mesma mudança
+na Configuração.
+
+**A migration não move saldo.** `0006` reconstrói `activity_logs` (a lista de
+`source` ganha `request`) e `activities` (coluna nova) copiando todas as colunas,
+derruba e recria verbatim os três gatilhos da `0001`, e preenche
+`presumed_minutes` com 60 só na atividade de id 8, identidade do seed para
+"Curso ou aula extra", se ela ainda for `duration`. Medido num banco construído
+com o código anterior (seed, dado de demonstração, uma pendência e um
+cronômetro aberto): saldos iguais (id 3: 10,83 h; id 4: −6,25 h), contagens
+iguais nas sete tabelas, `users`, `categories`, `activity_logs`, `ledger`,
+`timers` e as colunas antigas de `activities` idênticos por hash, prévia da
+pendência idêntica, `foreign_key_check` vazio. O cronômetro aberto, parado
+depois da migration, virou registro como antes.
+
+**Resíduos aceitos.**
+
+- O menino pode pedir o mesmo culto duas vezes, ou um dia que ainda não
+  aconteceu. É o adulto quem decide, com o menino do lado.
+- Uma entrada futura aprovada congela hoje; o que for lançado depois num dia
+  anterior lê a janela dela pela D34, e ela não se move.
+- O menino digita os minutos de uma atividade `duration`, e o número chega à
+  fila como ele digitou. A conferência é a aprovação.
+

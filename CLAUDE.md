@@ -15,7 +15,7 @@ Family Link, Xbox ou PlayStation.
 
 | documento | papel |
 |---|---|
-| [`docs/decisions.md`](docs/decisions.md) | **Normativo.** 48 decisões, D1–D48. |
+| [`docs/decisions.md`](docs/decisions.md) | **Normativo.** 49 decisões, D1–D49. |
 | [`docs/spec.md`](docs/spec.md) | Anexo histórico. A intenção original. |
 | [`docs/handoff.md`](docs/handoff.md) | **Retrato datado.** Estado do projeto, o que falta para o MVP e como o trabalho é conduzido. Comece por aqui numa sessão nova. |
 | [`docs/design.md`](docs/design.md) | **Sistema visual.** Paleta, contraste medido, tipografia, raios, ícones e o porquê de cada um. Normativo pela D42. |
@@ -122,9 +122,10 @@ mesma base com utilitários `lg:`, nunca uma segunda tela. Detalhe e medidas em
 
 ## Regra de acesso
 
-Kid vê e simula **apenas** os próprios dados, e nunca o saldo do outro. A única
-escrita que um kid faz é propor um registro via cronômetro. Admin vê e altera
-tudo dos dois.
+Kid vê e simula **apenas** os próprios dados, e nunca o saldo do outro. Um kid
+escreve de dois jeitos, e só para si: propor um registro via cronômetro, ou
+pedir uma atividade sem cronômetro (D49). Os dois nascem pendentes na mesma
+fila. Admin vê e altera tudo dos dois.
 
 A guarda vive no server action, não só na navegação.
 
