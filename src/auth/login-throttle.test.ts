@@ -119,6 +119,28 @@ describe("a throttle", () => {
     expect(throttle.size()).toBe(MAX_ENTRIES);
   });
 
+  it("evicts a stale key first, then the oldest one", () => {
+    const throttle = createLoginThrottle();
+    const stale = throttleKey("stale", false);
+    const oldest = throttleKey("oldest", false);
+    const blocked = throttleKey("blocked", false);
+    throttle.begin(stale, T0 - FORGET_AFTER_MS);
+    throttle.begin(oldest, T0);
+    failTimes(throttle, blocked, FREE_FAILURES);
+    for (let i = throttle.size(); i < MAX_ENTRIES; i += 1) {
+      throttle.begin(throttleKey(`name${i}`, false), T0);
+    }
+
+    throttle.begin(throttleKey("new1", false), T0);
+    expect(throttle.begin(blocked, T0)).toBe(false);
+    throttle.begin(throttleKey("new2", false), T0);
+    expect(throttle.begin(blocked, T0)).toBe(false);
+    throttle.begin(throttleKey("new3", false), T0);
+
+    expect(throttle.begin(blocked, T0)).toBe(true);
+    expect(throttle.size()).toBe(MAX_ENTRIES);
+  });
+
   it("hashes the username to a fixed-size key", () => {
     expect(throttleKey("x".repeat(100_000), false)).toHaveLength(43);
   });

@@ -22,7 +22,10 @@ type Entry = { failures: number; lastAt: number; blockedUntil: number };
  * sibling's failures from another device do not delay it (D48). Hashed, so an
  * arbitrarily long username costs a fixed-size key.
  */
-export function throttleKey(normalizedUsername: string, trusted: boolean) {
+export function throttleKey(
+  normalizedUsername: string,
+  trusted: boolean,
+): string {
   return createHash("sha256")
     .update(`${trusted ? "device" : "any"}\0${normalizedUsername}`)
     .digest("base64url");
