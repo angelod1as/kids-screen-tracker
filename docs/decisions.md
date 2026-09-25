@@ -2,7 +2,7 @@
 
 Vinte e cinco ambiguidades da spec, resolvidas e justificadas antes da primeira
 linha de código, mais as que cada fase mediu depois. Hoje são cinquenta,
-D1–D50, mais nove emendas e as duas declarações da Fase 4, uma delas revogada.
+D1–D50, mais dez emendas e as duas declarações da Fase 4, uma delas revogada.
 
 **Onde este documento e `spec.md` discordarem, este documento vence.**
 
@@ -1220,6 +1220,26 @@ roda: a `main`, além do PR.
 **Resíduo aceito.** Um deploy ainda pode ser pedido à mão pelo painel do
 Coolify, e o painel não pergunta pelo CI. A decisão descreve o caminho
 automático, não tranca o manual.
+
+**Emenda (#23) — a migration roda no "Post-deployment command".** O Coolify
+roda `db-migrate.mjs` sozinho, no container novo, depois de ele ficar saudável.
+O `db-migrate` termina imprimindo as migrations do banco e as da imagem, e o
+log do deploy mostra que o banco está em dia sem outro comando.
+
+O "Pre-deployment command" fica vazio. No Coolify 4.3.21 ele roda com
+`docker exec` no container que está servindo, antes de a imagem nova ser
+construída: a pasta `drizzle/` é a da imagem anterior, a migration nova não é
+vista e o `db-migrate` sai com 0 sem aplicar nada.
+
+**Por quê.** Esquecer o comando manual quebrou a tela ao menos uma vez. O preço
+do post-deploy é o código novo servir contra o schema velho por alguns
+segundos, e uma migration que falha deixar o deploy verde, com o erro no log e
+as telas novas quebradas até alguém agir. O dono aceitou (25/09/2026): o app é
+caseiro e ficar fora um minuto não é problema. Continua valendo o que
+`deploy.md` recusa: a migration não roda no start do container, e não há
+crash-loop, porque o post-deploy roda uma vez por deploy. Evidência, com trechos
+e links, em `deploy.md`, "No Coolify" e "Por que não pelo Pre-deployment
+command".
 
 ---
 

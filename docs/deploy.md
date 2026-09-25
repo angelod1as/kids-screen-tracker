@@ -162,7 +162,9 @@ existem. Rodar de novo num banco já pronto não muda nada — verificado no smo
 **Primeiro deploy:** rode só `db-seed.mjs`. Ele cria o schema do zero e insere as
 sete categorias e as trinta e duas atividades. As pessoas não: veja "Usuários".
 
-**Todo deploy depois:** rode `db-migrate.mjs` depois de subir a imagem nova.
+**Todo deploy depois:** no Coolify, o "Post-deployment command" roda
+`db-migrate.mjs` sozinho (ver abaixo). Fora dele, rode-o depois de subir a
+imagem nova.
 
 > O caminho do banco aparece mascarado na saída (`/d▒▒▒▒▒`). Não é erro:
 > `DATABASE_PATH` é `@sensitive` no `.env.schema` e o varlock censura valores
@@ -243,8 +245,81 @@ morre, o Docker sobe outro, a migration falha de novo, e o que aparece no painel
 falha uma vez, com a mensagem inteira, e a app continua servindo a versão velha
 do schema enquanto alguém olha.
 
-O custo é ter que lembrar de rodar. É um comando por deploy, num app de quatro
-usuários, e está escrito aqui.
+Fora do Coolify, o custo é ter que lembrar de rodar. No Coolify, quem roda é o
+"Post-deployment command", logo abaixo.
+
+### No Coolify: "Post-deployment command"
+
+Em **Configuration → General → Deployment**, o campo **Post-deployment command**
+recebe exatamente:
+
+```sh
+node node_modules/varlock/bin/cli.js run -- node dist/db/db-migrate.mjs
+```
+
+O campo **Container Name** ao lado fica vazio (a aplicação tem um container só).
+
+O Coolify roda o comando com `docker exec` **no container novo**, depois de ele
+ficar saudável e de o antigo ser removido
+([`post_deployment`](https://github.com/coollabsio/coolify/blob/113a2f229d7fa2391119d9acf149e9b0b70382f5/app/Jobs/ApplicationDeploymentJob.php#L537-L566),
+v4.3.21). O container novo monta `/data`, e a imagem nova traz a pasta `drizzle/`
+nova: a migration que chegou no deploy é aplicada no banco de verdade. Uma vez
+por deploy, não a cada restart, então não há crash-loop.
+
+**O preço, aceito (D43, emenda da #23):** entre o container novo começar a
+servir e o comando terminar, o código novo lê o schema velho. São segundos, e
+uma tela que quebre nesse intervalo volta sozinha.
+
+**Se a migration falhar**, o deploy **continua verde**: o Coolify grava
+`Post-deployment command failed.` e a saída do erro no log do deploy, e não
+reprova nada
+([L5029-L5074](https://github.com/coollabsio/coolify/blob/113a2f229d7fa2391119d9acf149e9b0b70382f5/app/Jobs/ApplicationDeploymentJob.php#L5029-L5074)).
+O migrador aplica tudo numa transação, então o schema fica como estava, sem
+nada pela metade. A app fica no ar com o schema velho, e as telas que leem o que
+a migration traria quebram até alguém agir: leia o erro no log, corrija, ou use
+**Rollback** no Coolify para voltar à imagem anterior, que casa com o schema
+velho.
+
+**Como conferir** que rodou no banco de verdade: o `db-migrate` termina
+imprimindo as duas contagens.
+
+```
+Migrations applied to /data/kids.db: 8 in the database, 8 in this image
+```
+
+A primeira é o número de linhas em `__drizzle_migrations` no banco do volume; a
+segunda, o de migrations que a imagem traz (os arquivos `.sql` de `drizzle/`).
+Iguais: banco em dia. No Coolify, a linha aparece no log do deploy com **Show
+Debug Logs** ligado. Para conferir a qualquer hora, rode o mesmo comando no
+Terminal da aplicação: ele é idempotente e imprime as mesmas contagens.
+
+### Por que não pelo "Pre-deployment command" do Coolify
+
+**Deixe o campo vazio.** Ele parece ser o lugar certo, e não é: no Coolify 4.3
+o comando roda com `docker exec` no container **antigo**, o que está servindo,
+antes de o repositório ser clonado e a imagem nova construída. O container
+antigo monta `/data`, então o banco é o de verdade, mas o código é o da imagem
+anterior, com a pasta `drizzle/` anterior. A migration nova não existe ali:
+`db-migrate` não acha nada pendente e sai com 0. O deploy segue, o código novo
+sobe e lê uma coluna que não existe.
+
+A evidência, na tag `v4.3.21` (a versão da instância):
+
+- [`run_pre_deployment_command`](https://github.com/coollabsio/coolify/blob/113a2f229d7fa2391119d9acf149e9b0b70382f5/app/Jobs/ApplicationDeploymentJob.php#L4987-L5027)
+  escolhe o container que já existe com o rótulo da aplicação
+  (`docker ps -a --filter label=coolify.applicationId=…`) e roda
+  `docker exec {$containerName} sh -c '…'`. Nenhum container novo é criado.
+  Sem container de pé, como no primeiro deploy, o comando é pulado.
+- Ele é a última linha de
+  [`prepare_builder_image`](https://github.com/coollabsio/coolify/blob/113a2f229d7fa2391119d9acf149e9b0b70382f5/app/Jobs/ApplicationDeploymentJob.php#L2336),
+  que é o primeiro passo de
+  [`deploy_dockerfile_buildpack`](https://github.com/coollabsio/coolify/blob/113a2f229d7fa2391119d9acf149e9b0b70382f5/app/Jobs/ApplicationDeploymentJob.php#L936-L971),
+  antes de `clone_repository`, `build_image` e `rolling_update`.
+- A [documentação](https://github.com/coollabsio/coolify-docs/blob/c572cb7c50d85c5fd094a310c836f75dc8a35238/content/docs/applications/configuration/general.mdx)
+  diz o mesmo: "Pre-deployment runs through `sh -c` inside the currently
+  running application container. Coolify runs it after preparing the deployment
+  workspace and before building or starting the replacement application
+  container."
 
 ## Rodar o smoke localmente
 
