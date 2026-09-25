@@ -928,6 +928,9 @@ quatro categorias; não tranca a tela. O que era caro era uma segunda recusa sob
 as categorias que um movimento atravessa, que **não protegia nada** depois do
 carimbo de `category_id` e recusava **96 de 192** movimentos legais; foi apagada.
 
+**Emendada pela #7:** a recusa chega ao navegador com a frase exata; ver a
+emenda na D32.
+
 ### D38 — O limite da sessão é um carimbo, não uma leitura
 
 > Substitui a declaração da Fase 4 que dizia o contrário. A declaração está
