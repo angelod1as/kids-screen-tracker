@@ -1,14 +1,11 @@
 "use server";
 
-import { eq } from "drizzle-orm";
-
 import { requireAccess } from "../../auth/guard";
 import { getConnection, getDb } from "../../db";
 import { requireHours } from "../../db/input";
 import type { Refund, Release } from "../../db/ledger";
 import { refundHours, releaseHours } from "../../db/ledger";
 import { requireActiveKid } from "../../db/people";
-import { users } from "../../db/schema";
 import { fetchBalanceAction } from "./balance";
 
 /** `write` (#13): refused to a kid whichever boy's id the request carries. */
@@ -67,19 +64,7 @@ async function previewMovement(
   userId: number,
   signedHours: number,
 ): Promise<MovementPreview> {
-  const db = getDb();
-
-  requireActiveKid(db, userId);
-
-  const kid = db
-    .select({ displayName: users.displayName })
-    .from(users)
-    .where(eq(users.id, userId))
-    .get();
-
-  if (kid === undefined) throw new Error(`there is no user ${userId}`);
-
-  const { displayName } = kid;
+  const { displayName } = requireActiveKid(getDb(), userId);
   const before = await fetchBalanceAction(userId);
 
   return {
