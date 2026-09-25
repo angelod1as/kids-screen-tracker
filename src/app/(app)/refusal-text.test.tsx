@@ -4,6 +4,7 @@ import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import type { ActivityRow } from "../../db/activities";
 import type { CategoryRow } from "../../db/categories";
 import type { QueueEntry } from "../../db/queue";
 import { REFUSED_TEXT, RESYNCED_TEXT } from "../../ui/failure";
@@ -46,6 +47,7 @@ vi.mock("../actions/config", () => config);
 const { QueueList } = await import("./admin/fila/queue-list");
 const { LaunchForm } = await import("./admin/lancar/launch-form");
 const { CategoryList } = await import("./admin/configuracao/category-list");
+const { ActivityList } = await import("./admin/configuracao/activity-list");
 
 const D32 =
   "Não dá para aprovar a entrada 2 ainda: a entrada 1 (Ler livro, 2026-09-01) vem antes dela e está esperando na fila. Decida essa primeiro.";
@@ -201,5 +203,41 @@ describe("Configuration says D37's refusal as the server wrote it", () => {
     expectOnlyTheSentence(D37);
     expect(container.textContent).toContain("Mente");
     expect(container.textContent).not.toContain("desativada");
+  });
+
+  it("shows the sentence when switching off an activity is refused", async () => {
+    const book: ActivityRow = {
+      id: 5,
+      categoryId: 2,
+      name: "Ler livro",
+      calcMode: "duration",
+      value: 2,
+      maxSessionMinutes: 120,
+      minSessionMinutes: 5,
+      qualityGraded: false,
+      repeatCooldownDays: 0,
+      sortOrder: 1,
+      active: true,
+    };
+    const onChanged = vi.fn();
+    const activityD37 = D37.replace("Mente:", "Ler livro:");
+
+    await render(
+      <ActivityList
+        categories={[MENTE]}
+        category={MENTE}
+        initial={[book]}
+        locks={LOCKS}
+        onChanged={onChanged}
+      />,
+    );
+
+    config.setActivityActiveAction.mockResolvedValueOnce({
+      refused: activityD37,
+    });
+    await click("Desativar");
+
+    expectOnlyTheSentence(activityD37);
+    expect(onChanged).not.toHaveBeenCalled();
   });
 });
