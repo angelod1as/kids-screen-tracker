@@ -84,11 +84,123 @@ describe("the service worker caches nothing (#95, D46)", () => {
 
     runInNewContext(source, { self });
 
-    expect(listened.sort()).toEqual(["activate", "install"]);
+    expect(listened.sort()).toEqual([
+      "activate",
+      "install",
+      "notificationclick",
+      "push",
+    ]);
   });
 
   it("never opens the Cache API", () => {
     expect(source).not.toMatch(/\bcaches\b|\bCache\b/);
+  });
+});
+
+describe("the service worker shows a push and opens its screen (D51)", () => {
+  const source = readFileSync(join(PUBLIC, "sw.js"), "utf8");
+
+  type Listener = (event: unknown) => void;
+
+  function load(windows: unknown[]) {
+    const listeners: Record<string, Listener> = {};
+    const shown: { title: string; options: unknown }[] = [];
+    const opened: string[] = [];
+    const self = {
+      addEventListener: (type: string, listener: Listener) => {
+        listeners[type] = listener;
+      },
+      skipWaiting: () => undefined,
+      location: { origin: "https://app.test" },
+      registration: {
+        showNotification: async (title: string, options: unknown) => {
+          shown.push({ title, options });
+        },
+      },
+      clients: {
+        claim: () => undefined,
+        matchAll: async () => windows,
+        openWindow: async (url: string) => {
+          opened.push(url);
+        },
+      },
+    };
+
+    runInNewContext(source, { self, URL });
+
+    return { listeners, shown, opened };
+  }
+
+  async function dispatch(listener: Listener | undefined, event: object) {
+    let waited: Promise<unknown> = Promise.resolve();
+    listener?.({
+      ...event,
+      waitUntil: (promise: Promise<unknown>) => {
+        waited = promise;
+      },
+    });
+    await waited;
+  }
+
+  it("shows the message with the installation icon, which is art (D46)", async () => {
+    const { listeners, shown } = load([]);
+
+    await dispatch(listeners.push, {
+      data: {
+        json: () => ({
+          title: "Aprovado",
+          body: "Ler livro: 1h",
+          url: "/menino",
+        }),
+      },
+    });
+
+    expect(shown).toEqual([
+      {
+        title: "Aprovado",
+        options: {
+          body: "Ler livro: 1h",
+          icon: "/icon-192.png",
+          data: { url: "/menino" },
+        },
+      },
+    ]);
+  });
+
+  it("still shows something for a push it cannot read", async () => {
+    const { listeners, shown } = load([]);
+
+    await dispatch(listeners.push, { data: null });
+
+    expect(shown).toHaveLength(1);
+  });
+
+  it("opens the screen when the app is closed", async () => {
+    const { listeners, opened } = load([]);
+
+    await dispatch(listeners.notificationclick, {
+      notification: { close: () => undefined, data: { url: "/admin/fila" } },
+    });
+
+    expect(opened).toEqual(["https://app.test/admin/fila"]);
+  });
+
+  it("focuses the open app and takes it to the screen", async () => {
+    const navigated: string[] = [];
+    const open = {
+      focus: async () => open,
+      navigate: async (url: string) => {
+        navigated.push(url);
+      },
+    };
+    const { listeners, opened } = load([open]);
+
+    await dispatch(listeners.notificationclick, {
+      notification: { close: () => undefined, data: { url: "/menino" } },
+    });
+
+    expect(navigated).toEqual(["https://app.test/menino"]);
+    expect(opened).toEqual([]);
   });
 });
 

@@ -533,6 +533,28 @@ export const timers = sqliteTable(
   ],
 );
 
+/**
+ * D51. Unique by endpoint: a browser's subscription belongs to whoever saved it
+ * last. A dead one is deleted, not deactivated: nothing refers to it.
+ */
+export const pushSubscriptions = sqliteTable(
+  "push_subscriptions",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    userId: integer("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "restrict" }),
+    endpoint: text("endpoint").notNull(),
+    p256dh: text("p256dh").notNull(),
+    auth: text("auth").notNull(),
+    createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
+  },
+  (table) => [
+    uniqueIndex("push_subscriptions_endpoint_idx").on(table.endpoint),
+    index("push_subscriptions_user_idx").on(table.userId),
+  ],
+);
+
 export type User = typeof users.$inferSelect;
 export type NewUser = typeof users.$inferInsert;
 export type Category = typeof categories.$inferSelect;
@@ -547,3 +569,4 @@ export type Regime = typeof regimes.$inferSelect;
 export type NewRegime = typeof regimes.$inferInsert;
 export type Timer = typeof timers.$inferSelect;
 export type NewTimer = typeof timers.$inferInsert;
+export type PushSubscriptionRow = typeof pushSubscriptions.$inferSelect;

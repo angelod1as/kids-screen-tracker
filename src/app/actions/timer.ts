@@ -21,6 +21,7 @@ import {
   stopTimer,
 } from "../../db/timers";
 import { saoPauloDay } from "../../engine/calculate";
+import { notifyPending } from "../../push/notify";
 
 /**
  * Even the read is guarded with `proposeTimerLog`: D16 makes a read a write;
@@ -199,6 +200,9 @@ async function screen(
 ): Promise<TimerScreenData> {
   const connection = getConnection();
 
+  // D51: every write and read of this screen passes here, so every entry born pending does too.
+  void notifyPending(connection, userId, filed(read, proposed, requested));
+
   return {
     userId,
     activities: listTimedActivities(connection),
@@ -210,6 +214,22 @@ async function screen(
     today: saoPauloDay(new Date()),
     requested,
   };
+}
+
+/** A settlement files a record for the limit and the day's turn only (D16, D44). */
+function filed(
+  read: TimerRead,
+  proposed: { activityName: string } | null,
+  requested: { activityName: string } | null,
+): string[] {
+  const settled =
+    read.settlement?.durationMinutes == null
+      ? null
+      : read.settlement.activityName;
+
+  return [settled, proposed?.activityName, requested?.activityName].filter(
+    (name): name is string => typeof name === "string",
+  );
 }
 
 function viewOf(read: TimerRead): OpenSessionView | null {

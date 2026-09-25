@@ -33,7 +33,8 @@
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
     "tsx": "^4.23.13",
-    "varlock": "^1.18.0"
+    "varlock": "^1.18.0",
+    "web-push": "^3.6.7"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.5.11",
@@ -42,6 +43,7 @@
     "@types/node": "^22.18.13",
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.4",
+    "@types/web-push": "^3.6.4",
     "drizzle-kit": "^0.31.10",
     "esbuild": "^0.28.2",
     "jsdom": "^30.0.1",
