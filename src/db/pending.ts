@@ -1,6 +1,7 @@
 import { and, asc, eq, inArray } from "drizzle-orm";
 
 import type { Connection, Transaction } from "./client";
+import { RefusalError } from "./refusal";
 import { activities, activityLogs, timers } from "./schema";
 
 /**
@@ -143,7 +144,7 @@ export function refuseWhileWaiting(
 
   if (waiting === undefined) return;
 
-  throw new Error(refusalText(what, waiting));
+  throw new RefusalError(refusalText(what, waiting));
 }
 
 /** pt-BR, not English: the screen shows the same sentence the endpoint throws. */

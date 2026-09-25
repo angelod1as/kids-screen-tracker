@@ -271,7 +271,7 @@ describe("the preview is not the write", () => {
     world.addPending({ activity: BOOK, occurredOn: THAT_DAY });
 
     await expect(launchEntryAction(entry(world.kidId))).rejects.toThrow(
-      /comes before it and is still waiting/,
+      /vem antes dela e está esperando na fila/,
     );
 
     expect(world.ledgerText()).toBe("no ledger");

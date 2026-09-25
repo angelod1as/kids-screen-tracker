@@ -15,6 +15,7 @@ import { categoryFirstDay, pendingDebutBefore } from "./debut";
 import { requireCalendarDay, requireHours, requireText } from "./input";
 import { requireActiveKid } from "./people";
 import type { BlockingEntry } from "./queue";
+import { RefusalError } from "./refusal";
 import { activities, activityLogs, categories, ledger } from "./schema";
 
 /**
@@ -325,8 +326,8 @@ export function launchEntry(
     const blocking = pendingBefore(tx, entry);
 
     if (blocking !== undefined) {
-      throw new Error(
-        `this entry cannot be launched yet: log ${blocking.id} (${blocking.activityName}, ${blocking.occurredOn}) comes before it and is still waiting; decide that one first`,
+      throw new RefusalError(
+        `Não dá para lançar esta entrada ainda: a entrada ${blocking.id} (${blocking.activityName}, ${blocking.occurredOn}) vem antes dela e está esperando na fila. Decida essa primeiro.`,
       );
     }
 

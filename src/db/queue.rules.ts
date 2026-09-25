@@ -435,7 +435,7 @@ export const QUEUE_CASES: readonly QueueCase[] = [
         ),
       )} — ${ledgerText(world)} — ${world.logRow(earlier).status}`;
     },
-    expected: `refused: log 2 cannot be approved yet: log 1 (${BOOK}, ${THAT_DAY}) comes before it and is still waiting; decide that one first — no ledger — pending`,
+    expected: `refused: Não dá para aprovar a entrada 2 ainda: a entrada 1 (${BOOK}, ${THAT_DAY}) vem antes dela e está esperando na fila. Decida essa primeiro. — no ledger — pending`,
   },
   {
     rule: "an entry is not frozen while an earlier one is undecided",
@@ -487,7 +487,7 @@ export const QUEUE_CASES: readonly QueueCase[] = [
         ),
       );
     },
-    expected: `refused: log 2 cannot be approved yet: log 1 (${CAR}, 2026-09-07) comes before it and is still waiting; decide that one first`,
+    expected: `refused: Não dá para aprovar a entrada 2 ainda: a entrada 1 (${CAR}, 2026-09-07) vem antes dela e está esperando na fila. Decida essa primeiro.`,
   },
   {
     rule: "an entry is not frozen while an earlier one is undecided",
@@ -578,7 +578,7 @@ export const QUEUE_CASES: readonly QueueCase[] = [
         ),
       );
     },
-    expected: `refused: log 2 cannot be approved yet: log 1 (${BOOK}, 2026-08-27) comes before it and is still waiting; decide that one first`,
+    expected: `refused: Não dá para aprovar a entrada 2 ainda: a entrada 1 (${BOOK}, 2026-08-27) vem antes dela e está esperando na fila. Decida essa primeiro.`,
   },
   {
     rule: "an entry is not frozen while an earlier one is undecided",
@@ -1293,7 +1293,7 @@ export const QUEUE_CASES: readonly QueueCase[] = [
       );
     },
     expected:
-      "refused: log 2 cannot be approved yet: log 1 (Ler livro, 2026-09-10) comes before it and is still waiting; decide that one first",
+      "refused: Não dá para aprovar a entrada 2 ainda: a entrada 1 (Ler livro, 2026-09-10) vem antes dela e está esperando na fila. Decida essa primeiro.",
   },
 
   {
