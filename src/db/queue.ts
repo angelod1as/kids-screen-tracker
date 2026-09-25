@@ -12,7 +12,7 @@ import {
 import type { Connection, Transaction } from "./client";
 import { writeTransaction } from "./client";
 import { categoryFirstDay, pendingDebutBefore } from "./debut";
-import { requireHours, requireNonNegativeHours } from "./input";
+import { requireHours, requireNonNegativeHours, requireText } from "./input";
 import { activities, activityLogs, categories, ledger, users } from "./schema";
 
 /**
@@ -71,6 +71,8 @@ export type LogEdits = {
   freeValue?: number;
   /** D50: the final value in hours, in any mode; the rule is not asked. */
   overrideHours?: number;
+  /** D50: optional; only beside `overrideHours`. */
+  overrideReason?: string | null;
   note?: string | null;
 };
 
@@ -446,6 +448,15 @@ export function approveLog(
       ? undefined
       : requireNonNegativeHours(edits.overrideHours, "an overridden value");
 
+  const overrideReason = edits.overrideReason?.trim() || null;
+  requireText(overrideReason, "the reason for an overridden value");
+
+  if (overrideReason !== null && overrideHours === undefined) {
+    throw new Error(
+      "a reason goes with an overridden value, and there is none",
+    );
+  }
+
   return writeTransaction(connection, (tx) => {
     const log = takePending(tx, logId);
 
@@ -472,6 +483,11 @@ export function approveLog(
       overrideHours === undefined
         ? calculationFor(tx, edited)
         : { hours: overrideHours };
+    // D50: kept beside the adult's number, so the gap stays explainable.
+    const ruleHours =
+      overrideHours === undefined
+        ? null
+        : (priceOrExplain(tx, edited).preview?.hours ?? null);
 
     tx.update(activityLogs)
       .set({
@@ -493,6 +509,8 @@ export function approveLog(
         // D15.
         computedHours: calculation.hours,
         overridden: overrideHours !== undefined,
+        ruleHours,
+        overrideReason,
         reviewedBy: reviewerId,
         reviewedAt: now,
       })

@@ -264,6 +264,10 @@ export const activityLogs = sqliteTable(
     overridden: integer("overridden", { mode: "boolean" })
       .notNull()
       .default(false),
+    /** D50: what the rule would have paid, or null where it could not price the entry. */
+    ruleHours: real("rule_hours"),
+    /** D50: optional, and shown to the boy. */
+    overrideReason: text("override_reason"),
     /** D16: the limit or the day ended the session, not the boy. */
     autoStopped: integer("auto_stopped", { mode: "boolean" })
       .notNull()

@@ -162,6 +162,7 @@ type Edits = {
   quality?: number | null;
   freeValue?: number;
   overrideHours?: number;
+  overrideReason?: string | null;
   note?: string | null;
 };
 
@@ -187,6 +188,7 @@ function Card({
   const [reason, setReason] = useState("");
   const [value, setValue] = useState("");
   const [override, setOverride] = useState("");
+  const [overrideReason, setOverrideReason] = useState("");
 
   const typed = Number(minutes);
   const timed = entry.durationMinutes !== null;
@@ -290,9 +292,21 @@ function Card({
             />
             <p className="text-base text-black">
               Vazio, o app calcula pela regra. Preenchido, vale este número, e o
-              menino vê no histórico que foi decisão de um adulto.
+              menino vê no histórico que foi decisão de um adulto e quanto a
+              regra daria.
             </p>
           </div>
+
+          {override.trim() === "" ? null : (
+            <Field
+              id={`motivo-valor-${entry.id}`}
+              label="Motivo do valor final (opcional)"
+              maxLength={500}
+              onChange={(event) => setOverrideReason(event.target.value)}
+              type="text"
+              value={overrideReason}
+            />
+          )}
 
           <Field
             id={`nota-${entry.id}`}
@@ -344,6 +358,10 @@ function Card({
                         ? {}
                         : {
                             overrideHours: Number(override.replace(",", ".")),
+                            overrideReason:
+                              overrideReason.trim() === ""
+                                ? null
+                                : overrideReason.trim(),
                           }),
                       quality: grade,
                       note: note.trim() === "" ? null : note.trim(),

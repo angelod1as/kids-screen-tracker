@@ -523,7 +523,10 @@ describe("the history of the other boy is his alone (#72, #73, D33)", () => {
 
 describe("the history says which value an adult decided (D50)", () => {
   /** Activity 15 is "Sair com os amigos", `fixed` at 3h, in the seed. */
-  function approvePending(username: string, overrideHours?: number): number {
+  function approvePending(
+    username: string,
+    edits: { overrideHours?: number; overrideReason?: string } = {},
+  ): number {
     const id = connection.db
       .insert(activityLogs)
       .values({
@@ -542,21 +545,28 @@ describe("the history says which value an adult decided (D50)", () => {
       connection,
       id,
       idOf("admin1"),
-      overrideHours === undefined ? {} : { overrideHours },
+      edits,
       new Date("2026-09-03T19:00:00Z"),
     );
 
     return id;
   }
 
-  it("marks the earn an adult overrode, and pays that number", async () => {
+  it("marks the earn an adult overrode, with the rule's number and the reason", async () => {
     mocked.username = "kid1";
     const before = await fetchBalanceAction(idOf("kid1"));
 
-    approvePending("kid1", 1);
+    approvePending("kid1", {
+      overrideHours: 1,
+      overrideReason: "Ficou só uma hora",
+    });
 
     const [latest] = await fetchHistoryAction(idOf("kid1"), 10);
-    expect(latest).toMatchObject({ kind: "earn", hours: 1, overridden: true });
+    expect(latest).toMatchObject({
+      kind: "earn",
+      hours: 1,
+      override: { ruleHours: 3, reason: "Ficou só uma hora" },
+    });
     await expect(fetchBalanceAction(idOf("kid1"))).resolves.toBe(before + 1);
   });
 
@@ -568,7 +578,7 @@ describe("the history says which value an adult decided (D50)", () => {
     const entries = await fetchHistoryAction(idOf("kid1"), 10);
     expect(entries[0]).toMatchObject({ kind: "earn", hours: 3 });
     expect(
-      entries.filter((entry) => "overridden" in entry && entry.overridden),
+      entries.filter((entry) => "override" in entry && entry.override !== null),
     ).toEqual([]);
   });
 
@@ -576,25 +586,53 @@ describe("the history says which value an adult decided (D50)", () => {
     mocked.username = "kid1";
     const before = await fetchBalanceAction(idOf("kid1"));
 
-    const id = approvePending("kid1", 0);
+    const id = approvePending("kid1", { overrideHours: 0 });
 
     const entries = await fetchHistoryAction(idOf("kid1"), 10);
     expect(entries.map((entry) => entry.kind)).toEqual([
-      "overridden-zero",
+      "zero",
       "refund",
       "spend",
       "earn",
     ]);
-    expect(entries[0]).toMatchObject({ id, label: "Sair com os amigos" });
+    expect(entries[0]).toMatchObject({
+      id,
+      label: "Sair com os amigos",
+      override: { ruleHours: 3, reason: null },
+    });
     await expect(fetchBalanceAction(idOf("kid1"))).resolves.toBe(before);
   });
 
+  it("shows a zero the rule gave too, unmarked (D10)", async () => {
+    // Activity 26 is "Lavar o carro", `delivery` graded, in the seed.
+    const id = connection.db
+      .insert(activityLogs)
+      .values({
+        userId: idOf("kid1"),
+        activityId: 26,
+        status: "pending",
+        source: "request",
+        occurredOn: "2026-09-03",
+        quality: 0,
+        createdBy: idOf("kid1"),
+        createdAt: new Date("2026-09-03T18:00:00Z"),
+      })
+      .returning({ id: activityLogs.id })
+      .get().id;
+    approveLog(connection, id, idOf("admin1"), {}, new Date());
+    mocked.username = "kid1";
+
+    const [latest] = await fetchHistoryAction(idOf("kid1"), 10);
+
+    expect(latest).toMatchObject({ id, kind: "zero", override: null });
+  });
+
   it("leaves the brother's zero out of a list the caller is allowed to have", async () => {
-    approvePending("kid2", 0);
+    approvePending("kid2", { overrideHours: 0 });
     mocked.username = "kid1";
 
     const entries = await fetchHistoryAction(idOf("kid1"), 10);
 
-    expect(entries.map((entry) => entry.kind)).not.toContain("overridden-zero");
+    expect(entries.map((entry) => entry.kind)).not.toContain("zero");
   });
 });

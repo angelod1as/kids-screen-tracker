@@ -159,7 +159,8 @@ export function KidGuide({ data }: { data: HowItWorksData }) {
           </li>
           <li>
             Ele também pode decidir quanto a entrada vale, sem a conta. Aí o
-            Histórico diz “valor decidido por um adulto”.
+            Histórico diz “valor decidido por um adulto”, quanto a regra daria e
+            o motivo, se ele escrever um.
           </li>
           <li>
             A conta é feita na hora em que ele aprova, contando o que já foi

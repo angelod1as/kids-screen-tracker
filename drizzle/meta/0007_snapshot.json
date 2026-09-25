@@ -1,7 +1,7 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "d45d35d9-bbf2-43b1-9ea1-5ea085df809a",
+  "id": "fabf5c62-c716-4a22-b467-0971acb9a9cb",
   "prevId": "28a7f947-87ed-4b61-b7f6-6cbbbef89ecc",
   "tables": {
     "activities": {
@@ -268,6 +268,20 @@
           "notNull": true,
           "autoincrement": false,
           "default": false
+        },
+        "rule_hours": {
+          "name": "rule_hours",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "override_reason": {
+          "name": "override_reason",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
         },
         "auto_stopped": {
           "name": "auto_stopped",

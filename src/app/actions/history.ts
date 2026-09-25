@@ -16,8 +16,15 @@ export type LedgerEntry = {
   /** D13: `YYYY-MM-DD`. Never a timestamp. */
   occurredOn: string;
   label: string;
-  /** D50: the hours are an adult's number, not the rule's. */
-  overridden: boolean;
+  /** D50: null when the rule priced it. */
+  override: AdultValue | null;
+};
+
+/** D50: what the boy is told about a value an adult decided. */
+export type AdultValue = {
+  /** What the rule would have paid; null where it could not price the entry. */
+  ruleHours: number | null;
+  reason: string | null;
 };
 
 /**
@@ -35,16 +42,17 @@ export type RejectedEntry = {
   reason: string | null;
 };
 
-/** D50: an adult's zero has no ledger row (D10), so it is read off the log, like a refusal. */
-export type OverriddenZeroEntry = {
+/** D10: an approved zero has no ledger row, so it is read off the log, like a refusal. */
+export type ZeroEntry = {
   id: number;
-  kind: "overridden-zero";
+  kind: "zero";
   /** D13: `YYYY-MM-DD`. Never a timestamp. */
   occurredOn: string;
   label: string;
+  override: AdultValue | null;
 };
 
-export type HistoryEntry = LedgerEntry | RejectedEntry | OverriddenZeroEntry;
+export type HistoryEntry = LedgerEntry | RejectedEntry | ZeroEntry;
 
 /** Refusals are sorted into the ledger by D8's key; `id` across two tables is only a stable tiebreak. */
 type Placed<Entry> = {
@@ -85,7 +93,7 @@ export async function fetchHistoryAction(
   const rows: Placed<HistoryEntry>[] = [
     ...ledgerEntries(targetUserId, limit),
     ...rejectedEntries(targetUserId, limit),
-    ...overriddenZeroEntries(targetUserId, limit),
+    ...zeroEntries(targetUserId, limit),
   ];
 
   return rows
@@ -125,7 +133,7 @@ function ledgerEntries(
       note: ledger.note,
       createdAt: ledger.createdAt,
       activityName: activities.name,
-      overridden: activityLogs.overridden,
+      ...ADULT_VALUE_COLUMNS,
     })
     .from(ledger)
     // Left joins: `activity_log_id` is null on every `spend` and `refund` (D10).
@@ -148,7 +156,7 @@ function ledgerEntries(
       // Activity first (D14 keeps a deactivated one readable), then the
       // destination, then the note that names a refund (#24).
       label: row.activityName ?? row.destination ?? row.note ?? NO_LABEL,
-      overridden: row.overridden === true,
+      override: adultValue(row),
     },
   }));
 }
@@ -199,16 +207,31 @@ function rejectedEntries(
   }));
 }
 
-function overriddenZeroEntries(
-  targetUserId: number,
-  limit: number,
-): Placed<OverriddenZeroEntry>[] {
+const ADULT_VALUE_COLUMNS = {
+  overridden: activityLogs.overridden,
+  ruleHours: activityLogs.ruleHours,
+  overrideReason: activityLogs.overrideReason,
+} as const;
+
+/** `overridden` is null on a spend or refund, which has no log (left join). */
+function adultValue(row: {
+  overridden: boolean | null;
+  ruleHours: number | null;
+  overrideReason: string | null;
+}): AdultValue | null {
+  return row.overridden === true
+    ? { ruleHours: row.ruleHours, reason: row.overrideReason }
+    : null;
+}
+
+function zeroEntries(targetUserId: number, limit: number): Placed<ZeroEntry>[] {
   const rows = getDb()
     .select({
       id: activityLogs.id,
       occurredOn: activityLogs.occurredOn,
       createdAt: activityLogs.createdAt,
       activityName: activities.name,
+      ...ADULT_VALUE_COLUMNS,
     })
     .from(activityLogs)
     .innerJoin(activities, eq(activityLogs.activityId, activities.id))
@@ -216,7 +239,6 @@ function overriddenZeroEntries(
       and(
         eq(activityLogs.userId, targetUserId),
         eq(activityLogs.status, "approved"),
-        eq(activityLogs.overridden, true),
         eq(activityLogs.computedHours, 0),
       ),
     )
@@ -234,9 +256,10 @@ function overriddenZeroEntries(
     id: row.id,
     entry: {
       id: row.id,
-      kind: "overridden-zero" as const,
+      kind: "zero" as const,
       occurredOn: row.occurredOn,
       label: row.activityName,
+      override: adultValue(row),
     },
   }));
 }

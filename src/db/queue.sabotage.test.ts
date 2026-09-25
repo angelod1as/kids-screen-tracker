@@ -258,6 +258,24 @@ const MUTATIONS: readonly Mutation[] = [
     ],
   },
   {
+    name: "the rule's number is not kept beside the adult's (D50)",
+    edits: [
+      {
+        find: "        : (priceOrExplain(tx, edited).preview?.hours ?? null);",
+        replace: "        : null;",
+      },
+    ],
+  },
+  {
+    name: "a reason is accepted with no overridden value (D50)",
+    edits: [
+      {
+        find: "  if (overrideReason !== null && overrideHours === undefined) {",
+        replace: "  if (false) {",
+      },
+    ],
+  },
+  {
     name: "a duration of zero reaches the database",
     edits: [
       {

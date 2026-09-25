@@ -72,6 +72,8 @@ export type World = {
     note: string | null;
     reviewedBy: number | null;
     overridden: boolean;
+    ruleHours: number | null;
+    overrideReason: string | null;
   };
   ledgerRows: () => {
     userId: number;
@@ -217,6 +219,8 @@ export function makeWorld(connection: Connection): World {
           note: activityLogs.note,
           reviewedBy: activityLogs.reviewedBy,
           overridden: activityLogs.overridden,
+          ruleHours: activityLogs.ruleHours,
+          overrideReason: activityLogs.overrideReason,
         })
         .from(activityLogs)
         .innerJoin(activities, eq(activityLogs.activityId, activities.id))
@@ -1290,6 +1294,113 @@ export const QUEUE_CASES: readonly QueueCase[] = [
     },
     expected:
       "refused: log 2 cannot be approved yet: log 1 (Ler livro, 2026-09-10) comes before it and is still waiting; decide that one first",
+  },
+
+  {
+    rule: "an adult can override the value (D50)",
+    name: "what the rule would have paid is kept beside the adult's number",
+    run: (queue, world) => {
+      const timed = world.addPending({ activity: BOOK, durationMinutes: 120 });
+      const loose = world.addPending({
+        activity: LOOSE,
+        durationMinutes: null,
+      });
+      const plain = world.addPending({
+        activity: FRIENDS,
+        durationMinutes: null,
+      });
+      queue.approveLog(
+        world.connection,
+        timed,
+        world.adminId,
+        { overrideHours: 0.5 },
+        REVIEWED_AT,
+      );
+      queue.approveLog(
+        world.connection,
+        loose,
+        world.adminId,
+        { overrideHours: 2 },
+        REVIEWED_AT,
+      );
+      queue.approveLog(world.connection, plain, world.adminId, {}, REVIEWED_AT);
+
+      return [timed, loose, plain]
+        .map((id) => String(world.logRow(id).ruleHours))
+        .join(" | ");
+    },
+    // 1,5 + 0,75. A `free` entry with no value has no rule to keep.
+    expected: "2.25 | null | null",
+  },
+  {
+    rule: "an adult can override the value (D50)",
+    name: "the reason is kept, trimmed, and a blank one is none",
+    run: (queue, world) => {
+      const given = world.addPending({
+        activity: FRIENDS,
+        durationMinutes: null,
+      });
+      const blank = world.addPending({
+        activity: FRIENDS,
+        occurredOn: "2026-09-11",
+        durationMinutes: null,
+      });
+      queue.approveLog(
+        world.connection,
+        given,
+        world.adminId,
+        { overrideHours: 1, overrideReason: "  Ficou só uma hora  " },
+        REVIEWED_AT,
+      );
+      queue.approveLog(
+        world.connection,
+        blank,
+        world.adminId,
+        { overrideHours: 1, overrideReason: "   " },
+        REVIEWED_AT,
+      );
+
+      return `${world.logRow(given).overrideReason} | ${world.logRow(blank).overrideReason}`;
+    },
+    expected: "Ficou só uma hora | null",
+  },
+  {
+    rule: "an adult can override the value (D50)",
+    name: "a reason with no overridden value is refused",
+    run: (queue, world) => {
+      const id = world.addPending({ activity: BOOK });
+
+      return `${refused(() =>
+        queue.approveLog(
+          world.connection,
+          id,
+          world.adminId,
+          { overrideReason: "achei muito" },
+          REVIEWED_AT,
+        ),
+      )} — ${world.logRow(id).status}`;
+    },
+    expected:
+      "refused: a reason goes with an overridden value, and there is none — pending",
+  },
+  {
+    rule: "an adult can override the value (D50)",
+    name: "a reason longer than the others is refused",
+    run: (queue, world) => {
+      const id = world.addPending({ activity: BOOK });
+
+      return refused(() =>
+        queue.approveLog(
+          world.connection,
+          id,
+          world.adminId,
+          { overrideHours: 1, overrideReason: "x".repeat(501) },
+          REVIEWED_AT,
+        ),
+      );
+    },
+    expected:
+      "refused: the reason for an overridden value is at most 500 characters, received 501",
   },
 
   {
