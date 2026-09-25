@@ -23,9 +23,8 @@ import { refusedOr } from "../../db/refusal";
 
 /**
  * `requireAdmin`, not `requireAccess`: a category belongs to nobody, so there is
- * no `targetUserId` to guard. Mutations answer with the whole list so the
- * asymptote on screen is never stale, or with D37's refusal, returned so it
- * reaches the browser word for word.
+ * no `targetUserId` to guard. Mutations answer with the whole list, so the
+ * asymptote is never stale, or with D37's refusal, word for word (#7).
  */
 
 export async function fetchCategoriesAction(): Promise<CategoryRow[]> {
