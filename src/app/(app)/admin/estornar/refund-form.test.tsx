@@ -127,7 +127,7 @@ describe("the refund reason (#106)", () => {
   });
 });
 
-describe("the confirmation (D52)", () => {
+describe("the confirmation (D53)", () => {
   it("shows the boy, the action, the hours and the server's two balances before writing", async () => {
     await type("#horas", "1");
     await act(async () => refundButton().click());

@@ -65,7 +65,7 @@ function dialog(): HTMLElement | null {
   return container.querySelector('[role="dialog"]');
 }
 
-describe("the confirmation (D52)", () => {
+describe("the confirmation (D53)", () => {
   it("shows the boy, the action, the hours and the server's two balances before writing", async () => {
     await act(async () => button("Liberar").click());
 

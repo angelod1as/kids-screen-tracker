@@ -246,7 +246,7 @@ describe("what the boy sees afterwards (#23, #24)", () => {
   });
 });
 
-describe("the confirmation's numbers (D52)", () => {
+describe("the confirmation's numbers (D53)", () => {
   const REFUND = { hours: 1, occurredOn: THAT_DAY, reason: "Não usou" };
 
   it("reads a release's balance before and after, and writes nothing", async () => {

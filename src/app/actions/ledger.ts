@@ -19,7 +19,7 @@ export type Movement = {
   balance: number;
 };
 
-/** What the confirmation shows (D52). */
+/** What the confirmation shows (D53). */
 export type MovementPreview = {
   displayName: string;
   hours: number;
@@ -60,7 +60,7 @@ export async function refundHoursAction(refund: Refund): Promise<Movement> {
 }
 
 /**
- * D52: both balances read now, on the server, and nothing written. The hours
+ * D53: both balances read now, on the server, and nothing written. The hours
  * are rounded as the write rounds them; the other fields are the write's to refuse.
  */
 async function previewMovement(

@@ -36,7 +36,7 @@ export function ReleaseForm({ kids }: { kids: Kid[] }) {
   const [hours, setHours] = useState(DEFAULT_HOURS);
   const [destination, setDestination] = useState("");
 
-  /** D52: confirming writes the request that was previewed, never the form as it is now. */
+  /** D53: confirming writes the request that was previewed, never the form as it is now. */
   const [asked, setAsked] = useState<{
     request: Release;
     preview: MovementPreview;
@@ -110,7 +110,7 @@ export function ReleaseForm({ kids }: { kids: Kid[] }) {
         />
       )}
 
-      {/* aria-modal promises the rest is out of reach (D52). */}
+      {/* aria-modal promises the rest is out of reach (D53). */}
       <div className="flex flex-col gap-6" inert={asked !== null}>
         {failed === null ? null : (
           <p className={`${BORDER_CLASS} bg-white p-4 text-lg text-black`}>

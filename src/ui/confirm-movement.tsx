@@ -17,7 +17,7 @@ import {
 } from "./style";
 
 /**
- * D52. Covers the screen with no motion; the name is the largest thing because
+ * D53. Covers the screen with no motion; the name is the largest thing because
  * it is what gets mistaken. *Confirmar* sits high and *Cancelar* low, so the
  * thumb that tapped the form's button at the bottom lands on cancel.
  */

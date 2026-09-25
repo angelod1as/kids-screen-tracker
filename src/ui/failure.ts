@@ -41,7 +41,7 @@ export const UNCERTAIN_TEXT =
 export const REFUSED_TEXT =
   "O servidor recusou o pedido. A tela pode estar desatualizada ou a sua entrada no app pode ter expirado: recarregue a página, confira o que está salvo e só então tente de novo.";
 
-/** A preview writes nothing (D52), so here, unlike `failureText`, that much is certain. */
+/** A preview writes nothing (D53), so here, unlike `failureText`, that much is certain. */
 export function previewFailureText(
   error: unknown,
   online: boolean = isOnline(),
