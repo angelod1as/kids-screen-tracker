@@ -197,6 +197,7 @@ describe("the stopwatch after a failed request (#29)", () => {
     await click("Parar");
 
     expect(timer.pauseTimerAction).toHaveBeenCalledTimes(1);
+    expect(container.textContent).toContain(RESYNCED_TEXT);
     expect(hasButton("Enviar para aprovação")).toBe(true);
     expect(hasButton("Parar")).toBe(false);
   });
