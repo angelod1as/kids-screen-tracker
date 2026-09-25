@@ -3,13 +3,17 @@
 import { useState, useTransition } from "react";
 
 import { Button } from "../../../../ui/button";
-import { failureText } from "../../../../ui/failure";
+import { ConfirmMovement } from "../../../../ui/confirm-movement";
+import { failureText, previewFailureText } from "../../../../ui/failure";
 import { Field } from "../../../../ui/field";
 import { formatHours, parseTypedHours } from "../../../../ui/hours";
 import { KidSelect } from "../../../../ui/kid-select";
 import { BORDER_CLASS, balanceToneClass } from "../../../../ui/style";
-import type { Movement } from "../../../actions/ledger";
-import { refundHoursAction } from "../../../actions/ledger";
+import type { Movement, MovementPreview } from "../../../actions/ledger";
+import {
+  previewRefundAction,
+  refundHoursAction,
+} from "../../../actions/ledger";
 import type { Kid } from "../../../actions/people";
 
 /**
@@ -32,6 +36,7 @@ export function RefundForm({ kids, today }: { kids: Kid[]; today: string }) {
   const [occurredOn, setOccurredOn] = useState(today);
   const [reason, setReason] = useState(DEFAULT_REFUND_REASON);
 
+  const [preview, setPreview] = useState<MovementPreview | null>(null);
   const [done, setDone] = useState<Movement | null>(null);
   const [failed, setFailed] = useState<string | null>(null);
   const [busy, startAction] = useTransition();
@@ -42,6 +47,28 @@ export function RefundForm({ kids, today }: { kids: Kid[]; today: string }) {
     apply();
     setDone(null);
     setFailed(null);
+  }
+
+  function ask() {
+    const typed = parseTypedHours(hours);
+
+    if (typed === null || reason.trim() === "") return;
+
+    startAction(async () => {
+      try {
+        setPreview(
+          await previewRefundAction({
+            userId,
+            hours: typed,
+            occurredOn,
+            reason: reason.trim(),
+          }),
+        );
+        setFailed(null);
+      } catch (error) {
+        setFailed(previewFailureText(error));
+      }
+    });
   }
 
   function refund() {
@@ -63,6 +90,8 @@ export function RefundForm({ kids, today }: { kids: Kid[]; today: string }) {
       } catch (error) {
         setFailed(failureText(error));
       }
+
+      setPreview(null);
     });
   }
 
@@ -76,6 +105,17 @@ export function RefundForm({ kids, today }: { kids: Kid[]; today: string }) {
 
   return (
     <div className="flex flex-col gap-6">
+      {preview === null ? null : (
+        <ConfirmMovement
+          action="Estornar"
+          busy={busy}
+          confirmLabel="Confirmar estorno"
+          onCancel={() => setPreview(null)}
+          onConfirm={refund}
+          preview={preview}
+        />
+      )}
+
       {failed === null ? null : (
         <p className={`${BORDER_CLASS} bg-white p-4 text-lg text-black`}>
           {failed}
@@ -133,7 +173,7 @@ export function RefundForm({ kids, today }: { kids: Kid[]; today: string }) {
 
       <Button
         disabled={busy || !canRefund(hours, reason)}
-        onClick={refund}
+        onClick={ask}
         type="button"
       >
         Estornar
