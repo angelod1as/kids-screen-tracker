@@ -16,11 +16,15 @@ const shipped: number = JSON.parse(
   readFileSync(join(migrationsFolder, "meta", "_journal.json"), "utf8"),
 ).entries.length;
 const { sqlite } = openDatabase(databasePath);
-const { applied } = sqlite
-  .prepare("select count(*) as applied from __drizzle_migrations")
-  .get() as { applied: number };
-sqlite.close();
 
-console.log(
-  `Migrations applied to ${databasePath}: ${applied} in the database, ${shipped} in this image`,
-);
+try {
+  const { applied } = sqlite
+    .prepare("select count(*) as applied from __drizzle_migrations")
+    .get() as { applied: number };
+
+  console.log(
+    `Migrations applied to ${databasePath}: ${applied} in the database, ${shipped} in this image`,
+  );
+} finally {
+  sqlite.close();
+}

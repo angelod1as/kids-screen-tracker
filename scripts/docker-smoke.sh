@@ -304,7 +304,12 @@ docker exec "$app_restarted" node -e '
   });
   fs.writeFileSync(journalPath, JSON.stringify(journal, null, 2));
 ' >/dev/null
-db_cli "$app_restarted" db-migrate.mjs
+migrate_output="$(db_cli "$app_restarted" db-migrate.mjs)"
+printf '%s\n' "$migrate_output"
+case "$migrate_output" in
+  *": $((committed_migrations + 1)) in the database, $((committed_migrations + 1)) in this image"*) ;;
+  *) fail "migrate did not report the new migration in both counts" ;;
+esac
 summary="$(db_summary "$app_restarted")"
 expected="migrations=$((committed_migrations + 1)) users=4 categories=7 activities=32 user_version=4242"
 [ "$summary" = "$expected" ] || fail "expected [${expected}], got [${summary}]"
