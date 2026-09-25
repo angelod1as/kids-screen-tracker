@@ -14,10 +14,9 @@ export type Session = {
 };
 
 /**
- * `targetUserId` is required and names the subject, not the caller: a forged
- * request is one whose target is not the caller's, so every call site must name
- * it. `proposeTimerLog` and `requestLog` are the kid's only writes (D49);
- * `write` is admin only.
+ * `targetUserId` names the subject, not the caller: a forged request is one
+ * whose target is not the caller's. `proposeTimerLog` and `requestLog` are the
+ * kid's only writes (D49).
  */
 export type AccessRequest =
   | { kind: "view"; targetUserId: number }

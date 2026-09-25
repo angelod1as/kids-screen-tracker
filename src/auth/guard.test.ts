@@ -20,21 +20,9 @@ import {
 } from "./guard";
 
 /**
- * The guard, against a real database, with only the cookie replaced.
- *
- * Two modules are mocked and neither of them is the thing under test:
- *
- * - `./session` is the cookie reader. Replacing it is how a test gets to say
- *   "the browser presents a cookie for Kid1" without a request context — and
- *   it is also what keeps Varlock out of the test run, since that module is the
- *   one that reads `ENV`. The signature check it performs has its own suite in
- *   `token.test.ts`.
- * - `../db` is the connection that reads `DATABASE_PATH`. It is swapped for a
- *   real SQLite database, migrated and seeded exactly the way production builds
- *   one, so `currentSession`'s lookup runs against real rows and real ids.
- *
- * Everything the guard itself does — resolving the account, reading the user
- * row, applying the access rule — runs for real.
+ * Only the cookie reader (`./session`, which also keeps Varlock out) and the
+ * connection (`../db`, swapped for a migrated, seeded SQLite) are mocked; the
+ * guard runs for real. The signature check has its own suite in `token.test.ts`.
  */
 
 const mocked = vi.hoisted(() => ({
@@ -120,9 +108,8 @@ describe("who the cookie says you are", () => {
   });
 
   it("is nobody once the user is deactivated", async () => {
-    // D14: nothing is deleted, so `active = false` is how a person stops being
-    // one. Because the role and the id are read per request rather than carried
-    // in the cookie, this takes effect on the next click and not in 30 days.
+    // D14. Role and id are read per request, not carried in the cookie, so
+    // this bites on the next click and not in 30 days.
     connection.db
       .update(users)
       .set({ active: false })
@@ -184,10 +171,8 @@ describe("requireSession", () => {
 });
 
 describe("requireAccess enforces the whole rule table (#13)", () => {
-  // The same cases `access.test.ts` runs against the pure function, run again
-  // through the call every server action makes — cookie, database lookup and
-  // rule together. The ids come from the seeded rows, so a case that says
-  // "Kid1 forges Kid2's id" forges the number the real Kid2 actually has.
+  // Through the call every server action makes. The ids come from the seeded
+  // rows, so "Kid1 forges Kid2's id" forges the number the real Kid2 has.
   it.each(
     ACCESS_CASES.map((accessCase) => ({
       ...accessCase,
@@ -218,9 +203,8 @@ describe("requireAccess enforces the whole rule table (#13)", () => {
 });
 
 /**
- * The table names people by the ids of `access.rules.ts` (1 Admin1 … 4 Kid2).
- * This turns one of those back into a username so the case can be re-pointed at
- * whatever id the seed handed out, instead of assuming insertion order.
+ * Maps an `access.rules.ts` id back to a username, so the case uses whatever id
+ * the seed handed out instead of assuming insertion order.
  */
 function usernameOfSeededId(id: number): string {
   const byId = ["admin1", "admin2", "kid1", "kid2"];

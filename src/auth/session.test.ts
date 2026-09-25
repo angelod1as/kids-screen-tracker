@@ -3,17 +3,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { SESSION_TTL_MS } from "./token";
 
 /**
- * The cookie itself: how it is written, what it carries, and what logout does
- * to it (#12).
- *
- * `next/headers` is replaced by a jar that records what was set, because that
- * is the only way to see the *attributes* — `httpOnly`, `sameSite`, `secure`,
- * `maxAge`. Those are the whole security value of the cookie and none of them
- * is visible in any return value, so nothing else in the suite would notice
- * them being dropped.
- *
- * `./env` is replaced because it is the module that reads Varlock. The secret
- * below is invented (D23).
+ * `next/headers` is a recording jar: the cookie's attributes are its whole
+ * security value (#12), and no return value shows them. `./env` reads Varlock;
+ * the secret below is invented (D23).
  */
 
 type Recorded = {
@@ -78,16 +70,13 @@ afterEach(() => {
 
 describe("the cookie's name", () => {
   it("is `kst_session`", () => {
-    // A choice the PR body declares, and one nothing held: renaming it left
-    // 459 tests green, because every test that mentions the name mocks this
-    // module and writes the string out itself. A rename would take the whole
-    // suite with it and log everybody out on deploy, silently.
+    // Nothing else holds it: every other test mocks this module. A rename
+    // would log everybody out on deploy, silently.
     expect(SESSION_COOKIE_NAME).toBe("kst_session");
   });
 
   it("is not a name half the internet uses", () => {
-    // Deliberately not `session`: a name shared with another app on the same
-    // host during development is a cookie that collides.
+    // A name shared with another app on the same dev host collides.
     expect(SESSION_COOKIE_NAME).not.toBe("session");
   });
 });
@@ -100,9 +89,8 @@ describe("the cookie a login writes (#12)", () => {
   });
 
   it("is sameSite lax, so it is not sent on a cross-site POST", async () => {
-    // Every mutation in this app is a server action, and a server action is a
-    // POST. `strict` would additionally drop the cookie when the boy follows a
-    // link to the app from WhatsApp, which is a real cost for no gain here.
+    // Every mutation is a server action, so a POST. `strict` would also drop
+    // the cookie on a link to the app from WhatsApp.
     await startSession("kid1");
 
     expect(written().options.sameSite).toBe("lax");

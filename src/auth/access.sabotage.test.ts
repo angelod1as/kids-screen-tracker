@@ -8,45 +8,16 @@ import type { IsAllowed } from "./access.rules";
 import { ACCESS_CASES, failingCases } from "./access.rules";
 
 /**
- * The sabotage matrix: break the guard on purpose, one clause at a time, and
- * check that something goes red.
- *
- * A test suite that passes is evidence about the code as written. It is not
- * evidence that the code is *doing* anything — a rule with no case sharp
- * enough to tell it apart from its own absence passes just as well when it is
- * deleted, and #13's whole point is that a guard nobody can make fail is
- * decoration.
- *
- * So each mutation below takes the real source of `access.ts`, replaces one
- * clause with a broken version, compiles the result and runs the entire
- * `ACCESS_CASES` table against it. Every mutant must fail at least one case,
- * and the test names which case caught it, so a future change that quietly
- * removes the last case covering a rule shows up here as "no case caught this"
- * rather than as silence.
- *
- * Two things keep the matrix honest as the code moves:
- *
- * - each mutation asserts its needle is present in the source before replacing
- *   it, so a rewrite of `access.ts` that renames a clause fails the matrix
- *   instead of quietly mutating nothing and calling the result covered;
- * - the mutants are compiled from the real file, not from a copy of it pasted
- *   into this test, so they cannot drift away from what ships.
+ * Sabotage matrix for the guard (#13): each mutant, built from the real
+ * `access.ts` rather than a copy, must fail at least one case. A needle that no
+ * longer matches fails here instead of mutating nothing.
  */
 
 const SOURCE_PATH = join(import.meta.dirname, "access.ts");
 
 /**
- * Where the mutants are written, and deliberately not inside `src/`.
- *
- * `pnpm test` writing generated TypeScript into the source tree is a choice
- * with consequences nobody had weighed: the files land in the directory
- * `design.test.ts`, `guarded.test.ts` and the console scan all walk, so a
- * mutant that happened to exist while one of those ran would be scanned as
- * application source; and a container with a read-only `src/` could not run the
- * suite at all. Round 2 asked for it, and the answer is one directory up.
- *
- * Not `os.tmpdir()`, which is outside the project root and therefore outside
- * what the module loader will resolve.
+ * Outside `src/`, which the source scans walk and a container may mount
+ * read-only; not `os.tmpdir()`, which the module loader will not resolve.
  */
 const MUTANT_DIR = join(import.meta.dirname, "..", "..", ".sabotage");
 
@@ -57,7 +28,6 @@ type Mutation = {
   name: string;
   /** The exact text to find in `access.ts`. */
   find: string;
-  /** What to put in its place. */
   replace: string;
 };
 
@@ -123,11 +93,8 @@ afterAll(() => {
 });
 
 /**
- * Writes a mutant module and loads it.
- *
- * `./` imports are rewritten to point back at `src/auth/` from wherever
- * `MUTANT_DIR` is, and the query string keeps the loader from serving a cached
- * earlier mutant.
+ * `./` imports are re-pointed at `src/auth/`; the query string keeps the loader
+ * from serving a cached earlier mutant.
  */
 async function loadMutant(index: number, mutated: string): Promise<IsAllowed> {
   const file = join(MUTANT_DIR, `mutant-${index}.ts`);
