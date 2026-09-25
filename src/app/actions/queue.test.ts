@@ -23,6 +23,7 @@ import {
   makeWorld,
   QUEUE_CASES,
   REVIEWED_AT,
+  THAT_DAY,
 } from "../../db/queue.rules";
 import { activityLogs, users } from "../../db/schema";
 import { seedWithTestUsers } from "../../db/test-users";
@@ -138,6 +139,8 @@ describe("approving is one tap (#20)", () => {
 
     const data = await approveLogAction(id);
 
+    if ("refused" in data) throw new Error(data.refused);
+
     expect(data.entries).toHaveLength(1);
     expect(data.activities.map((activity) => activity.name)).toContain(BOOK);
   });
@@ -206,6 +209,40 @@ describe("the value and the ledger row are one write (#20)", () => {
 
     expect(world.logRow(second).computedHours).toBe(0.75);
     expect(world.ledgerRows().map((row) => row.hours)).toEqual([1.5, 0.75]);
+  });
+});
+
+describe("the refusal reaches the browser word for word (#7, D32)", () => {
+  it("answers an approval out of order with the sentence, and writes nothing", async () => {
+    const first = world.addPending({ activity: BOOK });
+    const second = world.addPending({ activity: BOOK });
+
+    await expect(approveLogAction(second)).resolves.toEqual({
+      refused: `Não dá para aprovar a entrada ${second} ainda: a entrada ${first} (${BOOK}, ${THAT_DAY}) vem antes dela e está esperando na fila. Decida essa primeiro.`,
+    });
+
+    expect(world.logRow(second).status).toBe("pending");
+    expect(world.ledgerRows()).toEqual([]);
+  });
+
+  it("still throws any other failure, which the browser sees only as a digest", async () => {
+    const id = world.addPending({ activity: BOOK });
+    await approveLogAction(id);
+
+    await expect(approveLogAction(id)).rejects.toThrow(
+      /has already been reviewed/,
+    );
+  });
+
+  it("throws a kid's forged approval as a bare denial, never the sentence", async () => {
+    world.addPending({ activity: BOOK });
+    const second = world.addPending({ activity: BOOK });
+    mocked.username = "kid1";
+
+    await expect(approveLogAction(second)).rejects.toMatchObject({
+      reason: "forbidden",
+      message: "Acesso negado.",
+    });
   });
 });
 

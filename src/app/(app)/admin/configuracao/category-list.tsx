@@ -5,6 +5,7 @@ import { useState, useTransition } from "react";
 import type { ActivityRow } from "../../../../db/activities";
 import type { CategoryInput, CategoryRow } from "../../../../db/categories";
 import type { Locks } from "../../../../db/pending";
+import type { Refused } from "../../../../db/refusal";
 import {
   asymptoteHours,
   isUsableDecayStep,
@@ -309,10 +310,23 @@ export function CategoryList({
   const [failed, setFailed] = useState<string | null>(null);
   const [busy, startAction] = useTransition();
 
-  function act(call: () => Promise<CategoryRow[]>) {
+  function act(call: () => Promise<CategoryRow[] | Refused>) {
     startAction(async () => {
       try {
-        setRows(await call());
+        const result = await call();
+
+        // D37's sentence, as the server wrote it: it names the entry to decide first.
+        if ("refused" in result) {
+          setFailed(result.refused);
+          try {
+            setLocks(await fetchLocksAction());
+          } catch {
+            // The sentence already says what is waiting.
+          }
+          return;
+        }
+
+        setRows(result);
         // What is under way changes with the boy, so it is re-read every time.
         setLocks(await fetchLocksAction());
         setFailed(null);
@@ -422,7 +436,7 @@ export function CategoryList({
 
                   act(async () => {
                     const next = await updateCategoryAction(category.id, input);
-                    setEditing(null);
+                    if (!("refused" in next)) setEditing(null);
 
                     return next;
                   });

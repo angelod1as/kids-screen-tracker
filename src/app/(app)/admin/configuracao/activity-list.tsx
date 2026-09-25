@@ -5,6 +5,7 @@ import { useState, useTransition } from "react";
 import type { ActivityInput, ActivityRow } from "../../../../db/activities";
 import type { CategoryRow } from "../../../../db/categories";
 import type { Locks } from "../../../../db/pending";
+import type { Refused } from "../../../../db/refusal";
 import { DEFAULT_MIN_SESSION_MINUTES } from "../../../../engine/timer";
 import { Button } from "../../../../ui/button";
 import { ChoiceGroup } from "../../../../ui/choice";
@@ -257,10 +258,18 @@ export function ActivityList({
   const [failed, setFailed] = useState<string | null>(null);
   const [busy, startAction] = useTransition();
 
-  function act(call: () => Promise<ActivityRow[]>) {
+  function act(call: () => Promise<ActivityRow[] | Refused>) {
     startAction(async () => {
       try {
-        setRows(await call());
+        const result = await call();
+
+        // D37's sentence, as the server wrote it: it names the entry to decide first.
+        if ("refused" in result) {
+          setFailed(result.refused);
+          return;
+        }
+
+        setRows(result);
         setFailed(null);
         onChanged();
       } catch (error) {
@@ -354,7 +363,7 @@ export function ActivityList({
                         activity.id,
                         input,
                       );
-                      setEditing(null);
+                      if (!("refused" in next)) setEditing(null);
 
                       return next;
                     });

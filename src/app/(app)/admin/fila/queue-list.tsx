@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 
 import type { QueueEntry } from "../../../../db/queue";
+import type { Refused } from "../../../../db/refusal";
 import type { TimedActivity } from "../../../../db/timers";
 import { Button } from "../../../../ui/button";
 import type { Choice } from "../../../../ui/choice";
@@ -37,10 +38,23 @@ export function QueueList({ initial }: { initial: QueueData }) {
   const [failed, setFailed] = useState<string | null>(null);
   const [busy, startAction] = useTransition();
 
-  function act(call: () => Promise<QueueData>) {
+  function act(call: () => Promise<QueueData | Refused>) {
     startAction(async () => {
       try {
-        setData(await call());
+        const result = await call();
+
+        if ("refused" in result) {
+          // D32's sentence names the entry to decide first, which a stale screen may lack.
+          setFailed(result.refused);
+          try {
+            setData(await fetchQueueAction());
+          } catch {
+            // The sentence already says what to do.
+          }
+          return;
+        }
+
+        setData(result);
         setFailed(null);
       } catch (error) {
         // The queue changes under the adult, and a lost approval may already be

@@ -4,6 +4,7 @@ import { join } from "node:path";
 
 import { eq } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import type { LaunchResult, NewEntry } from "../../db/admin";
 import { launchEntry, previewEntry } from "../../db/admin";
 import type { AdminModule, AdminWorld } from "../../db/admin.rules";
 import {
@@ -20,6 +21,7 @@ import { listPendingLogs } from "../../db/queue";
 import { BOOK, THAT_DAY } from "../../db/queue.rules";
 import { activities, activityLogs } from "../../db/schema";
 import { seedWithTestUsers } from "../../db/test-users";
+import type { Movement } from "./admin";
 import {
   fetchLaunchDataAction,
   launchEntryAction,
@@ -46,6 +48,15 @@ vi.mock("../../db", () => ({
 }));
 
 const REAL: AdminModule = { previewEntry, launchEntry };
+
+/** A launch the case expects to go through; a refusal fails it with its text. */
+async function launched(newEntry: NewEntry): Promise<LaunchResult & Movement> {
+  const result = await launchEntryAction(newEntry);
+
+  if ("refused" in result) throw new Error(result.refused);
+
+  return result;
+}
 
 const roots: string[] = [];
 const opened: Connection[] = [];
@@ -177,7 +188,7 @@ describe("what the launch writes (#22, D18)", () => {
   it("stamps the adult who sent the request, not the one in the payload", async () => {
     mocked.username = "admin2";
 
-    const { logId } = await launchEntryAction(entry(world.kidId));
+    const { logId } = await launched(entry(world.kidId));
     const row = world.connection.db
       .select({
         createdBy: activityLogs.createdBy,
@@ -257,7 +268,7 @@ describe("the preview is not the write", () => {
 
     await launchEntryAction(entry(world.kidId));
 
-    const second = await launchEntryAction(entry(world.kidId));
+    const second = await launched(entry(world.kidId));
 
     // The preview was true when drawn; the second launch reads the filled bucket.
     expect(asked.calculation.hours).toBe(1.5);
@@ -268,11 +279,11 @@ describe("the preview is not the write", () => {
     // D32 refuses before the insert, so counting logs too is what tests the rollback.
     const before = world.logCount();
 
-    world.addPending({ activity: BOOK, occurredOn: THAT_DAY });
+    const waiting = world.addPending({ activity: BOOK, occurredOn: THAT_DAY });
 
-    await expect(launchEntryAction(entry(world.kidId))).rejects.toThrow(
-      /vem antes dela e está esperando na fila/,
-    );
+    await expect(launchEntryAction(entry(world.kidId))).resolves.toEqual({
+      refused: `Não dá para lançar esta entrada ainda: a entrada ${waiting} (${BOOK}, ${THAT_DAY}) vem antes dela e está esperando na fila. Decida essa primeiro.`,
+    });
 
     expect(world.ledgerText()).toBe("no ledger");
     expect(world.logCount()).toBe(before + 1);
@@ -289,7 +300,7 @@ describe("the preview is not the write", () => {
       hours: 3,
     });
 
-    const monday = await launchEntryAction({
+    const monday = await launched({
       userId: world.kidId,
       activityId: world.activityId("Lavar o carro"),
       occurredOn: "2026-09-07",

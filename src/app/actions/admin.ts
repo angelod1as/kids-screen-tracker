@@ -6,6 +6,8 @@ import { requireAccess, requireAdmin } from "../../auth/guard";
 import { getConnection, getDb } from "../../db";
 import type { EntryPreview, LaunchResult, NewEntry } from "../../db/admin";
 import { launchEntry, previewEntry } from "../../db/admin";
+import type { Refused } from "../../db/refusal";
+import { refusedOr } from "../../db/refusal";
 import { activities, categories } from "../../db/schema";
 import type { EngineActivity } from "../../engine/calculate";
 import { saoPauloDay } from "../../engine/calculate";
@@ -70,21 +72,22 @@ export async function previewEntryAction(
   return previewEntry(getConnection(), entry, new Date());
 }
 
-/** D18: born approved, with its ledger row. */
+/** D18: born approved, with its ledger row. D32's refusal is returned, not thrown. */
 export async function launchEntryAction(
   entry: NewEntry,
-): Promise<LaunchResult & Movement> {
+): Promise<(LaunchResult & Movement) | Refused> {
   const session = await requireAccess({
     kind: "write",
     targetUserId: entry.userId,
   });
 
-  const result = launchEntry(
-    getConnection(),
-    entry,
-    session.userId,
-    new Date(),
+  const result = refusedOr(() =>
+    launchEntry(getConnection(), entry, session.userId, new Date()),
   );
+
+  if ("refused" in result) {
+    return result;
+  }
 
   return { ...result, balance: await fetchBalanceAction(entry.userId) };
 }

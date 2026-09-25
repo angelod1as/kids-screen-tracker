@@ -152,7 +152,15 @@ export function LaunchForm({ data, kids }: { data: LaunchData; kids: Kid[] }) {
 
     startAction(async () => {
       try {
-        setDone(await launchEntryAction(entry));
+        const result = await launchEntryAction(entry);
+
+        // D32's sentence, as the server wrote it.
+        if ("refused" in result) {
+          setFailed(result.refused);
+          return;
+        }
+
+        setDone(result);
         setPreview(null);
         setFailed(null);
       } catch (error) {
