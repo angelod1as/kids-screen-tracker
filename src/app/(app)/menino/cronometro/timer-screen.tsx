@@ -62,7 +62,11 @@ export function TimerScreen({ initial }: { initial: TimerScreenData }) {
     return () => clearInterval(clock);
   }, [open]);
 
-  function act(call: () => Promise<TimerScreenData>, done?: () => void) {
+  function act(
+    call: () => Promise<TimerScreenData>,
+    done?: () => void,
+    redrawn?: (read: TimerScreenData) => void,
+  ) {
     startAction(async () => {
       try {
         setData(await call());
@@ -78,6 +82,7 @@ export function TimerScreen({ initial }: { initial: TimerScreenData }) {
         if (recovered.data !== null) {
           setData(recovered.data);
           if (recovered.data.open === null) setConfirming(false);
+          redrawn?.(recovered.data);
         }
 
         setFailed(recovered.message);
@@ -147,6 +152,10 @@ export function TimerScreen({ initial }: { initial: TimerScreenData }) {
             act(
               () => pauseTimerAction(data.userId),
               () => setConfirming(true),
+              // Paused on the re-read is where this tap lands on success (#6).
+              (read) => {
+                if (read.open?.status === "paused") setConfirming(true);
+              },
             )
           }
           seconds={displayedSeconds(open, watchedMs)}
