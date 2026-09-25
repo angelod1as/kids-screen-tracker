@@ -44,6 +44,11 @@ vi.mock("next/navigation", () => ({
   notFound: () => {
     throw new NotFound("not found");
   },
+  useRouter: () => ({ refresh: () => undefined }),
+}));
+
+vi.mock("../actions/void", () => ({
+  voidEntryAction: async () => ({ balance: 0 }),
 }));
 
 const AdminHomePage = (await import("./admin/page")).default;
@@ -138,6 +143,52 @@ describe("the history an adult opens is the boy's own (#73)", () => {
     expect(markup).toContain("Recusado");
     expect(markup).toContain("Você estava no celular");
     expect(markup).toContain("0 min");
+
+    mocked.entries = [];
+  });
+});
+
+describe("voiding from the boy's history (D52)", () => {
+  const counting: HistoryEntry = {
+    id: 8,
+    kind: "earn",
+    hours: 3,
+    occurredOn: "2026-09-25",
+    label: "Ler livro",
+    override: null,
+    voided: null,
+  };
+
+  it("offers the control under each entry that still counts, and under no refusal", async () => {
+    mocked.entries = [
+      counting,
+      {
+        id: 7,
+        kind: "rejected",
+        occurredOn: "2026-09-02",
+        label: "Ler livro",
+        durationMinutes: 90,
+        reason: null,
+      },
+    ];
+
+    const markup = await historyMarkup("3");
+
+    expect(markup.match(/>Anular</g)).toHaveLength(1);
+
+    mocked.entries = [];
+  });
+
+  it("draws a voided entry struck through, with who and when, and no control", async () => {
+    mocked.entries = [
+      { ...counting, voided: { on: "2026-09-25", by: "Admin1" } },
+    ];
+
+    const markup = await historyMarkup("3");
+
+    expect(markup).toContain("Anulado por Admin1 em 25/09/2026");
+    expect(markup).toContain("line-through");
+    expect(markup).not.toContain(">Anular<");
 
     mocked.entries = [];
   });
