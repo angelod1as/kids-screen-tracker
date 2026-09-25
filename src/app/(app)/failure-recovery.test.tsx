@@ -202,6 +202,19 @@ describe("the stopwatch after a failed request (#29)", () => {
     expect(hasButton("Parar")).toBe(false);
   });
 
+  it("opens the confirmation when an already paused session's pause answer is lost (#6)", async () => {
+    await render(<TimerScreen initial={screen(session("paused"))} />);
+
+    timer.pauseTimerAction.mockRejectedValueOnce(NETWORK);
+    timer.fetchTimerScreenAction.mockResolvedValueOnce(
+      screen(session("paused")),
+    );
+    await click("Parar");
+
+    expect(hasButton("Enviar para aprovação")).toBe(true);
+    expect(hasButton("Parar")).toBe(false);
+  });
+
   it("keeps the session on screen when the pause never arrived (#6)", async () => {
     await render(<TimerScreen initial={screen(session("running"))} />);
 
