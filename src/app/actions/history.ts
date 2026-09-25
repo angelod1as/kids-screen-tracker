@@ -16,6 +16,8 @@ export type LedgerEntry = {
   /** D13: `YYYY-MM-DD`. Never a timestamp. */
   occurredOn: string;
   label: string;
+  /** D50: the hours are an adult's number, not the rule's. */
+  overridden: boolean;
 };
 
 /**
@@ -33,7 +35,16 @@ export type RejectedEntry = {
   reason: string | null;
 };
 
-export type HistoryEntry = LedgerEntry | RejectedEntry;
+/** D50: an adult's zero has no ledger row (D10), so it is read off the log, like a refusal. */
+export type OverriddenZeroEntry = {
+  id: number;
+  kind: "overridden-zero";
+  /** D13: `YYYY-MM-DD`. Never a timestamp. */
+  occurredOn: string;
+  label: string;
+};
+
+export type HistoryEntry = LedgerEntry | RejectedEntry | OverriddenZeroEntry;
 
 /** Refusals are sorted into the ledger by D8's key; `id` across two tables is only a stable tiebreak. */
 type Placed<Entry> = {
@@ -74,6 +85,7 @@ export async function fetchHistoryAction(
   const rows: Placed<HistoryEntry>[] = [
     ...ledgerEntries(targetUserId, limit),
     ...rejectedEntries(targetUserId, limit),
+    ...overriddenZeroEntries(targetUserId, limit),
   ];
 
   return rows
@@ -113,6 +125,7 @@ function ledgerEntries(
       note: ledger.note,
       createdAt: ledger.createdAt,
       activityName: activities.name,
+      overridden: activityLogs.overridden,
     })
     .from(ledger)
     // Left joins: `activity_log_id` is null on every `spend` and `refund` (D10).
@@ -135,6 +148,7 @@ function ledgerEntries(
       // Activity first (D14 keeps a deactivated one readable), then the
       // destination, then the note that names a refund (#24).
       label: row.activityName ?? row.destination ?? row.note ?? NO_LABEL,
+      overridden: row.overridden === true,
     },
   }));
 }
@@ -181,6 +195,48 @@ function rejectedEntries(
       durationMinutes: row.durationMinutes,
       // The boy's own note stays out: #72 asks for the adult's sentence.
       reason: rejectionReason(row.note),
+    },
+  }));
+}
+
+function overriddenZeroEntries(
+  targetUserId: number,
+  limit: number,
+): Placed<OverriddenZeroEntry>[] {
+  const rows = getDb()
+    .select({
+      id: activityLogs.id,
+      occurredOn: activityLogs.occurredOn,
+      createdAt: activityLogs.createdAt,
+      activityName: activities.name,
+    })
+    .from(activityLogs)
+    .innerJoin(activities, eq(activityLogs.activityId, activities.id))
+    .where(
+      and(
+        eq(activityLogs.userId, targetUserId),
+        eq(activityLogs.status, "approved"),
+        eq(activityLogs.overridden, true),
+        eq(activityLogs.computedHours, 0),
+      ),
+    )
+    .orderBy(
+      desc(activityLogs.occurredOn),
+      desc(activityLogs.createdAt),
+      desc(activityLogs.id),
+    )
+    .limit(limit)
+    .all();
+
+  return rows.map((row) => ({
+    occurredOn: row.occurredOn,
+    createdAt: row.createdAt.getTime(),
+    id: row.id,
+    entry: {
+      id: row.id,
+      kind: "overridden-zero" as const,
+      occurredOn: row.occurredOn,
+      label: row.activityName,
     },
   }));
 }

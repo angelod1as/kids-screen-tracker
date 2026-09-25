@@ -172,6 +172,24 @@ const MUTATIONS: readonly Mutation[] = [
     replace: "    !graded && Number.isInteger(typed) && typed >= 1",
   },
   {
+    name: "a final value that is not a number is offered (D50)",
+    file: QUEUE_LIST,
+    find: "  if (overridden && parseTypedHours(override) === null) return false;",
+    replace: "",
+  },
+  {
+    name: "a final value does not stand in for the grade (D50)",
+    file: QUEUE_LIST,
+    find: "    !overridden && entry.qualityGraded && (grade ?? entry.quality) === null;",
+    replace: "    entry.qualityGraded && (grade ?? entry.quality) === null;",
+  },
+  {
+    name: "a final value counts while the correction is closed (D50)",
+    file: QUEUE_LIST,
+    find: '  const overridden = editing && override.trim() !== "";',
+    replace: '  const overridden = override.trim() !== "";',
+  },
+  {
     name: "an entry that needs a grade is offered without one",
     file: QUEUE_LIST,
     find: "    !graded && Number.isInteger(typed) && typed >= 1 && typed <= MAX_MINUTES",

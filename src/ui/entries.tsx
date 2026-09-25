@@ -1,6 +1,7 @@
 import type {
   HistoryEntry,
   LedgerEntry,
+  OverriddenZeroEntry,
   RejectedEntry,
 } from "../app/actions/history";
 import { formatDay, formatSignedHours } from "./dates";
@@ -35,6 +36,8 @@ export function EntryList({
       {entries.map((entry) =>
         entry.kind === "rejected" ? (
           <RejectedRow entry={entry} key={`rejected-${entry.id}`} />
+        ) : entry.kind === "overridden-zero" ? (
+          <OverriddenZeroRow entry={entry} key={`overridden-${entry.id}`} />
         ) : (
           <li className={ROW_CLASS} key={`ledger-${entry.id}`}>
             <span className="flex min-w-0 flex-col gap-1">
@@ -43,6 +46,7 @@ export function EntryList({
               </span>
               <span className={`${META_CLASS} text-black`}>
                 {kindLabel(entry.kind)} · {formatDay(entry.occurredOn)}
+                {entry.overridden ? ` · ${OVERRIDDEN_TEXT}` : ""}
               </span>
             </span>
             <span className={`${READOUT_CLASS} shrink-0 text-black`}>
@@ -79,6 +83,28 @@ function RejectedRow({ entry }: { entry: RejectedEntry }) {
         )}
       </span>
       <span className={`${READOUT_CLASS} shrink-0 text-white`}>
+        {formatHours(0)}
+      </span>
+    </li>
+  );
+}
+
+/** D50: said on the row, so a number that differs from the rule is not read as a bug. */
+const OVERRIDDEN_TEXT = "valor decidido por um adulto";
+
+function OverriddenZeroRow({ entry }: { entry: OverriddenZeroEntry }) {
+  return (
+    <li className={ROW_CLASS}>
+      <span className="flex min-w-0 flex-col gap-1">
+        <span className="break-words text-base font-bold text-black">
+          {entry.label}
+        </span>
+        <span className={`${META_CLASS} text-black`}>
+          {kindLabel("earn")} · {formatDay(entry.occurredOn)} ·{" "}
+          {OVERRIDDEN_TEXT}
+        </span>
+      </span>
+      <span className={`${READOUT_CLASS} shrink-0 text-black`}>
         {formatHours(0)}
       </span>
     </li>

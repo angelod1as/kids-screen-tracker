@@ -260,6 +260,10 @@ export const activityLogs = sqliteTable(
      */
     computedHours: real("computed_hours"),
     note: text("note"),
+    /** D50: `computed_hours` is the adult's number, not the rule's; `reviewed_by` typed it. */
+    overridden: integer("overridden", { mode: "boolean" })
+      .notNull()
+      .default(false),
     /** D16: the limit or the day ended the session, not the boy. */
     autoStopped: integer("auto_stopped", { mode: "boolean" })
       .notNull()

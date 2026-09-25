@@ -1,0 +1,1 @@
+ALTER TABLE `activity_logs` ADD `overridden` integer DEFAULT false NOT NULL;

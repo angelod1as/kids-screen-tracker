@@ -82,6 +82,7 @@ const ENTRIES: LedgerEntry[] = [
     hours: 1.5,
     occurredOn: "2026-09-02",
     label: "Xbox",
+    overridden: false,
   },
   {
     id: 20,
@@ -89,6 +90,7 @@ const ENTRIES: LedgerEntry[] = [
     hours: 2,
     occurredOn: "2026-09-01",
     label: "Ler livro",
+    overridden: false,
   },
   {
     id: 10,
@@ -96,6 +98,7 @@ const ENTRIES: LedgerEntry[] = [
     hours: 0.25,
     occurredOn: "2026-08-31",
     label: "Estorno da tarde",
+    overridden: false,
   },
 ];
 

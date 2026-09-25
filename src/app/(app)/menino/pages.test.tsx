@@ -70,6 +70,7 @@ function entry(id: number): HistoryEntry {
     hours: 1,
     occurredOn: "2026-09-02",
     label: `Linha ${id}`,
+    overridden: false,
   };
 }
 
@@ -179,5 +180,46 @@ describe("the refusal the boy used to watch vanish (#72)", () => {
     expect(markup).toContain("bg-black");
     expect(markup).not.toContain(NEGATIVE_CLASS);
     expect(markup).not.toContain(PENDING_BG_CLASS);
+  });
+});
+
+describe("a value an adult decided says so on the boy's history (D50)", () => {
+  async function markupOf(entries: HistoryEntry[]): Promise<string> {
+    mocked.session = KID1;
+    mocked.entries = entries;
+
+    return renderToStaticMarkup(await KidHistoryPage());
+  }
+
+  it("marks an overridden earn, and only that one", async () => {
+    const markup = await markupOf([
+      {
+        id: 1,
+        kind: "earn",
+        hours: 1,
+        occurredOn: "2026-09-02",
+        label: "Sair com os amigos",
+        overridden: true,
+      },
+      entry(2),
+    ]);
+
+    expect(markup.match(/valor decidido por um adulto/g)).toHaveLength(1);
+  });
+
+  it("shows an adult's zero, which has no ledger line (D10)", async () => {
+    const markup = await markupOf([
+      {
+        id: 9,
+        kind: "overridden-zero",
+        occurredOn: "2026-09-02",
+        label: "Sair com os amigos",
+      },
+    ]);
+
+    expect(markup).toContain("Sair com os amigos");
+    expect(markup).toContain("valor decidido por um adulto");
+    expect(markup).toContain("0 min");
+    expect(markup).not.toContain("+0 min");
   });
 });

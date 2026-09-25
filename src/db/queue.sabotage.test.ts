@@ -225,8 +225,35 @@ const MUTATIONS: readonly Mutation[] = [
     name: "the correction is applied after the value is computed",
     edits: [
       {
-        find: "    const calculation = calculationFor(tx, edited);",
-        replace: "    const calculation = calculationFor(tx, log);",
+        find: "        ? calculationFor(tx, edited)",
+        replace: "        ? calculationFor(tx, log)",
+      },
+    ],
+  },
+  {
+    name: "the adult's value is ignored and the rule pays (D50)",
+    edits: [
+      {
+        find: "        : { hours: overrideHours };",
+        replace: "        : calculationFor(tx, edited);",
+      },
+    ],
+  },
+  {
+    name: "an overridden entry is not marked as one (D50)",
+    edits: [
+      {
+        find: "        overridden: overrideHours !== undefined,",
+        replace: "        overridden: false,",
+      },
+    ],
+  },
+  {
+    name: "every approval is marked as overridden (D50)",
+    edits: [
+      {
+        find: "        overridden: overrideHours !== undefined,",
+        replace: "        overridden: true,",
       },
     ],
   },

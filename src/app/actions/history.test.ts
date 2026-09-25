@@ -6,7 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { openDatabase } from "../../db/client";
 import { migrateDatabase } from "../../db/migrate";
-import { rejectionNote } from "../../db/queue";
+import { approveLog, rejectionNote } from "../../db/queue";
 import { activityLogs, ledger, users } from "../../db/schema";
 import { seedWithTestUsers } from "../../db/test-users";
 import { HISTORY_LIMIT, RECENT_ENTRIES_LIMIT } from "../../ui/entries";
@@ -518,5 +518,83 @@ describe("the history of the other boy is his alone (#72, #73, D33)", () => {
 
     await expect(fetchHistoryAction(idOf("kid2"), 10)).resolves.toHaveLength(2);
     await expect(fetchHistoryAction(idOf("kid1"), 10)).resolves.toHaveLength(3);
+  });
+});
+
+describe("the history says which value an adult decided (D50)", () => {
+  /** Activity 15 is "Sair com os amigos", `fixed` at 3h, in the seed. */
+  function approvePending(username: string, overrideHours?: number): number {
+    const id = connection.db
+      .insert(activityLogs)
+      .values({
+        userId: idOf(username),
+        activityId: 15,
+        status: "pending",
+        source: "request",
+        occurredOn: "2026-09-03",
+        createdBy: idOf(username),
+        createdAt: new Date("2026-09-03T18:00:00Z"),
+      })
+      .returning({ id: activityLogs.id })
+      .get().id;
+
+    approveLog(
+      connection,
+      id,
+      idOf("admin1"),
+      overrideHours === undefined ? {} : { overrideHours },
+      new Date("2026-09-03T19:00:00Z"),
+    );
+
+    return id;
+  }
+
+  it("marks the earn an adult overrode, and pays that number", async () => {
+    mocked.username = "kid1";
+    const before = await fetchBalanceAction(idOf("kid1"));
+
+    approvePending("kid1", 1);
+
+    const [latest] = await fetchHistoryAction(idOf("kid1"), 10);
+    expect(latest).toMatchObject({ kind: "earn", hours: 1, overridden: true });
+    await expect(fetchBalanceAction(idOf("kid1"))).resolves.toBe(before + 1);
+  });
+
+  it("does not mark an earn the rule priced", async () => {
+    mocked.username = "kid1";
+
+    approvePending("kid1");
+
+    const entries = await fetchHistoryAction(idOf("kid1"), 10);
+    expect(entries[0]).toMatchObject({ kind: "earn", hours: 3 });
+    expect(
+      entries.filter((entry) => "overridden" in entry && entry.overridden),
+    ).toEqual([]);
+  });
+
+  it("shows an adult's zero, in its place, and moves no hours (D10)", async () => {
+    mocked.username = "kid1";
+    const before = await fetchBalanceAction(idOf("kid1"));
+
+    const id = approvePending("kid1", 0);
+
+    const entries = await fetchHistoryAction(idOf("kid1"), 10);
+    expect(entries.map((entry) => entry.kind)).toEqual([
+      "overridden-zero",
+      "refund",
+      "spend",
+      "earn",
+    ]);
+    expect(entries[0]).toMatchObject({ id, label: "Sair com os amigos" });
+    await expect(fetchBalanceAction(idOf("kid1"))).resolves.toBe(before);
+  });
+
+  it("leaves the brother's zero out of a list the caller is allowed to have", async () => {
+    approvePending("kid2", 0);
+    mocked.username = "kid1";
+
+    const entries = await fetchHistoryAction(idOf("kid1"), 10);
+
+    expect(entries.map((entry) => entry.kind)).not.toContain("overridden-zero");
   });
 });

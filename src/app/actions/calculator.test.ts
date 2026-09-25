@@ -7,6 +7,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { openDatabase } from "../../db/client";
 import { migrateDatabase } from "../../db/migrate";
+import { approveLog } from "../../db/queue";
 import { activities, activityLogs, categories, users } from "../../db/schema";
 import { seedWithTestUsers } from "../../db/test-users";
 import {
@@ -421,6 +422,53 @@ describe("the history the calculator reads", () => {
     });
 
     expect(data.categoryFirstDays[mente.id]).toBe(today);
+    expect(calculation.hours).toBe(0.38);
+    expect(calculation.lines.map((line) => line.text)).toStrictEqual([
+      "Ler livro, 1h × 1,5 — você já fez 2h de Mente hoje",
+      "um quarto, de 2h a 3h de Mente no dia",
+    ]);
+  });
+});
+
+describe("after an adult decided the value (D50)", () => {
+  it("explains the next hour by what was done, not by what was paid", async () => {
+    const id = addLog({
+      username: "kid1",
+      activityId: BOOK,
+      occurredOn: today,
+      durationMinutes: 120,
+      status: "pending",
+    });
+    approveLog(
+      connection,
+      id,
+      idOf("admin1"),
+      { overrideHours: 0.5 },
+      new Date(),
+    );
+    mocked.username = "kid1";
+
+    const data = await fetchCalculatorDataAction(idOf("kid1"));
+    const book = data.activities.find((activity) => activity.id === BOOK);
+    const mente = data.categories.find((category) => category.id === 2);
+
+    if (book === undefined || mente === undefined) {
+      throw new Error("the seed lost Ler livro");
+    }
+
+    const calculation = calculateEarnedHours({
+      userId: data.userId,
+      activity: book,
+      category: mente,
+      occurredOn: data.occurredOn,
+      durationMinutes: 60,
+      history: data.history,
+      historyFrom: data.historyFrom,
+      historyTo: data.historyTo,
+      categoryFirstDay: data.categoryFirstDays[mente.id] ?? null,
+    });
+
+    // The two hours happened; the 0,5 h the adult paid for them is not a bucket.
     expect(calculation.hours).toBe(0.38);
     expect(calculation.lines.map((line) => line.text)).toStrictEqual([
       "Ler livro, 1h × 1,5 — você já fez 2h de Mente hoje",

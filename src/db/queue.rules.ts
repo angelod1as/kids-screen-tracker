@@ -71,6 +71,7 @@ export type World = {
     activityName: string;
     note: string | null;
     reviewedBy: number | null;
+    overridden: boolean;
   };
   ledgerRows: () => {
     userId: number;
@@ -96,6 +97,8 @@ export const CAR = "Lavar o carro";
 export const FRIENDS = "Sair com os amigos";
 /** Escola's one timed activity: a daily bucket, no cooldown, no bonus. */
 export const STUDY = "Estudo para prova";
+/** `free`: no value until an adult types one (D49). */
+export const LOOSE = "Atividade avulsa";
 
 /** Shared by both runners, so the matrix tests the same program. */
 /** For the approved fixtures (D37). */
@@ -213,6 +216,7 @@ export function makeWorld(connection: Connection): World {
           activityName: activities.name,
           note: activityLogs.note,
           reviewedBy: activityLogs.reviewedBy,
+          overridden: activityLogs.overridden,
         })
         .from(activityLogs)
         .innerJoin(activities, eq(activityLogs.activityId, activities.id))
@@ -263,6 +267,12 @@ function logText(world: World, id: number): string {
   const row = world.logRow(id);
 
   return `${row.status} · ${row.computedHours} h · ${row.durationMinutes} min · ${row.activityName} · by ${row.reviewedBy} · ${row.note ?? "no note"}`;
+}
+
+function overrideText(world: World, id: number): string {
+  const row = world.logRow(id);
+
+  return `${logText(world, id)} · ${row.overridden ? "overridden" : "by the rule"}`;
 }
 
 function refused(body: () => void): string {
@@ -1032,6 +1042,254 @@ export const QUEUE_CASES: readonly QueueCase[] = [
     },
     expected:
       "refused: a duration is a whole number of minutes, between 1 and 1000000; received 1000000000",
+  },
+
+  {
+    rule: "an adult can override the value (D50)",
+    name: "two hours of reading are worth what the adult says",
+    run: (queue, world) => {
+      const id = world.addPending({ activity: BOOK, durationMinutes: 120 });
+      queue.approveLog(
+        world.connection,
+        id,
+        world.adminId,
+        { overrideHours: 0.5 },
+        REVIEWED_AT,
+      );
+
+      return `${overrideText(world, id)} — ${ledgerText(world)}`;
+    },
+    // The rule would pay 2,25h.
+    expected: `approved · 0.5 h · 120 min · ${BOOK} · by 1 · no note · overridden — earn 0.5 on ${THAT_DAY} for log 1 by 1 to 3`,
+  },
+  {
+    rule: "an adult can override the value (D50)",
+    name: "a fixed activity is worth less than its fixed value",
+    run: (queue, world) => {
+      const id = world.addPending({ activity: FRIENDS, durationMinutes: null });
+      queue.approveLog(
+        world.connection,
+        id,
+        world.adminId,
+        { overrideHours: 1 },
+        REVIEWED_AT,
+      );
+
+      return `${overrideText(world, id)} — ${ledgerText(world)}`;
+    },
+    expected: `approved · 1 h · null min · ${FRIENDS} · by 1 · no note · overridden — earn 1 on ${THAT_DAY} for log 1 by 1 to 3`,
+  },
+  {
+    rule: "an adult can override the value (D50)",
+    name: "overriding to zero approves with no ledger line (D10)",
+    run: (queue, world) => {
+      const id = world.addPending({ activity: FRIENDS, durationMinutes: null });
+      const result = queue.approveLog(
+        world.connection,
+        id,
+        world.adminId,
+        { overrideHours: 0 },
+        REVIEWED_AT,
+      );
+
+      return `${result.creditedLedger} — ${overrideText(world, id)} — ${ledgerText(world)}`;
+    },
+    expected: `false — approved · 0 h · null min · ${FRIENDS} · by 1 · no note · overridden — no ledger`,
+  },
+  {
+    rule: "an adult can override the value (D50)",
+    name: "an approval without an override is the rule's",
+    run: (queue, world) => {
+      const id = world.addPending({ activity: BOOK });
+      queue.approveLog(
+        world.connection,
+        id,
+        world.adminId,
+        { durationMinutes: 30 },
+        REVIEWED_AT,
+      );
+
+      return overrideText(world, id);
+    },
+    expected: `approved · 0.75 h · 30 min · ${BOOK} · by 1 · no note · by the rule`,
+  },
+  {
+    rule: "an adult can override the value (D50)",
+    name: "an entry the rule cannot price can still be overridden",
+    run: (queue, world) => {
+      const loose = world.addPending({
+        activity: LOOSE,
+        durationMinutes: null,
+      });
+      const car = world.addPending({ activity: CAR, durationMinutes: null });
+      queue.approveLog(
+        world.connection,
+        loose,
+        world.adminId,
+        { overrideHours: 2 },
+        REVIEWED_AT,
+      );
+      queue.approveLog(
+        world.connection,
+        car,
+        world.adminId,
+        { overrideHours: 1.25 },
+        REVIEWED_AT,
+      );
+
+      return `${overrideText(world, loose)} | ${overrideText(world, car)}`;
+    },
+    expected: `approved · 2 h · null min · ${LOOSE} · by 1 · no note · overridden | approved · 1.25 h · null min · ${CAR} · by 1 · no note · overridden`,
+  },
+  {
+    rule: "an adult can override the value (D50)",
+    name: "the overridden hours still fill the day's bucket with the minutes (D3)",
+    run: (queue, world) => {
+      const first = world.addPending({ activity: BOOK, durationMinutes: 120 });
+      const second = world.addPending({ activity: BOOK, durationMinutes: 60 });
+      queue.approveLog(
+        world.connection,
+        first,
+        world.adminId,
+        { overrideHours: 0.5 },
+        REVIEWED_AT,
+      );
+      queue.approveLog(
+        world.connection,
+        second,
+        world.adminId,
+        {},
+        REVIEWED_AT,
+      );
+
+      return world.logRow(second).computedHours;
+    },
+    // Third hour of Mente: 1,5 × ¼ = 0,375. An empty bucket would pay 1,5.
+    expected: 0.38,
+  },
+  {
+    rule: "an adult can override the value (D50)",
+    name: "a corrected duration is what the bucket holds, whatever the value",
+    run: (queue, world) => {
+      const first = world.addPending({ activity: BOOK, durationMinutes: 120 });
+      const second = world.addPending({ activity: BOOK, durationMinutes: 60 });
+      queue.approveLog(
+        world.connection,
+        first,
+        world.adminId,
+        { durationMinutes: 30, overrideHours: 2 },
+        REVIEWED_AT,
+      );
+      queue.approveLog(
+        world.connection,
+        second,
+        world.adminId,
+        {},
+        REVIEWED_AT,
+      );
+
+      return `${overrideText(world, first)} — ${world.logRow(second).computedHours}`;
+    },
+    // Half an hour in the bucket: 0,5h full + 0,5h at half = 1,125.
+    expected: `approved · 2 h · 30 min · ${BOOK} · by 1 · no note · overridden — 1.13`,
+  },
+  {
+    rule: "an adult can override the value (D50)",
+    name: "an overridden car wash still starts the cooldown",
+    run: (queue, world) => {
+      const monday = world.addPending({
+        activity: CAR,
+        occurredOn: "2026-09-07",
+        durationMinutes: null,
+      });
+      const tuesday = world.addPending({
+        activity: CAR,
+        occurredOn: "2026-09-08",
+        durationMinutes: null,
+        quality: 1,
+      });
+      queue.approveLog(
+        world.connection,
+        monday,
+        world.adminId,
+        { overrideHours: 1 },
+        REVIEWED_AT,
+      );
+      queue.approveLog(
+        world.connection,
+        tuesday,
+        world.adminId,
+        {},
+        REVIEWED_AT,
+      );
+
+      return world.logRow(tuesday).computedHours;
+    },
+    expected: 1.5,
+  },
+  {
+    rule: "an adult can override the value (D50)",
+    name: "an overridden value does not move when the rule changes (D15)",
+    run: (queue, world) => {
+      const id = world.addPending({ activity: FRIENDS, durationMinutes: null });
+      queue.approveLog(
+        world.connection,
+        id,
+        world.adminId,
+        { overrideHours: 1 },
+        REVIEWED_AT,
+      );
+      world.connection.sqlite
+        .prepare("update activities set value = 5 where name = ?")
+        .run(FRIENDS);
+      const later = world.addPending({
+        activity: FRIENDS,
+        durationMinutes: null,
+      });
+      queue.approveLog(world.connection, later, world.adminId, {}, REVIEWED_AT);
+
+      return `${world.logRow(id).computedHours} — ${ledgerText(world)}`;
+    },
+    expected: `1 — earn 1 on ${THAT_DAY} for log 1 by 1 to 3 | earn 5 on ${THAT_DAY} for log 2 by 1 to 3`,
+  },
+  {
+    rule: "an adult can override the value (D50)",
+    name: "a negative value is refused before the database sees it",
+    run: (queue, world) => {
+      const id = world.addPending({ activity: BOOK });
+
+      return `${refused(() =>
+        queue.approveLog(
+          world.connection,
+          id,
+          world.adminId,
+          { overrideHours: -1 },
+          REVIEWED_AT,
+        ),
+      )} — ${world.logRow(id).status}`;
+    },
+    expected:
+      "refused: an overridden value is a number of hours between 0 and 1000000, received -1 — pending",
+  },
+  {
+    rule: "an adult can override the value (D50)",
+    name: "an override still waits for the entry before it (D32)",
+    run: (queue, world) => {
+      world.addPending({ activity: BOOK });
+      const later = world.addPending({ activity: BOOK });
+
+      return refused(() =>
+        queue.approveLog(
+          world.connection,
+          later,
+          world.adminId,
+          { overrideHours: 1 },
+          REVIEWED_AT,
+        ),
+      );
+    },
+    expected:
+      "refused: log 2 cannot be approved yet: log 1 (Ler livro, 2026-09-10) comes before it and is still waiting; decide that one first",
   },
 
   {

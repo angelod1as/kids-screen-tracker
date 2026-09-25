@@ -12,7 +12,7 @@ import {
 import type { Connection, Transaction } from "./client";
 import { writeTransaction } from "./client";
 import { categoryFirstDay, pendingDebutBefore } from "./debut";
-import { requireHours } from "./input";
+import { requireHours, requireNonNegativeHours } from "./input";
 import { activities, activityLogs, categories, ledger, users } from "./schema";
 
 /**
@@ -69,6 +69,8 @@ export type LogEdits = {
   quality?: number | null;
   /** D49: the value of a `free` activity a boy requested; only an adult types it. */
   freeValue?: number;
+  /** D50: the final value in hours, in any mode; the rule is not asked. */
+  overrideHours?: number;
   note?: string | null;
 };
 
@@ -439,6 +441,11 @@ export function approveLog(
       ? undefined
       : requireHours(edits.freeValue, "a free activity's value");
 
+  const overrideHours =
+    edits.overrideHours === undefined
+      ? undefined
+      : requireNonNegativeHours(edits.overrideHours, "an overridden value");
+
   return writeTransaction(connection, (tx) => {
     const log = takePending(tx, logId);
 
@@ -460,7 +467,11 @@ export function approveLog(
       );
     }
 
-    const calculation = calculationFor(tx, edited);
+    // D50: no engine call, so no explanation is made up for the adult's number.
+    const calculation =
+      overrideHours === undefined
+        ? calculationFor(tx, edited)
+        : { hours: overrideHours };
 
     tx.update(activityLogs)
       .set({
@@ -481,6 +492,7 @@ export function approveLog(
         status: "approved",
         // D15.
         computedHours: calculation.hours,
+        overridden: overrideHours !== undefined,
         reviewedBy: reviewerId,
         reviewedAt: now,
       })

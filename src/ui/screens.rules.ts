@@ -15,10 +15,13 @@ export type ScreenRules = {
   displayedSeconds: (open: OpenSessionView, watchedMs: number) => number;
   settlementText: (settlement: TimerSettlement) => string;
   canApprove: (
-    entry: Pick<QueueEntry, "blockedBy" | "qualityGraded" | "quality">,
+    entry: Pick<QueueEntry, "blockedBy" | "qualityGraded" | "quality"> &
+      Partial<Pick<QueueEntry, "durationMinutes" | "calcMode">>,
     editing: boolean,
     minutes: string,
     grade?: number | null,
+    value?: string,
+    override?: string,
   ) => boolean;
   parseTypedHours: (text: string) => number | null;
   entryOf: (
@@ -157,6 +160,82 @@ export const SCREEN_CASES: readonly ScreenCase[] = [
         0,
       ),
     expected: true,
+  },
+  {
+    rule: "approving is one tap, when it is a tap that can be taken",
+    name: "a final value stands in for the missing grade (D50)",
+    run: (rules) =>
+      rules.canApprove(
+        { blockedBy: null, qualityGraded: true, quality: null },
+        true,
+        "60",
+        null,
+        "",
+        "0,5",
+      ),
+    expected: true,
+  },
+  {
+    rule: "approving is one tap, when it is a tap that can be taken",
+    name: "a final value of zero is a value (D50)",
+    run: (rules) =>
+      rules.canApprove(
+        {
+          blockedBy: null,
+          qualityGraded: false,
+          quality: null,
+          durationMinutes: null,
+          calcMode: "free",
+        },
+        true,
+        "",
+        null,
+        "",
+        "0",
+      ),
+    expected: true,
+  },
+  {
+    rule: "approving is one tap, when it is a tap that can be taken",
+    name: "a final value that is not a number is not offered (D50)",
+    run: (rules) =>
+      rules.canApprove(
+        { blockedBy: null, qualityGraded: false, quality: null },
+        true,
+        "60",
+        null,
+        "",
+        "meia",
+      ),
+    expected: false,
+  },
+  {
+    rule: "approving is one tap, when it is a tap that can be taken",
+    name: "a final value does not excuse an unusable duration (D50)",
+    run: (rules) =>
+      rules.canApprove(
+        { blockedBy: null, qualityGraded: false, quality: null },
+        true,
+        "0",
+        null,
+        "",
+        "1",
+      ),
+    expected: false,
+  },
+  {
+    rule: "approving is one tap, when it is a tap that can be taken",
+    name: "a final value typed and then closed is not what the tap sends (D50)",
+    run: (rules) =>
+      rules.canApprove(
+        { blockedBy: null, qualityGraded: true, quality: null },
+        false,
+        "60",
+        null,
+        "",
+        "1",
+      ),
+    expected: false,
   },
 
   {

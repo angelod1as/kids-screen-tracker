@@ -158,6 +158,10 @@ export function KidGuide({ data }: { data: HowItWorksData }) {
             nota.
           </li>
           <li>
+            Ele também pode decidir quanto a entrada vale, sem a conta. Aí o
+            Histórico diz “valor decidido por um adulto”.
+          </li>
+          <li>
             A conta é feita na hora em que ele aprova, contando o que já foi
             aprovado no seu dia. Por isso pode sair diferente do que a
             Calculadora mostrou antes.
