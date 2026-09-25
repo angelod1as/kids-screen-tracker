@@ -1,8 +1,11 @@
+import type { ReactNode } from "react";
+
 import type {
   AdultValue,
   HistoryEntry,
   LedgerEntry,
   RejectedEntry,
+  VoidMark,
   ZeroEntry,
 } from "../app/actions/history";
 import { formatDay, formatSignedHours } from "./dates";
@@ -24,9 +27,12 @@ export const HISTORY_LIMIT = 200;
 export function EntryList({
   emptyText,
   entries,
+  action,
 }: {
   emptyText: string;
   entries: readonly HistoryEntry[];
+  /** D52: the adult's control under an entry that still counts. */
+  action?: (entry: LedgerEntry | ZeroEntry) => ReactNode;
 }) {
   if (entries.length === 0) {
     return <PanelText>{emptyText}</PanelText>;
@@ -38,7 +44,11 @@ export function EntryList({
         entry.kind === "rejected" ? (
           <RejectedRow entry={entry} key={`rejected-${entry.id}`} />
         ) : entry.kind === "zero" ? (
-          <ZeroRow entry={entry} key={`zero-${entry.id}`} />
+          <ZeroRow
+            action={entry.voided === null ? action?.(entry) : null}
+            entry={entry}
+            key={`zero-${entry.id}`}
+          />
         ) : (
           <li className={ROW_CLASS} key={`ledger-${entry.id}`}>
             <span className="flex min-w-0 flex-col gap-1">
@@ -52,8 +62,15 @@ export function EntryList({
               {entry.override === null ? null : (
                 <AdultValueText override={entry.override} />
               )}
+              {entry.voided === null ? (
+                action?.(entry)
+              ) : (
+                <VoidedText voided={entry.voided} />
+              )}
             </span>
-            <span className={`${READOUT_CLASS} shrink-0 text-black`}>
+            <span
+              className={`${READOUT_CLASS} shrink-0 text-black ${entry.voided === null ? "" : "line-through"}`}
+            >
               {formatSignedHours(signedHours(entry))}
             </span>
           </li>
@@ -114,8 +131,17 @@ function AdultValueText({ override }: { override: AdultValue }) {
   );
 }
 
+/** D52: struck through in place, and said in words, since a line alone is easy to miss. */
+function VoidedText({ voided }: { voided: VoidMark }) {
+  return (
+    <span className="break-words text-base font-bold text-black">
+      Anulado por {voided.by} em {formatDay(voided.on)}. Não conta no saldo.
+    </span>
+  );
+}
+
 /** D10: an approved zero stays visible; it counted for the cooldown and the bucket. */
-function ZeroRow({ entry }: { entry: ZeroEntry }) {
+function ZeroRow({ entry, action }: { entry: ZeroEntry; action: ReactNode }) {
   return (
     <li className={ROW_CLASS}>
       <span className="flex min-w-0 flex-col gap-1">
@@ -129,8 +155,11 @@ function ZeroRow({ entry }: { entry: ZeroEntry }) {
         {entry.override === null ? null : (
           <AdultValueText override={entry.override} />
         )}
+        {entry.voided === null ? action : <VoidedText voided={entry.voided} />}
       </span>
-      <span className={`${READOUT_CLASS} shrink-0 text-black`}>
+      <span
+        className={`${READOUT_CLASS} shrink-0 text-black ${entry.voided === null ? "" : "line-through"}`}
+      >
         {formatHours(0)}
       </span>
     </li>

@@ -71,6 +71,7 @@ function entry(id: number): HistoryEntry {
     occurredOn: "2026-09-02",
     label: `Linha ${id}`,
     override: null,
+    voided: null,
   };
 }
 
@@ -199,6 +200,7 @@ describe("a value an adult decided says so on the boy's history (D50)", () => {
       occurredOn: "2026-09-02",
       label: "Sair com os amigos",
       override,
+      voided: null,
     };
   }
 
@@ -235,6 +237,7 @@ describe("a value an adult decided says so on the boy's history (D50)", () => {
         occurredOn: "2026-09-02",
         label: "Lavar o carro",
         override: null,
+        voided: null,
       },
     ]);
 
@@ -252,6 +255,7 @@ describe("a value an adult decided says so on the boy's history (D50)", () => {
         occurredOn: "2026-09-02",
         label: "Sair com os amigos",
         override: { ruleHours: 3, reason: null },
+        voided: null,
       },
     ]);
 

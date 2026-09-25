@@ -1,11 +1,13 @@
 "use server";
 
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, sql } from "drizzle-orm";
+import { alias } from "drizzle-orm/sqlite-core";
 
 import { requireAccess } from "../../auth/guard";
 import { getDb } from "../../db";
 import { rejectionReason } from "../../db/queue";
-import { activities, activityLogs, ledger } from "../../db/schema";
+import { activities, activityLogs, ledger, users } from "../../db/schema";
+import { saoPauloDay } from "../../engine/day";
 import { HISTORY_LIMIT } from "../../ui/entries";
 
 /** `label` is resolved here so no two screens join the three tables differently. */
@@ -18,6 +20,15 @@ export type LedgerEntry = {
   label: string;
   /** D50: null when the rule priced it. */
   override: AdultValue | null;
+  /** D52: null while it counts. */
+  voided: VoidMark | null;
+};
+
+/** D52: shown, not hidden, so the boy can see why the balance moved. */
+export type VoidMark = {
+  /** D13: the São Paulo day it was voided. */
+  on: string;
+  by: string;
 };
 
 /** D50: what the boy is told about a value an adult decided. */
@@ -50,6 +61,7 @@ export type ZeroEntry = {
   occurredOn: string;
   label: string;
   override: AdultValue | null;
+  voided: VoidMark | null;
 };
 
 export type HistoryEntry = LedgerEntry | RejectedEntry | ZeroEntry;
@@ -134,11 +146,23 @@ function ledgerEntries(
       createdAt: ledger.createdAt,
       activityName: activities.name,
       ...ADULT_VALUE_COLUMNS,
+      // D52: an activity is voided on its log, a movement on its own row.
+      voidedAt: sql<
+        number | null
+      >`coalesce(${ledger.voidedAt}, ${activityLogs.voidedAt})`,
+      voidedBy: voider.displayName,
     })
     .from(ledger)
     // Left joins: `activity_log_id` is null on every `spend` and `refund` (D10).
     .leftJoin(activityLogs, eq(ledger.activityLogId, activityLogs.id))
     .leftJoin(activities, eq(activityLogs.activityId, activities.id))
+    .leftJoin(
+      voider,
+      eq(
+        voider.id,
+        sql`coalesce(${ledger.voidedBy}, ${activityLogs.voidedBy})`,
+      ),
+    )
     .where(eq(ledger.userId, targetUserId))
     .orderBy(desc(ledger.occurredOn), desc(ledger.createdAt), desc(ledger.id))
     .limit(limit)
@@ -157,6 +181,7 @@ function ledgerEntries(
       // destination, then the note that names a refund (#24).
       label: row.activityName ?? row.destination ?? row.note ?? NO_LABEL,
       override: adultValue(row),
+      voided: voidMark(row.voidedAt, row.voidedBy),
     },
   }));
 }
@@ -207,6 +232,13 @@ function rejectedEntries(
   }));
 }
 
+const voider = alias(users, "voider");
+
+/** D52. `at` is epoch ms: the `coalesce` above comes back unmapped. */
+function voidMark(at: number | null, by: string | null): VoidMark | null {
+  return at === null ? null : { on: saoPauloDay(new Date(at)), by: by ?? "" };
+}
+
 const ADULT_VALUE_COLUMNS = {
   overridden: activityLogs.overridden,
   ruleHours: activityLogs.ruleHours,
@@ -232,9 +264,12 @@ function zeroEntries(targetUserId: number, limit: number): Placed<ZeroEntry>[] {
       createdAt: activityLogs.createdAt,
       activityName: activities.name,
       ...ADULT_VALUE_COLUMNS,
+      voidedAt: activityLogs.voidedAt,
+      voidedBy: voider.displayName,
     })
     .from(activityLogs)
     .innerJoin(activities, eq(activityLogs.activityId, activities.id))
+    .leftJoin(voider, eq(voider.id, activityLogs.voidedBy))
     .where(
       and(
         eq(activityLogs.userId, targetUserId),
@@ -260,6 +295,7 @@ function zeroEntries(targetUserId: number, limit: number): Placed<ZeroEntry>[] {
       occurredOn: row.occurredOn,
       label: row.activityName,
       override: adultValue(row),
+      voided: voidMark(row.voidedAt?.getTime() ?? null, row.voidedBy),
     },
   }));
 }
