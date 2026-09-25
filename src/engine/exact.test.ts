@@ -15,16 +15,7 @@ import {
   toCents,
 } from "./exact";
 
-/**
- * The arithmetic the engine's monotonicity rests on (D39).
- *
- * Two of these cases are the ones that would rot silently. `fromNumber` reading
- * a `double` as the decimal an adult typed is a *choice*, not a conversion, and
- * nothing else in the suite would notice it changing. And `decayedHours` is a
- * closed form standing in for a sum nobody can afford to compute — so it is
- * checked against that sum, band by band, wherever the sum is small enough to
- * run.
- */
+/** D39. `fromNumber` reading the typed decimal is a choice nothing else would notice changing. */
 
 const hours = (minutes: number): Fraction =>
   divide(fromNumber(minutes), fromNumber(60));
@@ -57,9 +48,6 @@ function bandByBand(
 
 describe("reading a double as the decimal it prints as", () => {
   it("takes 0,1 as a tenth, not as the binary fraction it is stored in", () => {
-    // The whole point. `0.1` is really 3602879701896397/36028797018963968 in
-    // memory, and reading it that way would be arithmetic about a rounding
-    // error rather than about the number the adult typed into the field.
     expect(fromNumber(0.1)).toEqual({ n: 1n, d: 10n });
     expect(fromNumber(0.3)).toEqual({ n: 3n, d: 10n });
     expect(fromNumber(2.5)).toEqual({ n: 5n, d: 2n });
@@ -73,8 +61,7 @@ describe("reading a double as the decimal it prints as", () => {
   });
 
   it("reads the exponent form `String` switches to on its own", () => {
-    // Under 1e-6 a double prints as "1e-7", which the naive "split on the dot"
-    // reading would have taken as the integer 1.
+    // A naive "split on the dot" would read "1e-7" as the integer 1.
     expect(fromNumber(1e-7)).toEqual({ n: 1n, d: 10_000_000n });
     expect(fromNumber(1.5e-7)).toEqual({ n: 3n, d: 20_000_000n });
     expect(fromNumber(1.5e21)).toEqual({
@@ -99,18 +86,14 @@ describe("D9's rounding, as the only rounding there is", () => {
   });
 
   it("rounds a negative half towards zero, the way Math.round does", () => {
-    // The lines that take hours away are deltas of cents and never reach this,
-    // but the rule is `floor(100x + ½)` and it has to be the same rule the
-    // engine has always applied, not a tidier one. `Math.round(-0.5)` is `-0`,
-    // which is `0` once it is a count of cents.
+    // Deltas of cents never reach this, but the rule stays `Math.round`'s.
     expect(toCents(fromNumber(-0.005))).toBe(0n);
     expect(toCents(fromNumber(-0.015))).toBe(-1n);
     expect(toCents(fromNumber(-1.235))).toBe(-123n);
   });
 
   it("does not round a value a hair under the half up", () => {
-    // 0,274999…h is the pair the floor used to be justified by: the float sum
-    // drifted over the boundary, the exact one never reaches it.
+    // The float sum drifted over this boundary; the exact one never reaches it.
     expect(toCents(fraction(274_999n, 1_000_000n))).toBe(27n);
     expect(toCents(fraction(275_000n, 1_000_000n))).toBe(28n);
   });
@@ -120,7 +103,6 @@ describe("the decay, exactly", () => {
   it("is the table decisions.md opens with", () => {
     const step = fromNumber(1);
 
-    // An empty bucket: the first hour whole, the second halved, and so on.
     expect(decayedHours(hours(0), hours(60), step)).toEqual(fromNumber(1));
     expect(decayedHours(hours(0), hours(120), step)).toEqual(fromNumber(1.5));
     expect(decayedHours(hours(0), hours(180), step)).toEqual(fromNumber(1.75));
@@ -131,9 +113,6 @@ describe("the decay, exactly", () => {
     const step = fromNumber(2);
     const reached = decayedHours(hours(0), hours(100 * 60), step);
 
-    // Below `2 × passo` — which is `4` hours of activity here — but above
-    // everything short of it: no ceiling that is ever touched, and no band
-    // worth exactly nothing however deep the day goes.
     expect(subtract(fromNumber(4), reached).n > 0n).toBe(true);
     expect(reached.n > 0n).toBe(true);
     expect(decayedHours(hours(20_000 * 60), hours(60), fromNumber(1)).n).toBe(
@@ -156,15 +135,7 @@ describe("the decay, exactly", () => {
     }
   });
 
-  /**
-   * The decay summed band by band with **no** tail bound at all.
-   *
-   * D2's sentence, taken literally, and deliberately not the closed form: this
-   * is what the closed form stands in for, so it is what the closed form has to
-   * be checked against. Only usable for a bounded number of bands, which is why
-   * the closed form exists — but the cases below cross about 8.192, and that is
-   * perfectly computable once.
-   */
+  /** No tail bound at all: what the closed form stands in for, affordable once. */
   function trueDecayedHours(
     bucket: Fraction,
     activity: Fraction,
@@ -191,15 +162,7 @@ describe("the decay, exactly", () => {
   }
 
   it("agrees with the unbounded truth to the cent, where the bound bites", () => {
-    // The bound's own claim, checked against the thing it approximates rather
-    // than argued in prose.
-    //
-    // An earlier docstring proved "no cent moves" from a minimum distance to a
-    // half cent of `1/(200·den)`, with `den < 2^(nB+5608)`. That is false in
-    // exactly the regime that matters: the denominator carries `2^n_fim`, and
-    // where the clamp bites `n_fim > nB + 8192`, so the inequality runs
-    // backwards. The conclusion held; the argument did not — so the argument is
-    // replaced by a measurement against the truth.
+    // Measured, not argued: a prose proof of this once ran backwards.
     for (const stepHours of [0.25, 0.5]) {
       const step = fromNumber(stepHours);
       // Where band 8.192 begins, in minutes, from an empty bucket.
@@ -214,7 +177,6 @@ describe("the decay, exactly", () => {
         const value = decayedHours(hours(0), hours(minutes), step);
         const truth = trueDecayedHours(hours(0), hours(minutes), step);
 
-        // The bound only ever takes value away, never adds it.
         expect(
           compare(value, truth) <= 0,
           `step ${stepHours}, ${minutes} min: the bound must not overpay`,
@@ -235,19 +197,8 @@ describe("the decay, exactly", () => {
   }, 120_000);
 
   it("never falls across the band the tail bound stops at", () => {
-    // The case the sweep below cannot reach, and the reason it cannot.
-    //
-    // That sweep runs 1..600 min. At 0,001h it does cross the bound, but one
-    // minute is about 16,7 bands there, so the index jumps over the `limit`
-    // band without ever landing inside it with a remainder — it steps over the
-    // defect. At 0,25h, the floor this screen imposes, the bound sits at
-    // 122.880 min, far past 600. The grid went past the bug on both sides.
-    //
-    // So this walks minute by minute *through* the `limit` band, at the legal
-    // floor and at a duration the column accepts. With the clamp written as a
-    // step on the band index instead of a minimum on the value, 122.894 →
-    // 122.895 fell by `7/(60 · 2^8192)` h — no cent anywhere, and the whole
-    // claim of the module.
+    // The sweep below steps over the `limit` band (D39); this walks through it
+    // at the 0,25h floor, where a step-shaped clamp fell at 122.894 → 122.895.
     const step = fromNumber(0.25);
     const bucket = hours(0);
     let previous = fraction(-1n, 1n);
@@ -265,29 +216,9 @@ describe("the decay, exactly", () => {
   });
 
   it("never falls as the duration grows, which is the whole point", () => {
-    // The property `calculate.ts` inherits: `round2` of a non-decreasing
-    // function is non-decreasing, so no longer session can ever pay less. Swept
-    // below the configuration floor as well, because the guarantee is about the
-    // arithmetic and not about the values the screen allows.
-    //
-    // **Do not trim 0,001h out of that list as dead weight.** D35 floors the
-    // step at 0,25h, so it looks like a value nothing can reach — and that is
-    // exactly why it is here. The tail bound only bites past 8192 bands, which
-    // no step a category can actually be given ever reaches, so a sweep that
-    // stopped at the floor would pass over a broken bound for ever. It did:
-    // the first version of that bound clamped the halving exponent while still
-    // subtracting the true remainder, which made this function non-monotone
-    // past 8192 bands (72 drops between 1 and 600 minutes at 0,001h, the first
-    // at 494), and every test in the repository stayed green because they all
-    // ran at 0,05h and above. The bug was in the bound written to make the
-    // arithmetic safe, and the proof beside it was sound about cents and silent
-    // about monotonicity — the half this file exists for.
-    //
-    // Non-decreasing rather than strictly increasing, because of the one place
-    // the answer is bounded rather than exact: past `EXACT_TAIL_HALVINGS` bands
-    // — 10 hours of activity at a step of 0,001h — the entry is clamped and two
-    // neighbouring durations can come back equal. Equal is all monotonicity
-    // asks for, and they differ by less than `2^-8192` hours in truth.
+    // Do not trim 0,001h as unreachable: only below the floor does the tail bound
+    // bite inside this sweep, and a sweep stopping at the floor missed it (D39).
+    // Non-decreasing, not strict: past the bound two durations can come back equal.
     for (const stepHours of [0.001, 0.05, 0.1, 0.25, 1, 2]) {
       const step = fromNumber(stepHours);
 
@@ -309,10 +240,7 @@ describe("the decay, exactly", () => {
   });
 
   it("is strictly increasing wherever it is exact, which is everywhere real", () => {
-    // The clamp needs more than 8192 bands to bite, and the Configuration
-    // screen's floor of 0,25h puts a whole day at 96. So on every step a
-    // category can actually be given, one more minute is always worth strictly
-    // more than none.
+    // The clamp needs 8192 bands; the 0,25h floor puts a whole day at 96.
     for (const stepHours of [0.05, 0.25, 1, 2]) {
       const step = fromNumber(stepHours);
       let previous = fraction(-1n, 1n);
@@ -331,10 +259,7 @@ describe("the decay, exactly", () => {
   });
 
   it("costs the same on a step no loop over bands could survive", () => {
-    // 0,001h over a day is 24.000 bands, and a step of 1e-9 is 10^13 of them.
-    // The closed form does not care, and the guard on the starting band answers
-    // the second one without building the shift at all. A band-by-band port
-    // would hang the boy's calculator on a keystroke here.
+    // A band-by-band port would hang the boy's calculator on a keystroke here.
     const started = Date.now();
 
     expect(decayedHours(hours(0), hours(1440), fromNumber(0.001)).n > 0n).toBe(

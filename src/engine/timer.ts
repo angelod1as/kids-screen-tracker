@@ -15,10 +15,7 @@ import { saoPauloDay, saoPauloDayStart, shiftDate } from "./day";
 
 export type TimerStatus = Timer["status"];
 
-/**
- * `Pick` on the schema row so a column that changes shape breaks this file at
- * compile time.
- */
+/** `Pick`, so a schema column that changes shape breaks this at compile time. */
 export type TimerState = Pick<
   Timer,
   "startedAt" | "pausedAt" | "accumulatedSeconds" | "status"
@@ -32,10 +29,7 @@ export const ABANDON_AFTER_HOURS = 12;
 
 const ABANDON_AFTER_MS = ABANDON_AFTER_HOURS * 60 * 60 * MS_PER_SECOND;
 
-/**
- * The one place that reads the overloaded `paused_at`. Only meaningful while
- * running.
- */
+/** The one place that reads the overloaded `paused_at`. Only meaningful while running. */
 function stretchStartedAt(timer: TimerState): Date {
   return timer.pausedAt ?? timer.startedAt;
 }
@@ -97,13 +91,10 @@ export function dayEndsAt(timer: TimerState): Date {
 /** How a session ended without the boy ending it. */
 export type SettlementReason = "limit" | "dayEnd" | "abandoned";
 
-/** `settledAt` is null while the session is still the boy's to end. */
 export type Reconciliation = {
-  /** The timer as it should now be stored. */
   state: TimerState;
-  /** When the session ended by itself, or null if it has not. */
+  /** When the session ended by itself, or null while it is still the boy's. */
   settledAt: Date | null;
-  /** Which rule ended it, or null while it is still the boy's. */
   reason: SettlementReason | null;
   /** D16: marks the record of an automatic stop. An abandonment has none. */
   autoStopped: boolean;
@@ -111,7 +102,6 @@ export type Reconciliation = {
   activeSeconds: number;
 };
 
-/** One rule's answer to "when would you end this session, and with what". */
 type Settlement = {
   reason: SettlementReason;
   at: Date;
@@ -232,10 +222,7 @@ export function durationMinutes(seconds: number): number {
   );
 }
 
-/**
- * Floored, so the column holds an integer and `durationMinutes` rounds the
- * stored number.
- */
+/** Floored, so the column holds an integer and `durationMinutes` rounds the stored number. */
 export function durationSeconds(seconds: number): number {
   return Math.max(0, Math.floor(seconds));
 }

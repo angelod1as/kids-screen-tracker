@@ -14,14 +14,8 @@ import {
 } from "./calculate";
 
 /**
- * The proof that what this module ships does what D1–D10 say, and nothing more:
- * the exhaustive table of cases is issue #11, written by someone who did not
- * write the engine on purpose.
- *
- * Two fixtures for Mente, one with the return bonus and one without: the decay
- * table in `decisions.md` is about decay alone, and a bonus firing on the first
- * entry of the day would quietly turn 2h into 3h and hide what is being
- * measured.
+ * Mente with and without the return bonus: a bonus firing on the day's first
+ * entry would turn 2h into 3h and hide the decay being measured.
  */
 
 const menteNoBonus: EngineCategory = {
@@ -106,18 +100,9 @@ const estudo: EngineActivity = {
 };
 
 const DAY = "2026-09-01";
-/**
- * The widest window any fixture here needs: Casa's seven-day cooldown. Handing
- * over more history than the rules ask for is allowed; less is refused.
- */
+/** Casa's seven-day cooldown, the widest window here; less history is refused. */
 const WINDOW = shiftDate(DAY, -7);
-/**
- * The far end of the same window (D34).
- *
- * An entry counts what was frozen before it, and that can sit on a later day
- * than its own — so the window has two ends and the engine refuses a history
- * that stops short of either.
- */
+/** The far end of the same window (D34). */
 const WINDOW_END = shiftDate(DAY, 7);
 /** A category done long before any window here: every entry can be a return (D47). */
 const LONG_AGO = "2000-01-01";
@@ -145,14 +130,7 @@ function log(
   };
 }
 
-/**
- * Every result has to satisfy D9, so every result in this file is checked.
- *
- * Added in whole cents, which is how the boy adds them up on the screen.
- * Rounding the sum before comparing — which this used to do — forgives a line
- * that is a cent off, and a line that is a cent off is the whole failure mode
- * D9 is about.
- */
+/** Added in whole cents, as the boy adds them: rounding the sum forgives a line a cent off (D9). */
 function earn(input: CalculationInput) {
   const result = calculateEarnedHours(input);
   const cents = result.lines.reduce(
@@ -254,11 +232,8 @@ describe("decay", () => {
   });
 
   it("never pays less for more activity, however small the step (D2)", () => {
-    // `decay_step_hours` is only `> 0` in the schema, and the Configuração
-    // screen (#26) reaches it: 0,1h puts fifty-odd bands under one session.
-    // Taking each band's loss off a running value drifted ~1e-15 upwards along
-    // that chain, and 292 minutes paid less than 291 — the exact answer is 0,27
-    // for all three. Adding up what survives is what keeps this true.
+    // 0,1h puts fifty-odd bands under one session; taking each band's loss off a
+    // running value drifted upwards, and 292 minutes paid less than 291.
     const fineStep: EngineCategory = { ...menteNoBonus, decayStepHours: 0.1 };
     const slowRate: EngineActivity = { ...lerLivro, value: 1.5 };
     const history = [log(slowRate, { durationMinutes: 1 })];
@@ -288,11 +263,8 @@ describe("decay", () => {
   });
 
   it("measures the bucket in hours of activity, not in logs (D1)", () => {
-    // Every fixture used to be exactly one hour, which makes "hours of
-    // activity" and "number of logs" the same rule. Half an hour already read,
-    // then a full hour: the first half hour of the session is still in the
-    // undecayed band, so it is 1,5h. Counting logs would say the bucket holds
-    // one step and pay 1h.
+    // Half an hour read, then an hour: the first half hour is still undecayed, so
+    // 1,5h. Counting logs would pay 1h.
     expect(
       earn({
         userId: KID1,
@@ -372,10 +344,8 @@ describe("decay", () => {
   });
 
   it("shows a duration the base line's own multiplication closes on", () => {
-    // A duration rounded to hours does not survive being multiplied: one minute
-    // read "Ler livro, 0,02h × 2,0" beside a result of 0,03h, and the boy who
-    // checks that line gets 0,04. It was 480 of the 720 whole-minute durations
-    // of a day, and no fixture here was ever anything but a whole hour.
+    // Rounded to hours, one minute read "0,02h × 2,0" beside 0,03h, and the boy's
+    // own check gives 0,04.
     const noDecay: EngineCategory = { ...menteNoBonus, decayStepHours: null };
     const base = (durationMinutes: number, value: number) =>
       earn({
@@ -424,10 +394,8 @@ describe("decay", () => {
   });
 
   it("counts the bucket in whole minutes, so the base line cannot lie", () => {
-    // Six twenty-minute sessions are exactly 2h, but summed as sixths of an
-    // hour they came to 1,9999999999999998: `Math.floor` saw an empty bucket,
-    // the base line claimed "cheio" and the very next line said the bucket
-    // already held 2h. Both lines are read by the boy, on the same screen.
+    // Six twenty-minute sessions summed as hours are 1,9999…: the base line said
+    // "cheio" and the next line said the bucket already held 2h.
     const sixTwenties = Array.from({ length: 6 }, () =>
       log(futebol, { durationMinutes: 20 }),
     );
@@ -511,10 +479,8 @@ describe("decay", () => {
   });
 
   it("never says the decay is worth nothing, and never fills the screen", () => {
-    // D2's justification is that the boy never hears "não vale mais nada", and
-    // the underflow band said exactly that. A `decay_step_hours` the schema
-    // allows also turned 90 minutes into 1.076 lines, with denominators printed
-    // as "1/5.35e+300".
+    // D2: never "nada". A step the schema allows once turned 90 minutes into 1.076
+    // lines.
     const marathon = earn({
       userId: KID1,
       activity: lerLivro,
@@ -551,18 +517,8 @@ describe("decay", () => {
         categoryFirstDay: LONG_AGO,
         history: [log(lerLivro, { durationMinutes: 2000 * 60 })],
       }).lines.at(-1)?.text,
-      // 2000,01h and not 2000h, and the hundredth is the arithmetic being right
-      // rather than the sentence changing. A 2000h bucket at a step of 0,001h
-      // sits exactly on band 2.000.000, and one hour of activity crosses the
-      // thousand bands after it — so the eighth named band, where the tail is
-      // folded, is 2.000.007, and that band opens at 2.000,007h, which is
-      // 2000,01h to two decimals. What used to print 2000h was the *first*
-      // band's own collapsed range: `2 ** -2000000` underflows to exactly zero
-      // in a double, so the old band splitter stopped dead at band 2.000.000
-      // and called the whole remaining hour one band worth precisely nothing —
-      // the "vale nada" D2 forbids, arrived at by an underflow rather than by a
-      // decision. Exact arithmetic has no underflow to stop at, so the bands
-      // after it exist now and the fold names the one it really starts from.
+      // 2000,01h, not 2000h: the fold starts at band 2.000.007, which opens at
+      // 2.000,007h. Float underflow used to stop at band 2.000.000 and call it zero.
     ).toBe("cada vez menos, depois de 2000,01h de Mente no dia");
 
     for (const durationMinutes of [90, 1440, 120_000]) {
@@ -645,10 +601,8 @@ describe("decay", () => {
 
 describe("rounding", () => {
   it("rounds the chain once, never the lines (D9)", () => {
-    // Rounding each line on its own passes every other test in this file,
-    // because every other fixture's parcels are already exact two-decimal
-    // numbers. This one is not: 23 minutes at 1,0 with a 0,5 grade and the
-    // cooldown gives 0,383333 → 0,191666 → 0,095833.
+    // Every other fixture's parcels are exact at two decimals; these are
+    // 0,383333 → 0,191666 → 0,095833.
     const noDecay: EngineCategory = { ...menteNoBonus, decayStepHours: null };
     const result = earn({
       userId: KID1,
@@ -737,9 +691,7 @@ describe("quality, cooldown and the return bonus", () => {
   });
 
   it("leaves out the steps that moved nothing", () => {
-    // D10's reasoning is that a 0h line is noise on a statement meant to be
-    // read at a glance. It applied to the ledger; the explanation had the same
-    // problem — a zero grade still printed "+50% … 0h" under it.
+    // D10's "0h is noise" holds for the explanation too.
     const bonusCasa: EngineCategory = {
       ...casa,
       returnBonusPct: 0.5,
@@ -873,11 +825,8 @@ describe("quality, cooldown and the return bonus", () => {
   });
 
   it("pays 50% and not 5000% for a return_bonus_pct of 0,5", () => {
-    // The convention is a convention: `return_bonus_pct` is the fraction the
-    // seed (#9) stores, so 0,5 is `× 1,5`. Reading it as a percentage would
-    // give `× 1,005` — small, plausible, and invisible. Reading a 50 stored as
-    // a percentage with this formula would give `× 51`, which is the direction
-    // that ruins an afternoon. Both are pinned here.
+    // A fraction, the seed's convention. Read as a percentage it would be × 1,005,
+    // small and invisible; a stored 50 would be × 51.
     const base: CalculationInput = {
       userId: KID1,
       activity: futebol,
@@ -951,11 +900,7 @@ describe("quality, cooldown and the return bonus", () => {
 
 describe("the contract with the caller", () => {
   it("counts every log the caller hands over (D34)", () => {
-    // D34 moved the question from "is this earlier in the canonical order" to
-    // "was this frozen before me", and only the caller can answer the second —
-    // so the caller hands over the set and the engine counts all of it. The
-    // engine used to filter, and that filter is what made an entry launched
-    // onto a past day blind to the allowance a later day had already spent.
+    // D34: only the caller knows what was frozen first, so the engine counts all of it.
     const sittings = [1, 2, 3].map((id) =>
       log(lerLivro, { id, createdAt: new Date(id) }),
     );
@@ -981,18 +926,13 @@ describe("the contract with the caller", () => {
       withFrozen(sittings),
     ]).toStrictEqual([2, 1, 0.5, 0.25]);
 
-    // And the same set twice is the same number: the answer depends on what is
-    // in the history and on nothing else, which is the determinism D8 asks for
-    // stated in the only terms that survive an `occurred_on` being edited.
+    // Same set, same number: D8's determinism.
     expect(withFrozen(sittings)).toBe(0.25);
   });
 
   it("reads a later day that was frozen first (D34)", () => {
-    // The case D34 was written for. A wash on the 8th, frozen first; a wash
-    // launched onto the 1st afterwards. The second one is inside the first
-    // one's seven-day cooldown *and the first one is inside its* — the window
-    // is measured in days from `occurred_on`, in both directions, and what
-    // decides which of the two pays full is the order they were frozen in.
+    // Each wash is inside the other's cooldown, since D34 made the window
+    // two-sided; the freeze order decides which one pays full.
     const later = log(lavarOCarro, {
       occurredOn: shiftDate(DAY, 7),
       durationMinutes: null,
@@ -1032,9 +972,8 @@ describe("the contract with the caller", () => {
   });
 
   it("refuses a history window that stops short of the days ahead (D34)", () => {
-    // The mirror of the case below, and it exists because D34 created the far
-    // end: a caller that fetched only up to the entry's own day would find no
-    // cooldown and pay 3h where it owes 1,5h — silent, and in the boy's favour.
+    // A caller fetching only up to the entry's own day would pay 3h where it owes
+    // 1,5h, silently and in the boy's favour.
     expect(() =>
       earn({
         userId: KID1,
@@ -1051,8 +990,7 @@ describe("the contract with the caller", () => {
   });
 
   it("refuses a history window shorter than the rules it applies", () => {
-    // Casa's cooldown reaches 7 days back. A caller that fetched 3 paid 3h
-    // where it owed 1,5h — no cooldown line, no warning, and always in the
+    // A caller that fetched 3 of Casa's 7 days paid 3h where it owed 1,5h, in the
     // boy's favour, which is the direction nobody reports.
     const washed = log(lavarOCarro, { occurredOn: "2026-08-27" });
 
@@ -1099,10 +1037,7 @@ describe("the contract with the caller", () => {
         history,
       }).lines.at(-1)?.text;
 
-    // The minimum window can never name the day, by construction: a log of the
-    // category inside it would have cancelled the bonus. Issue #17's
-    // "faz 4 dias" is only reachable by fetching further back than the number
-    // needs, and the wording now follows the window it was actually given.
+    // The minimum window never names the day: a log inside it would cancel the bonus.
     expect(away(historyWindowStart(DAY, futebol, corpo), [])).toBe(
       "+50%, faz mais de 3 dias que você não faz Corpo",
     );
@@ -1115,9 +1050,8 @@ describe("the contract with the caller", () => {
   });
 
   it("refuses history that is not this user's, or not approved", () => {
-    // The two filters the caller owns and nothing could check. Measured before
-    // they were: the same 1h of Mente read 0,5h with one pending log alongside
-    // and 0,13h with the other boy's day in it.
+    // Unchecked, one pending log made 1h of Mente read 0,5h, and the other boy's
+    // day made it 0,13h.
     const own = {
       userId: KID1,
       activity: lerLivro,
@@ -1174,9 +1108,7 @@ describe("the contract with the caller", () => {
   });
 
   it("names the day in São Paulo, not in UTC", () => {
-    // 23:30 on the 1st in Brasília. `toISOString().slice(0, 10)` answers the
-    // 2nd, which is an empty bucket and a full rate on the boy's fifth hour —
-    // the bug D13 was written against, sitting inside the bucket.
+    // 23:30 in São Paulo is already the 2nd in UTC: the bug D13 was written against.
     const lateNight = new Date("2026-09-02T02:30:00Z");
 
     expect(saoPauloDay(lateNight)).toBe("2026-09-01");
@@ -1233,8 +1165,7 @@ describe("the contract with the caller", () => {
   });
 
   it("throws on the inputs that used to come back as NaN", () => {
-    // The only invalid inputs the engine did not refuse. Both returned
-    // `hours: NaN` in silence, one of them under 1.076 explanation lines.
+    // Both used to return `hours: NaN` in silence.
     expect(() =>
       calculateEarnedHours({
         userId: KID1,
@@ -1282,8 +1213,7 @@ describe("the contract with the caller", () => {
       expect(graded(quality).hours).toBe(Math.round(3 * quality * 100) / 100);
     }
 
-    // A 3 used to read 9h and a -1 read -3h, on the boy's screen, where the
-    // schema's CHECK never gets a say.
+    // The schema's CHECK never sees the calculator: a 3 used to read 9h.
     for (const quality of [3, -1, 0.4]) {
       expect(() => graded(quality)).toThrow(/quality must be one of/);
     }

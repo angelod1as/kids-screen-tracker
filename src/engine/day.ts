@@ -1,7 +1,6 @@
 /**
- * D13's calendar day. Apart from `calculate.ts` so the stopwatch screen does
- * not ship the whole engine to get a date. Pure: every function takes its
- * moment.
+ * D13's calendar day, apart from `calculate.ts` so the stopwatch screen does not
+ * ship the engine. Pure: every function takes its moment.
  */
 
 /**
@@ -64,10 +63,7 @@ function zoneOffsetMs(instant: Date): number {
   return wallClock - (instant.getTime() - instant.getMilliseconds());
 }
 
-/**
- * UTC arithmetic and formatted by hand, so the machine's time zone cannot move
- * the date (D13).
- */
+/** UTC arithmetic, formatted by hand, so the machine's time zone cannot move the date (D13). */
 export function shiftDate(date: string, days: number): string {
   const shifted = new Date(parseDate(date) + days * 86_400_000);
   const year = String(shifted.getUTCFullYear()).padStart(4, "0");

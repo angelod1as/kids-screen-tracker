@@ -6,44 +6,23 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type { TimerCase, TimerRules } from "./timer.rules";
 import { failingTimerCases, TIMER_CASES } from "./timer.rules";
 
-/**
- * The sabotage matrix for the timer (#18, #19), in the shape
- * `access.sabotage.test.ts` established: break one clause of the real source,
- * compile it, and run the whole table against the result.
- *
- * A green suite is evidence about the code as written, not evidence that any of
- * it is load-bearing. Nothing else in this repository could tell the difference
- * between "the cut is computed from the stamps" and "the cut is computed from
- * the moment of the read" — the two agree on every test that reads the timer
- * immediately, which is every test anybody writes by hand.
- *
- * **This file has a control**, which the two matrices before it did not. A
- * mutation that changes nothing semantically has to be reported as *not
- * caught*: without that, a matrix whose runner silently failed to load a single
- * mutant would report every rule protected, which is a failure mode this
- * project has already seen. The control is the case that fails if the harness
- * stops being able to say no.
+/*
+ * Breaks one clause of `timer.ts` at a time and runs the whole table against it:
+ * "cut from the stamps" and "cut from the read" agree on every hand-written test.
  */
 
 const SOURCE_PATH = join(import.meta.dirname, "timer.ts");
 
-/**
- * Where the mutants are written, and deliberately not inside `src/`.
- *
- * `design.test.ts` and `guarded.test.ts` both walk `src/`, so a mutant sitting
- * there while one of them ran would be scanned as application source.
- */
+/** Outside `src/`: `design.test.ts` and `guarded.test.ts` would scan a mutant as source. */
 const MUTANT_DIR = join(import.meta.dirname, "..", "..", ".sabotage-timer");
 
 type Mutation = {
   name: string;
-  /** Which acceptance criterion breaking this clause would break. */
   find: string;
   replace: string;
 };
 
 const MUTATIONS: readonly Mutation[] = [
-  // --- pausar não conta tempo ------------------------------------------------
   {
     name: "a paused clock keeps counting",
     find: '  if (timer.status !== "running") {\n    return timer.accumulatedSeconds;\n  }',
@@ -70,7 +49,6 @@ const MUTATIONS: readonly Mutation[] = [
     replace: "  return timer.accumulatedSeconds + elapsed;",
   },
 
-  // --- para no limite exato -------------------------------------------------
   {
     name: "the allowance is not reduced by what was already spent",
     find: "  const remaining = limitSeconds - timer.accumulatedSeconds;",
@@ -135,7 +113,6 @@ const MUTATIONS: readonly Mutation[] = [
     replace: "    if (earliest === null || candidate.at > earliest.at) {",
   },
 
-  // --- pausado há mais de 12h vira abandoned --------------------------------
   {
     name: "the pause has to last a day",
     find: "export const ABANDON_AFTER_HOURS = 12;",
@@ -178,7 +155,6 @@ const MUTATIONS: readonly Mutation[] = [
     replace: "  if (false) {",
   },
 
-  // --- a sessão não atravessa a virada do dia (D3) ---------------------------
   {
     name: "the day never ends a session",
     find: '  found.push({\n    reason: "dayEnd",',
@@ -206,7 +182,6 @@ const MUTATIONS: readonly Mutation[] = [
     replace: '    reason: "limit",\n    at: dayEnd,',
   },
 
-  // --- D17, emendada pela #71 -----------------------------------------------
   {
     name: "D17's floor of one comes back, and ten seconds are a minute again",
     find: "  return Math.floor(\n    (durationSeconds(seconds) + SECONDS_PER_MINUTE / 2) / SECONDS_PER_MINUTE,\n  );",
@@ -238,14 +213,8 @@ const MUTATIONS: readonly Mutation[] = [
 ];
 
 /**
- * A rewrite that changes nothing, and the reason this file can be trusted.
- *
- * It has to come back **uncaught**. A matrix asserting "every mutant fails a
- * case" is only evidence if a mutant that deserves to pass does pass: a runner
- * that failed to import anything, or a table that compared everything to
- * `undefined`, would report all twenty-five mutations caught and every rule
- * protected — which this project has seen happen. The control is the same
- * machinery asked a question whose answer is no.
+ * Must come back uncaught: a runner that failed to import, or a table comparing
+ * everything to `undefined`, would report every mutant caught.
  */
 const CONTROL: Mutation = {
   name: "the clamp at zero is written as a comparison instead of Math.max",
@@ -264,10 +233,7 @@ afterAll(() => {
   rmSync(MUTANT_DIR, { recursive: true, force: true });
 });
 
-/**
- * Rewrites every relative import so the mutant, sitting outside `src/`, still
- * reaches what the original reached.
- */
+/** The mutant sits outside `src/`, so its relative imports are rewritten. */
 function rehome(mutated: string): string {
   return mutated.replace(
     /from "(\.[^"]*)"/g,
@@ -285,7 +251,6 @@ async function loadMutant(index: number, mutated: string): Promise<TimerRules> {
   )) as TimerRules;
 }
 
-/** Applies one mutation, refusing to pretend when the needle has moved. */
 function mutate(mutation: Mutation): string {
   expect(
     source.includes(mutation.find),
@@ -315,7 +280,6 @@ describe("a timer broken on purpose", () => {
   );
 
   it("covers every rule of #18 and #19 with at least one mutation", async () => {
-    // Which rules the matrix actually protects, computed rather than claimed.
     const caught = new Set<string>();
 
     for (const [index, mutation] of MUTATIONS.entries()) {
@@ -345,9 +309,7 @@ describe("the control: the matrix can still say no", () => {
   });
 
   it("catches the same line broken for real, from the same machinery", async () => {
-    // The control and this case differ by one character of intent and by
-    // nothing else: same file, same needle, same loader, same table. One is
-    // caught and one is not, which is what makes both answers mean something.
+    // Same needle and machinery as the control; only the intent differs.
     const failures = failingTimerCases(
       await loadMutant(
         2 * MUTATIONS.length + 1,
