@@ -71,11 +71,15 @@ async function previewMovement(
 
   requireActiveKid(db, userId);
 
-  const { displayName } = db
+  const kid = db
     .select({ displayName: users.displayName })
     .from(users)
     .where(eq(users.id, userId))
-    .get() ?? { displayName: "" };
+    .get();
+
+  if (kid === undefined) throw new Error(`there is no user ${userId}`);
+
+  const { displayName } = kid;
   const before = await fetchBalanceAction(userId);
 
   return {
