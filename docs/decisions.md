@@ -1,8 +1,8 @@
 # Decisões — Quanto Tempo Vale?
 
 Vinte e cinco ambiguidades da spec, resolvidas e justificadas antes da primeira
-linha de código, mais as que cada fase mediu depois. Hoje são quarenta e nove,
-D1–D49, mais nove emendas e as duas declarações da Fase 4, uma delas revogada.
+linha de código, mais as que cada fase mediu depois. Hoje são cinquenta,
+D1–D50, mais nove emendas e as duas declarações da Fase 4, uma delas revogada.
 
 **Onde este documento e `spec.md` discordarem, este documento vence.**
 
@@ -1565,3 +1565,87 @@ depois da migration, virou registro como antes.
 - O menino digita os minutos de uma atividade `duration`, e o número chega à
   fila como ele digitou. A conferência é a aprovação.
 
+---
+
+## A decisão que veio da #21
+
+### D50 — O adulto pode dizer quanto a entrada vale
+
+Aprovar tinha um caminho só: corrigir o relato (atividade, duração, nota) e
+deixar o motor recalcular. Uma atividade `fixed` não tinha conserto nenhum: a
+visita à casa de um amigo que durou pouco entrava com as 3 h da tabela ou era
+recusada.
+
+**Decisão.** A aprovação tem dois caminhos, que se combinam:
+
+- **Corrigir o relato**, como antes: o motor recalcula com taxa, desgaste,
+  repetição e bônus (D7, D8, D34).
+- **Arbitrar o valor**: o adulto digita o valor final em horas
+  (`LogEdits.overrideHours`), em qualquer modo de cálculo, `fixed` inclusive.
+  De 0 a 1.000.000, com duas casas (D9). O motor não é consultado, então
+  nenhuma linha de explicação é produzida para essa entrada, e uma entrada que
+  a regra não sabe precificar (`free` sem valor, nota que falta) também pode ser
+  arbitrada.
+
+O que o valor arbitrado carrega:
+
+- **A marca.** `activity_logs.overridden` fica verdadeiro; quem arbitrou é o
+  `reviewed_by`, gravado na mesma escrita. `computed_hours` guarda o número do
+  adulto e congela como qualquer outro (D15): nenhum caminho recalcula.
+- **O histórico do menino diz** "valor decidido por um adulto" na linha, para
+  um número que não bate com a tabela não ser lido como erro do app.
+- **Zero é valor.** A entrada é aprovada com 0 h e sem linha no ledger (D10), e
+  o histórico a mostra, lida do registro como a recusa (#72).
+- **A ordem continua (D32, D47).** A arbitrada espera a entrada anterior como
+  qualquer outra: ela ocupa o balde e a janela de quem vem depois.
+
+**O balde do dia (D3), a repetição (D6) e o bônus de retorno (D47) contam a
+atividade, não o valor.** O balde soma os minutos da linha — os corrigidos, se
+o adulto corrigiu também —, a repetição e o bônus a contam como feita. É o que
+o motor já lia; nada nele mudou.
+
+Medido, 2 h de "Ler livro" (Mente, 1,5, passo 1 h) arbitradas em 0,5 h, e mais
+1 h no mesmo dia:
+
+| o balde, depois do valor arbitrado | a hora seguinte | o dia |
+|---|---|---|
+| conta as 2 h de atividade (**esta decisão**) | 0,38 h | 0,88 h |
+| fica vazio | 1,50 h | 2,00 h |
+| sem arbitrar, pela regra | 0,38 h | 2,63 h |
+
+**Por quê.** Com o balde vazio, baixar o valor **reabre a torneira**: o adulto
+que achou a leitura valer menos daria a hora seguinte pagando cheio, e o
+menino ganharia mais lendo depois de ter sido cortado — o incentivo invertido.
+E a explicação da hora seguinte continua verdadeira: "você já fez 2h de Mente
+hoje" é o que aconteceu. O mesmo vale para cima: arbitrar 3 h numa hora de
+leitura não alarga o dia, a hora seguinte desgasta a partir de 1 h.
+
+**Considerado e descartado.** Encher o balde com o valor convertido em tempo
+(valor ÷ taxa). Não existe conversão para `fixed`, `delivery` nem `free`, que
+não têm taxa, e a hora seguinte diria "você já fez 0,33h de Mente hoje" sobre
+duas horas de leitura: um passado que não aconteceu.
+
+**A migration não move saldo.** `0007` só adiciona a coluna, com padrão falso
+(`ALTER TABLE activity_logs ADD overridden integer DEFAULT false NOT NULL`): não
+reconstrói tabela e não toca em `ledger`. Medido num banco construído com o
+código anterior (seed, dado de demonstração, uma pendência e um cronômetro
+aberto): saldos iguais (id 3: 10,83 h; id 4: −6,25 h), contagens iguais nas
+sete tabelas, as colunas antigas de `activity_logs` e as tabelas `ledger`,
+`users`, `categories`, `activities` e `timers` idênticas por hash, prévia da
+pendência idêntica, `integrity_check` ok e `foreign_key_check` vazio. O
+cronômetro aberto, parado depois da migration, virou registro como antes, e a
+pendência arbitrada em 1 h creditou 1 h.
+
+**Não decidido aqui:** se arbitrar exige motivo escrito. Hoje não exige; a
+observação continua sendo sobrescrita na aprovação (a regra do campo `note`, na
+Fase 4) e não aparece no histórico do menino.
+
+**Resíduos aceitos.**
+
+- Nenhum `CHECK` amarra `overridden` a `status = 'approved'`: pôr um exigiria
+  reconstruir `activity_logs` em produção, e só `approveLog` escreve a coluna.
+- O menino vê que o valor foi do adulto, não quanto a regra daria. A regra
+  daquele dia não fica guardada, pelo mesmo motivo que a D37 não copia a
+  configuração para o registro.
+- Zero aprovado pela regra (a nota zero da D10) continua fora do histórico;
+  só o zero arbitrado entra.
