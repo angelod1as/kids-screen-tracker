@@ -2,7 +2,7 @@
 
 Vinte e cinco ambiguidades da spec, resolvidas e justificadas antes da primeira
 linha de código, mais as que cada fase mediu depois. Hoje são cinquenta,
-D1–D50, mais nove emendas e as duas declarações da Fase 4, uma delas revogada.
+D1–D50, mais dez emendas e as duas declarações da Fase 4, uma delas revogada.
 
 **Onde este documento e `spec.md` discordarem, este documento vence.**
 
@@ -1220,6 +1220,18 @@ roda: a `main`, além do PR.
 **Resíduo aceito.** Um deploy ainda pode ser pedido à mão pelo painel do
 Coolify, e o painel não pergunta pelo CI. A decisão descreve o caminho
 automático, não tranca o manual.
+
+**Emenda (#23) — a migration não vai no "Pre-deployment command".** O campo fica
+vazio. No Coolify 4.3.21 ele roda com `docker exec` no container que está
+servindo, antes de a imagem nova ser construída: o banco é o real, mas a pasta
+`drizzle/` é a da imagem anterior, então a migration nova não é vista, o
+`db-migrate` sai com 0 e o deploy segue. O "Post-deployment command" roda na
+imagem nova, mas depois de o código novo estar no ar, e sua falha não reprova o
+deploy. Nenhum dos dois cumpre o que `deploy.md` exige de uma migration: falhar
+uma vez, legível, com o schema velho servindo. A migration continua manual, e
+`deploy.md` diz como conferir que o banco está em dia. Evidência, com trechos e
+links, em `deploy.md`, "Por que não pelo Pre-deployment command". O caminho
+automático que substitui o manual é decisão a tomar, na #23.
 
 ---
 
