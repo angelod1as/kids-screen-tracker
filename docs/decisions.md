@@ -2,7 +2,7 @@
 
 Vinte e cinco ambiguidades da spec, resolvidas e justificadas antes da primeira
 linha de código, mais as que cada fase mediu depois. Hoje são cinquenta e
-duas, D1–D52, mais dez emendas e as duas declarações da Fase 4, uma delas
+três, D1–D53, mais dez emendas e as duas declarações da Fase 4, uma delas
 revogada.
 
 **Onde este documento e `spec.md` discordarem, este documento vence.**
@@ -1874,3 +1874,60 @@ e `foreign_key_check` vazio.
 - Nenhum `CHECK` amarra `voided_at` a `voided_by`, nem proíbe anular no ledger
   uma linha que credita registro: seria reconstruir as duas tabelas, e só
   `voidEntry` escreve as colunas.
+
+---
+
+## A decisão que veio da #32
+
+### D53 — Liberar e estornar pedem confirmação, com o saldo antes e depois
+
+Liberar e estornar gravavam no primeiro toque. O dono estornou horas do menino
+errado, e desfazer custou três lançamentos: o estorno errado, a compensação e o
+estorno certo.
+
+**Decisão.** *Liberar* e *Estornar* não gravam mais: abrem um painel que cobre a
+tela e diz o que vai acontecer, e só *Confirmar liberação* ou *Confirmar
+estorno* grava.
+
+- **O painel mostra menino, ação, horas e saldo antes → depois.** O nome do
+  menino é o maior elemento, porque é ele que se erra.
+- **Os dois saldos vêm do servidor, lidos na hora** (`previewReleaseAction`,
+  `previewRefundAction`). O antes é o mesmo `fetchBalanceAction` do resto do
+  app, e o depois é ele mais ou menos as horas arredondadas como a escrita
+  arredonda (D9). A tela não estima nada.
+- **A prévia não escreve nada, e recusa o que a escrita recusaria sobre o
+  menino e as horas:** quem não é adulto (#13), menino inexistente ou
+  desativado (D14, D33), horas fora do intervalo. Dia, motivo e destino
+  continuam recusados pela escrita.
+- **Cancelar não escreve nada.** Enquanto a escrita está no ar, *Cancelar*
+  some: já não cancelaria nada.
+- **Falha de rede.** Na prévia, a tela diz que nada foi lançado, o que é certo:
+  a prévia não escreve. Na confirmação, vale a regra que já existia (#29): sem
+  resposta, não se afirma que nada foi salvo.
+- **Desenho.** O painel aparece, sem deslizar nem desvanecer. Os dois botões
+  têm 48 px. *Confirmar* fica logo abaixo do resumo, no alto; *Cancelar* fica
+  no pé da tela. O botão do formulário mora embaixo, então o polegar que tocou
+  *Liberar* duas vezes cai em *Cancelar*, não em *Confirmar*. Só cores e pares
+  que já estão medidos em [`design.md`](design.md).
+
+**Por quê, contra a regra dos dois toques.** O `CLAUDE.md` diz que operação
+comum com mais de dois toques é desenho errado. A regra protege o que é
+barato de errar. Liberar e estornar mexem no saldo direto, sem fila e sem
+revisão de ninguém — a fila existe para o cronômetro e o pedido do menino, e o
+lançamento do adulto pelo menos mostra quanto vale antes (D18). Aqui não havia
+nada entre o toque e o saldo, e um toque errado custou três lançamentos para
+ser desfeito. O toque a mais é o que evita os outros três.
+A anulação (D52) conserta o engano depois; esta decisão o evita antes.
+
+**Considerado e descartado.** Calcular o depois na tela, a partir do saldo que
+ela já tem. O saldo na tela pode estar velho — outro adulto aprovou, o outro
+celular liberou —, e a confirmação existe justamente para não mostrar número
+que ninguém conferiu.
+
+**Resíduos aceitos.**
+
+- Entre a prévia e a confirmação, outro adulto pode mexer no mesmo saldo. A
+  escrita grava as horas do painel, não o saldo; o resultado depois de gravar
+  mostra o saldo que ficou, lido de novo.
+- O painel não repete dia, motivo nem destino: são do formulário que o adulto
+  acabou de preencher, e o erro que originou a issue foi de menino.
