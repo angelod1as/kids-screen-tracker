@@ -22,6 +22,8 @@ check() {
 
 check DATABASE_PATH /data/kids.db
 check SESSION_SECRET docker-build-placeholder-never-a-real-secret
+check VAPID_PRIVATE_KEY
+check VAPID_SUBJECT
 
 if [ "$status" -ne 0 ]; then
   echo "       Runtime secrets must not reach \`docker build\`: whatever a RUN sees" >&2

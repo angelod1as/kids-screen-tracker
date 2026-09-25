@@ -3,11 +3,7 @@ import { describe, expect, it } from "vitest";
 import { isAllowed } from "./access";
 import { ACCESS_CASES, KID1, KID2 } from "./access.rules";
 
-/**
- * One test per case of `ACCESS_CASES`, which is one or more per acceptance
- * criterion of #13. The table is grouped by rule so a failure names the rule
- * that broke rather than a line number.
- */
+/** Grouped by rule, so a failure names the rule of #13 that broke. */
 
 const RULES = [...new Set(ACCESS_CASES.map((accessCase) => accessCase.rule))];
 
@@ -55,10 +51,8 @@ describe("every case of the table is exercised", () => {
 
 describe("the rule does not depend on the name in the session", () => {
   it("compares ids, not usernames", () => {
-    // A guard written against `session.username` breaks the day someone is
-    // renamed, and it silently compares the wrong pair whenever a caller has an
-    // id and no name — which is every server action, because an id is what a
-    // forged request carries.
+    // A guard on `session.username` breaks on a rename, and every server action
+    // has an id, not a name: an id is what a forged request carries.
     const impostor = { ...KID1, username: "kid2", displayName: "Kid2" };
 
     expect(

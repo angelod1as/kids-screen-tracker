@@ -18,13 +18,6 @@ import {
   TIMER_CASES,
 } from "./timer.rules";
 
-/**
- * The timer's arithmetic (#18, #19), against the table in `timer.rules.ts` and
- * then against the one property the table cannot state as a case: that the
- * answer is the same at *every* instant past the cut, not merely at the three
- * the table happens to ask about.
- */
-
 const REAL: TimerRules = {
   activeSeconds,
   autoStop,
@@ -66,16 +59,7 @@ describe("the timer as written", () => {
   });
 });
 
-/**
- * #19's acceptance criterion, as a property rather than as three examples.
- *
- * > O corte é calculado a partir dos carimbos, então **o resultado independe de
- * > quando o app foi aberto** — teste com relógio controlado provando.
- *
- * The clock is controlled by being a parameter: there is no clock inside the
- * module to mock. So the proof is to ask the same question at a few hundred
- * instants spread over a year and require one answer.
- */
+/** D16 as a property: the same answer at a few hundred instants over a year, not three. */
 describe("the result does not depend on when the app was opened", () => {
   const RUNNING = {
     startedAt: START,
@@ -91,7 +75,6 @@ describe("the result does not depend on when the app was opened", () => {
     status: "paused" as const,
   };
 
-  /** Every instant from the cut to a year later, in uneven steps. */
   function instantsFrom(cutMs: number): Date[] {
     const offsets = [
       0,
@@ -162,9 +145,6 @@ describe("the result does not depend on when the app was opened", () => {
 
 describe("a session that is already over its allowance", () => {
   it("stops the moment it is resumed, and freezes at the allowance", () => {
-    // Only reachable if an admin shortens `max_session_minutes` under a paused
-    // session (D15 keeps it from touching what is already approved, and a timer
-    // is not approved anything). It has to settle rather than run on.
     const banked = {
       startedAt: START,
       pausedAt: new Date(START.getTime() + 3 * HOUR),

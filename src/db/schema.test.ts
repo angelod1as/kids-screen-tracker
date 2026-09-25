@@ -74,7 +74,7 @@ function seedMinimum() {
 }
 
 describe("migrations", () => {
-  it("builds the seven tables from zero in an empty directory", () => {
+  it("builds the eight tables from zero in an empty directory", () => {
     const names = connection.sqlite
       .prepare(
         "select name from sqlite_master where type = 'table' and name not like 'sqlite_%' and name not like '__drizzle%' order by name",
@@ -87,6 +87,7 @@ describe("migrations", () => {
       "activity_logs",
       "categories",
       "ledger",
+      "push_subscriptions",
       "regimes",
       "timers",
       "users",

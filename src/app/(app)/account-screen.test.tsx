@@ -5,10 +5,14 @@ import type { Session } from "../../auth/access";
 
 /**
  * `../../auth/guard` is replaced to say who is logged in, `../actions/session`
- * because it reads Varlock (D23). The form's action is compared by identity.
+ * and `../../push/vapid` because they read Varlock (D23). The form's action is
+ * compared by identity.
  */
 
-const mocked = vi.hoisted(() => ({ session: null as Session | null }));
+const mocked = vi.hoisted(() => ({
+  session: null as Session | null,
+  publicKey: null as string | null,
+}));
 
 const logoutAction = vi.hoisted(() => async () => undefined);
 
@@ -18,7 +22,12 @@ vi.mock("../../auth/guard", () => ({
 
 vi.mock("../actions/session", () => ({ logoutAction }));
 
+vi.mock("../../push/vapid", () => ({
+  vapidPublicKey: () => mocked.publicKey,
+}));
+
 const AccountPage = (await import("./conta/page")).default;
+const { PushToggle } = await import("./conta/push-toggle");
 
 type Element = { type: unknown; props: Record<string, unknown> };
 
@@ -116,5 +125,29 @@ describe("logging out", () => {
     );
 
     expect(button?.props.type).toBe("submit");
+  });
+});
+
+describe("the push control (D51)", () => {
+  it("is offered to both roles, with the server's public key", async () => {
+    mocked.publicKey = "test-public-key";
+
+    for (const session of [KID1, ADMIN1]) {
+      const toggle = (await screen(session)).find(
+        (element) => element.type === PushToggle,
+      );
+
+      expect(toggle?.props.publicKey).toBe("test-public-key");
+    }
+  });
+
+  it("says push is off on the server when no key is configured", async () => {
+    mocked.publicKey = null;
+
+    const toggle = (await screen(KID1)).find(
+      (element) => element.type === PushToggle,
+    );
+
+    expect(toggle?.props.publicKey).toBeNull();
   });
 });

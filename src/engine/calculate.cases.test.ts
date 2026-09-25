@@ -23,40 +23,13 @@ import {
 } from "./cases";
 
 /**
- * The exhaustive case table of issue #11.
- *
- * Written against `docs/decisions.md` — D1 to D10 and D21, plus the paragraph
- * "O desgaste, em uma frase" that opens the document — and never against
- * `src/engine/calculate.ts`. The engine came from issue #10 and carries its own
- * tests; #11 is a separate issue on purpose, because whoever implements a rule
- * tests the rule he pictured, and the rule the document asks for is a different
- * object.
- *
- * The four things this table looks at that the engine's own suite does not:
- *
- * - **Rules composed.** Every rule was pinned alone. Here the grade, the
- *   cooldown, the decay and the return bonus meet on one entry, in all sixteen
- *   combinations of on and off, and the explanation is read as the ordered
- *   chain D7 describes rather than as a bag of lines.
- * - **The seed as it actually is.** Not invented fixtures: the seven categories
- *   and thirty-two activities `src/db/seed.ts` writes, every one of them, twice.
- * - **A whole plausible day.** Kid1's Saturday, five entries deep, read end to
- *   end.
- * - **The text.** The lines are product, not log — the boy reads them and checks
- *   the arithmetic himself. So every line of every case in this file goes
- *   through `expectReadable`.
+ * The case table of #11, written against `decisions.md` and never against the
+ * engine. Every line goes through `expectReadable`: the boy reads them.
  */
 
 const SATURDAY = "2026-03-14";
 
-// ---------------------------------------------------------------------------
-// invariants every case in this file has to satisfy
-// ---------------------------------------------------------------------------
-
-/**
- * D9, as an invariant instead of a case: the lines are addends and their sum is
- * the total, exactly, with no third number anywhere.
- */
+/** D9 as an invariant: the lines are addends, and their sum is the total exactly. */
 function expectLinesToClose(calculation: Calculation): void {
   const sum = calculation.lines.reduce(
     (total, line) => Math.round((total + line.hours) * 100) / 100,
@@ -70,13 +43,7 @@ function expectLinesToClose(calculation: Calculation): void {
   }
 }
 
-/**
- * What a line may never say, and what it may never leave out.
- *
- * "nada" is named because D2's whole justification is that the boy never hears
- * that an hour is worth nothing; the rest are the shapes a number takes when a
- * formula has gone wrong and nobody looked at the string.
- */
+/** "nada" by name: D2's whole point is that the boy never hears it. */
 function expectReadable(calculation: Calculation, name: string): void {
   expectLinesToClose(calculation);
   expect(Number.isFinite(calculation.hours)).toBe(true);
@@ -107,14 +74,7 @@ function expectReadable(calculation: Calculation, name: string): void {
   expect(positions).toStrictEqual([...positions].sort((a, b) => a - b));
 }
 
-/**
- * The running totals the boy computes as he reads down the screen.
- *
- * D9 says the lines show numbers already rounded and that the sum has to close,
- * so the partial sum after each line is what that step arrived at — which is
- * the only place D7's order is observable at all (see the note on
- * `composition`).
- */
+/** The partial sums the boy computes reading down: the only place D7's order shows. */
 function runningTotals(calculation: Calculation): number[] {
   const totals: number[] = [];
   let sum = 0;
@@ -143,22 +103,14 @@ function steps(calculation: Calculation): ExplanationLine["step"][] {
   return calculation.lines.map((line) => line.step);
 }
 
-// ---------------------------------------------------------------------------
-// 1. the acceptance criteria of issue #11
-// ---------------------------------------------------------------------------
-
 describe("the acceptance criteria of #11", () => {
   const { category: mente, activity: lerLivro } = seedRow(5);
   const { activity: hq } = seedRow(6);
   const { activity: xadrez } = seedRow(7);
 
   /**
-   * Mente is the row the decision log writes the table on, and the seed gives it
-   * a 50% return bonus after 3 days — which would fire on an empty history and
-   * turn 1,5h into 2,25h. The table in `decisions.md` is about the decay alone, so
-   * the history carries a Mente entry the day before and the bonus stays out of
-   * the way. That is itself the composition the issue asks about: the bonus and
-   * the decay are two different rules and only one of them is being measured.
+   * Mente done yesterday, so the seed's 50% return bonus stays out of the way of
+   * the decay table being measured.
    */
   const yesterdayMente = [
     approved({
@@ -170,10 +122,7 @@ describe("the acceptance criteria of #11", () => {
   ];
 
   it("reproduces the table of decisions.md: 1,5h · 0,75h · 0,38h · 0,19h", () => {
-    // "A cada `decay_step_hours` horas de atividade acumuladas na categoria no
-    // dia, a hora seguinte vale metade da anterior." Read as four one-hour
-    // sessions, the bucket walks 0h · 1h · 2h · 3h and the hours read
-    // 1,5 · 0,75 · 0,375 · 0,1875, rounded once by D9.
+    // The bucket walks 0h · 1h · 2h · 3h: 1,5 · 0,75 · 0,375 · 0,1875, rounded once.
     const expected = [1.5, 0.75, 0.38, 0.19];
 
     for (const [index, hours] of expected.entries()) {
@@ -202,9 +151,7 @@ describe("the acceptance criteria of #11", () => {
   });
 
   it("carries the same table on to the asymptote: 5h reads 2,91h, 6h reads 2,95h", () => {
-    // The last two rows of the same table, as one sitting. "Ler 6 horas é
-    // permitido — só rende quase nada a mais do que ler 4", and the asymptote is
-    // taxa × decay_step_hours × 2 = 3h.
+    // The asymptote is taxa × passo × 2 = 3h.
     const five = run({
       activity: lerLivro,
       category: mente,
@@ -242,9 +189,7 @@ describe("the acceptance criteria of #11", () => {
   });
 
   it("buckets by category: livro, HQ and xadrez share one Mente accumulator (D3)", () => {
-    // One hour of each, in that order. If the bucket were per activity every one
-    // of them would pay full; it is per category, so the third one is two
-    // halvings deep.
+    // Per activity each would pay full; per category the third is two halvings deep.
     const history = [
       ...yesterdayMente,
       approved({
@@ -489,26 +434,9 @@ describe("the acceptance criteria of #11", () => {
   });
 
   it("fills the bucket from the minutes a log carries, not from its mode (D5, D37)", () => {
-    // This case used to assert the opposite, and the reversal is deliberate.
-    //
-    // D5's rule — "sem duração, não há hora de atividade para acumular" — was
-    // read off the activity's `calc_mode`, through a live join. That made the
-    // bucket depend on a field an adult can rewrite while an entry is frozen:
-    // flipping "Ler livro" to `fixed` took its own already-paid hours out of
-    // the bucket they had been paid from, and the same afternoon was paid twice
-    // (measured, 4,50 h + 2,25 h against an asymptote of 4,00 h). So the bucket
-    // is now read off the one thing the row itself states: its minutes.
-    //
-    // Nothing legitimate changes. Every non-`duration` log carries a null
-    // duration — `launchEntry` writes it that way and the stopwatch files
-    // nothing else — so the two readings agree on every row this system can
-    // produce. And the one row that could disagree, a `duration` session whose
-    // activity became `fixed` underneath it, can no longer be approved at all:
-    // `requireEditableActivity` refuses to freeze an entry carrying minutes
-    // onto something not measured by duration.
-    //
-    // What the case asserts now is the reachable half of D5, which is also the
-    // half that pays the boy honestly: hours he really sat down for count.
+    // Read off the row's minutes, not the live `calc_mode` (D37): flipping "Ler
+    // livro" to `fixed` once paid the same afternoon twice. Every non-duration log
+    // carries null minutes, so the two readings agree on every row this app writes.
     const { category: escola } = seedRow(23);
     const { activity: trabalho } = seedRow(24);
     const { activity: estudo } = seedRow(25);
@@ -566,20 +494,14 @@ describe("the acceptance criteria of #11", () => {
     });
 
     expect(calculation.hours).toBe(0);
-    // "Uma linha de 0h no ledger seria ruído": the engine's contribution to that
-    // is a total of exactly zero, which `ledger_hours_check` (> 0, exclusive)
-    // cannot be written as. The explanation still exists and still closes.
+    // Exactly zero, which `ledger_hours_check` (> 0) cannot hold: no ledger line.
     expect(calculation.hours > 0).toBe(false);
     expect(steps(calculation)).toStrictEqual(["base", "quality"]);
     expect(runningTotals(calculation)).toStrictEqual([1, 0]);
   });
 
   it("pays each of a day's sittings out of what the ones before it spent (D34)", () => {
-    // A Saturday of three Mente sittings, each frozen after the one before it.
-    // The numbers are D1's table and have not moved; what changed with D34 is
-    // *how* the engine is told which of them count — the caller hands over the
-    // set frozen before this one, instead of naming a place in the canonical
-    // order and letting the engine filter.
+    // Three Mente sittings, each frozen after the one before it (D34).
     const sittings = [60, 60, 60].map((minutes, index) =>
       approved({
         id: 90 + index,
@@ -602,11 +524,7 @@ describe("the acceptance criteria of #11", () => {
       1.5, 0.75, 0.38,
     ]);
 
-    // The same set twice is the same number, which is the determinism D8 asks
-    // for — and under D34 it is a stronger promise than it was: the set of
-    // entries frozen before this one is fixed the moment this one freezes,
-    // while a place in the canonical order moves if anybody edits an
-    // `occurred_on`.
+    // Same set, same number (D8).
     expect(frozenAfter(1)).toBe(0.75);
 
     // And nothing already frozen is a function of what is calculated later:
@@ -615,8 +533,6 @@ describe("the acceptance criteria of #11", () => {
   });
 
   it("closes the sum of the lines against the total, over every row of the seed", () => {
-    // The criterion is a property, not a case, so it is asserted over the whole
-    // table — `expectReadable` runs it on every calculation this file makes.
     for (const { category, activity } of SEED_ROWS) {
       const calculation = run({
         activity,
@@ -630,10 +546,6 @@ describe("the acceptance criteria of #11", () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// 2. the seed, as it is actually written
-// ---------------------------------------------------------------------------
-
 describe("the seed of src/db/seed.ts, every row", () => {
   it("seeds seven categories and thirty-two activities", () => {
     expect(SEED_ROWS).toHaveLength(32);
@@ -641,10 +553,7 @@ describe("the seed of src/db/seed.ts, every row", () => {
   });
 
   it("pays the first entry of the day the value the table promises", () => {
-    // One hour for a duration, full marks for a delivery, the typed value for
-    // the free one. With every category last done a month ago the return
-    // bonus of Corpo, Mente and Criativo fires, and nothing else does: the
-    // bucket is empty so no decay, and there is no earlier log so no cooldown.
+    // Every category last done a month ago: only the return bonus fires.
     let bonused = 0;
 
     for (const { category, activity } of SEED_ROWS) {
@@ -680,9 +589,7 @@ describe("the seed of src/db/seed.ts, every row", () => {
   });
 
   it("halves exactly the six rows that carry a cooldown, and no others (D6)", () => {
-    // The same entry, done again yesterday. D6's Fase 1 amendment says
-    // `repeat_cooldown_days = 0` is the off switch, and the seed uses 0 in
-    // twenty-six of the thirty-two rows with exactly that meaning.
+    // Done again yesterday. Zero is the cooldown's off switch (D6, Fase 1).
     let halved = 0;
 
     for (const { category, activity } of SEED_ROWS) {
@@ -723,13 +630,8 @@ describe("the seed of src/db/seed.ts, every row", () => {
   });
 
   it("holds the asymptote of every duration row of the seed", () => {
-    // "assíntota = taxa × decay_step_hours × 2". Twenty-four hours of one
-    // activity in one day has to come within a hair of it and may never pass it.
-    //
-    // The bound is `<=` and not `<` on purpose, and the reason is D9 rather than
-    // D2: Corpo's exact sum over 24h is 7,998, which is below the asymptote of 8
-    // and rounds to it. The sum converges without reaching the limit, and the
-    // two decimals the boy is shown cannot always say so.
+    // `<=`, not `<`, because of D9: Corpo's 24h is 5,9985, just under its
+    // asymptote of 6, and rounds to it.
     for (const { category, activity } of SEED_ROWS) {
       if (activity.calcMode !== "duration") continue;
 
@@ -759,10 +661,6 @@ describe("the seed of src/db/seed.ts, every row", () => {
   });
 
   it("never pays less for a longer sitting, on every step the seed uses", () => {
-    // The steps and rates of the seed, over a whole day in five-minute
-    // increments. The known floating-point violations of issue #26 live at
-    // `decay_step_hours = 0,1` with a rate of 3,0, which the seed does not use;
-    // these four configurations are clean and this is what says so.
     for (const { category, activity } of SEED_ROWS) {
       if (activity.calcMode !== "duration") continue;
 
@@ -793,27 +691,9 @@ describe("the seed of src/db/seed.ts, every row", () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// 3. the four rules, composed
-// ---------------------------------------------------------------------------
-
 /**
- * All sixteen combinations of grade, cooldown, decay and return bonus on one
- * entry.
- *
- * The finding this section exists to pin down: **D7's order is invisible in the
- * total.** Every step is a multiplication by a scalar that does not depend on
- * the running value — the decay factor is a function of the bucket and of the
- * hours, never of the hours already earned — so the product is the same in any
- * of the twenty-four orders. What D7 actually decides is the order of the
- * lines, and the number each line arrives at. So the assertions below are on
- * `runningTotals`, not only on `hours`: a table that checked the total alone
- * would pass with the bonus applied to the base value, which is the one thing
- * D7 was written to forbid.
- *
- * The activity is not from the seed, and cannot be: no seeded row is graded and
- * on a duration at once. The Configuração screen (#26) can create one, and the
- * engine has no business behaving differently when it does.
+ * D7's order is invisible in the total, since every step is a scalar: only
+ * `runningTotals` would catch the bonus applied to the base value.
  */
 describe("the four rules composed, all sixteen ways", () => {
   const composed: EngineCategory = {
@@ -835,12 +715,8 @@ describe("the four rules composed, all sixteen ways", () => {
   };
 
   /**
-   * The same entry of five days ago in every one of the sixteen runs, so the
-   * only thing that changes between them is which rules are switched on.
-   *
-   * Five days is the one distance that lets the cooldown and the bonus both be
-   * observed: inside the seven-day cooldown window, outside the three-day bonus
-   * window. And it is another day, so it fills no bucket.
+   * Five days ago: inside the seven-day cooldown, outside the three-day bonus
+   * window, and in another day's bucket.
    */
   const fiveDaysAgo = [
     approved({
@@ -933,9 +809,7 @@ describe("the four rules composed, all sixteen ways", () => {
   }
 
   it("keeps the explanation readable when the decay folds its tail", () => {
-    // A quarter-hour step is a configuration the Configuração screen can type,
-    // and three hours of it crosses twelve bands. The rules still compose: the
-    // grade, the cooldown and the bonus are all on, and the sum still closes.
+    // A quarter-hour step crosses twelve bands in three hours; the rules still compose.
     const calculation = run({
       activity: composedActivity,
       category: { ...composed, decayStepHours: 0.25 },
@@ -957,9 +831,7 @@ describe("the four rules composed, all sixteen ways", () => {
   });
 
   it("reads the same total whichever rule is switched on first", () => {
-    // The mathematical fact behind the note on this describe, asserted so that
-    // a future refactor that makes one step depend on another's output has to
-    // announce itself: turning the four rules on in any order gives one number.
+    // Pinned so a refactor that makes one step read another's output announces itself.
     const base = {
       activity: composedActivity,
       occurredOn: SATURDAY,
@@ -975,19 +847,7 @@ describe("the four rules composed, all sixteen ways", () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// 4. a whole plausible day
-// ---------------------------------------------------------------------------
-
-/**
- * Kid1's Saturday, read end to end.
- *
- * Football in the morning, a book in the afternoon, comics in the evening and
- * the homework in between. Nothing here is a corner case; the point is that the
- * five numbers add up to a day a fourteen-year-old would recognise, and that the
- * explanations, read in the order they were written, tell one story instead of
- * five.
- */
+/** Kid1's Saturday, read end to end: nothing here is a corner case. */
 describe("Kid1's Saturday", () => {
   const { category: corpo, activity: futebol } = seedRow(1);
   const { category: mente, activity: lerLivro } = seedRow(5);
@@ -1093,8 +953,6 @@ describe("Kid1's Saturday", () => {
     const total = results.reduce((sum, entry) => sum + entry.hours, 0);
 
     expect(Math.round(total * 100) / 100).toBe(6.14);
-    // A big Saturday, and still under a day's worth of screen: the model is a
-    // tap that closes, not a door.
     expect(total).toBeLessThan(12);
   });
 
@@ -1156,18 +1014,13 @@ describe("Kid1's Saturday", () => {
       "um quarto, de 2h a 3h de Mente no dia",
     ]);
 
-    // The two categories keep separate accounts and the screen says so: the
-    // match says "cheio" on the same day the comics say "um quarto", and the
-    // only bucket either line ever names is its own category's.
+    // Each line names only its own category's bucket: the match says "cheio" on
+    // the day the comics say "um quarto".
     expect(texts(match).join(" ")).not.toContain("Mente");
     expect(texts(comics).join(" ")).not.toContain("Corpo");
 
-    // The day the boy has actually had is quoted once per entry, on the base
-    // line, and it only ever goes up: nothing on Mente when the match is
-    // simulated, "cheio" for the book, 1,5h by the time the comics are. The
-    // lines under it describe the rule and are the same sentence whichever
-    // entry crosses the band — which is what stops the screen from telling him
-    // he already read hours that are, in fact, the ones he is simulating.
+    // The boy's own day is quoted once per entry, on the base line, and only goes
+    // up; the decay lines state the rule, so he is never told he read what he simulates.
     const quoted = [...texts(match), ...texts(book), ...texts(comics)]
       .map((text) => /você já fez ([\d,]+)h de Mente hoje/.exec(text)?.[1])
       .filter((figure): figure is string => figure !== undefined)
@@ -1176,9 +1029,8 @@ describe("Kid1's Saturday", () => {
     expect(quoted).toStrictEqual([1.5]);
     expect(texts(book).join(" ")).not.toContain("já fez");
 
-    // No line ever claims an hour the boy has not had. The bucket the base line
-    // names is the one he arrived with; every other figure on the screen is a
-    // boundary of the rule, and is introduced as one.
+    // The base line names the bucket he arrived with; every other figure is a
+    // bound of the rule.
     for (const calculation of [match, book, comics]) {
       for (const line of calculation.lines) {
         if (line.step !== "decay") continue;
@@ -1190,10 +1042,7 @@ describe("Kid1's Saturday", () => {
   });
 
   it("says 'cheio' exactly when the entry starts in the undecayed band", () => {
-    // The one word on the screen that is a claim about the whole entry rather
-    // than about its first hour. It is true of where the session starts, and the
-    // line under it is what corrects it — so the rule has to be pinned, or the
-    // next reader will read it as "this entry was not decayed".
+    // "cheio" is about where the session starts; the line under it corrects it.
     const fresh = run({
       activity: lerLivro,
       category: mente,
@@ -1222,26 +1071,15 @@ describe("Kid1's Saturday", () => {
     expect(fresh.hours).toBe(2.25);
     expect(midBucket.lines[0]?.text).not.toContain("cheio");
 
-    // And when it is not "cheio" the base line says what it is instead. This
-    // is the only figure on the screen about the boy's own day, so a base line
-    // that just names the activity leaves the 1h30 he already read nowhere.
+    // Otherwise the base line is the only figure about the boy's own day.
     expect(midBucket.lines[0]?.text).toBe(
       "Ler livro, 1h × 1,5 — você já fez 1,5h de Mente hoje",
     );
   });
 
   it("never tells the boy he did hours he is only simulating", () => {
-    // The contradiction the round-2 review measured, and the reason this file
-    // has a case of its own for it: on an empty bucket the base line said
-    // "cheio" and the line directly under it said "você já fez 2h de Escola
-    // hoje". Both were about the same entry, one of them was false at the
-    // instant it was read, and the boy it was written for had done nothing at
-    // all that day.
-    //
-    // "Já fez" is a claim about his history, so it may appear only where his
-    // history is: on the base line, and only when the bucket he arrived with is
-    // not empty. Every decay line is a statement about the rule and is bounded
-    // like one.
+    // "Já fez" is a claim about his history, so it appears only on the base line,
+    // and only when the bucket he arrived with is not empty.
     const { category: escola, activity: estudo } = seedRow(25);
 
     for (const [activity, category, durationMinutes] of [
@@ -1324,10 +1162,6 @@ describe("Kid1's Saturday", () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// 5. the text, as product
-// ---------------------------------------------------------------------------
-
 describe("the explanation, read as product", () => {
   it("names the activity on the first line of every seeded row", () => {
     for (const { category, activity } of SEED_ROWS) {
@@ -1344,9 +1178,8 @@ describe("the explanation, read as product", () => {
   });
 
   it("shows a base line whose own multiplication closes, minute by minute", () => {
-    // The boy checks the first line with his own arithmetic. "23min × 1,5" has
-    // to be readable as 34,5min, and "0,38h × 1,5" is not 0,58h — so the line
-    // may never show a factor it had to round.
+    // The boy checks the first line himself, so it may never show a factor it had
+    // to round: "0,38h × 1,5" is not 0,58h.
     const { category: mente, activity: lerLivro } = seedRow(5);
 
     for (let minutes = 1; minutes <= 180; minutes += 1) {
@@ -1377,9 +1210,7 @@ describe("the explanation, read as product", () => {
       const rate = Number(present(match[3], "a rate").replace(",", "."));
       const minutesPerUnit = match[2] === "h" ? 1 : 60;
 
-      // The product the boy computes from the line is the number the line is
-      // worth, to the cent. In integer hundredths, so 0,15h × 1,5 is 22,5
-      // cents and not the double just under it.
+      // In integer hundredths, so 0,15h × 1,5 is 22,5 cents and not the double under it.
       const product =
         (Math.round(duration * 100) * Math.round(rate * 100)) /
         (100 * minutesPerUnit);
@@ -1407,10 +1238,8 @@ describe("the explanation, read as product", () => {
         ],
       });
 
-      // "sem piso e sem teto": the hour keeps its own line, the total is never
-      // negative, and no line calls it worthless. Forty hours in, an hour is
-      // worth 2 / 2^40 and rounds to 0,00h — which is a legal approved log and
-      // still not the word "nada".
+      // Forty hours in, an hour is worth 2 / 2^40 and rounds to 0,00h: a legal log,
+      // and still not "nada".
       expect(calculation.hours).toBeGreaterThanOrEqual(0);
       expect(texts(calculation).join(" ")).not.toMatch(/\bnada\b/);
       expect(steps(calculation)).toContain("decay");
@@ -1418,12 +1247,7 @@ describe("the explanation, read as product", () => {
   });
 
   it("names the halving only while Portuguese has a word for it (D2)", () => {
-    // The line is read at a glance by a fourteen-year-old, so the fraction is
-    // named while there is a name — "metade", "um quarto", "um oitavo" — and
-    // described after that. There is no everyday word for 1/16, and the numeral
-    // that used to stand in for one carried nothing the boy could act on: he
-    // read "1/256" after eight hours of Mente and "1/1099511627776" after
-    // forty, both of which say less than "cada vez menos" does.
+    // Named while Portuguese has a word: "1/256" said less than "cada vez menos".
     const { category: mente, activity: lerLivro } = seedRow(5);
 
     const bandAt = (bucketHours: number): string => {
@@ -1462,15 +1286,11 @@ describe("the explanation, read as product", () => {
     // day is the rainy Sunday D2 argues from, not a corner case.
     expect(bandAt(4)).toBe("cada vez menos, de 4h a 5h de Mente no dia");
     expect(bandAt(8)).toBe("cada vez menos, de 8h a 9h de Mente no dia");
-    // The bucket that used to print "1/1099511627776".
     expect(bandAt(40)).toBe("cada vez menos, de 40h a 41h de Mente no dia");
   });
 
   it("describes one depth of decay one way, however the entry reached it", () => {
-    // The contradiction the numeral left on the screen: `MAX_DECAY_LINES` folds
-    // the tail with the same words the deep bands are named with, so a single
-    // explanation used to print "1/128, você já fez 7h" directly above "cada
-    // vez menos, você já fez 8h". Nothing separated them but the line budget.
+    // The fold and the deep bands share their words, so one depth reads one way.
     const { category: mente, activity: lerLivro } = seedRow(5);
 
     const marathon = run({
@@ -1503,17 +1323,11 @@ describe("the explanation, read as product", () => {
       "cada vez menos, depois de 8h de Mente no dia",
     ]);
 
-    // The last line is the folded tail and the one above it is a band of its
-    // own, and they are named alike because the depth of decay is the same
-    // thing. Only the bound differs, and it differs truthfully: the band above
-    // covers one hour, the fold covers everything after eight.
+    // Named alike because the depth is the same; only the bound differs, truthfully.
     expect(marathon.hours).toBe(3);
   });
 
   it("folds the tail into one line instead of filling the screen", () => {
-    // A session that crosses more bands than a phone can show: the deep tail
-    // gets one line, and that line says the value keeps falling rather than that
-    // it stopped being worth anything (D2).
     const { category: mente, activity: lerLivro } = seedRow(5);
 
     const calculation = run({

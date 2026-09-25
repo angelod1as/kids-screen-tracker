@@ -187,6 +187,48 @@ describe("the stopwatch after a failed request (#29)", () => {
     expect(hasButton("Parar")).toBe(true);
   });
 
+  it("opens the confirmation when the pause arrived and only its answer was lost (#6)", async () => {
+    await render(<TimerScreen initial={screen(session("running"))} />);
+
+    timer.pauseTimerAction.mockRejectedValueOnce(NETWORK);
+    timer.fetchTimerScreenAction.mockResolvedValueOnce(
+      screen(session("paused")),
+    );
+    await click("Parar");
+
+    expect(timer.pauseTimerAction).toHaveBeenCalledTimes(1);
+    expect(container.textContent).toContain(RESYNCED_TEXT);
+    expect(hasButton("Enviar para aprovação")).toBe(true);
+    expect(hasButton("Parar")).toBe(false);
+  });
+
+  it("opens the confirmation when an already paused session's pause answer is lost (#6)", async () => {
+    await render(<TimerScreen initial={screen(session("paused"))} />);
+
+    timer.pauseTimerAction.mockRejectedValueOnce(NETWORK);
+    timer.fetchTimerScreenAction.mockResolvedValueOnce(
+      screen(session("paused")),
+    );
+    await click("Parar");
+
+    expect(hasButton("Enviar para aprovação")).toBe(true);
+    expect(hasButton("Parar")).toBe(false);
+  });
+
+  it("keeps the session on screen when the pause never arrived (#6)", async () => {
+    await render(<TimerScreen initial={screen(session("running"))} />);
+
+    timer.pauseTimerAction.mockRejectedValueOnce(NETWORK);
+    timer.fetchTimerScreenAction.mockResolvedValueOnce(
+      screen(session("running")),
+    );
+    await click("Parar");
+
+    expect(container.textContent).toContain(RESYNCED_TEXT);
+    expect(hasButton("Parar")).toBe(true);
+    expect(hasButton("Enviar para aprovação")).toBe(false);
+  });
+
   it("closes the confirmation when the re-read says the stop already went through", async () => {
     await confirming();
 

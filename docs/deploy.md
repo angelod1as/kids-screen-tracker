@@ -115,6 +115,17 @@ tabela `users` (D45, ver "Usuários" abaixo).
 Faltando qualquer uma, o container **não sobe**: `varlock run` nomeia o item que
 está vazio e sai com 1. É proposital, e o CI testa esse caso.
 
+Mais duas, **opcionais**, para o aviso push (D51). Sem elas o app sobe igual e
+não manda aviso; também ficam com "Available at Buildtime" desmarcado.
+
+| variável | observação |
+|---|---|
+| `VAPID_PRIVATE_KEY` | `npx web-push generate-vapid-keys`; só a "Private Key". A pública o servidor calcula. |
+| `VAPID_SUBJECT` | `mailto:` de quem cuida do app, para os serviços de push. |
+
+Trocar a chave privada invalida os avisos de todo mundo: cada aparelho precisa
+tocar em "Ativar avisos" de novo.
+
 ## Volume
 
 O arquivo do SQLite mora em `/data`, declarado como `VOLUME` no `Dockerfile`. O

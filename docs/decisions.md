@@ -1,8 +1,9 @@
 # Decisões — Quanto Tempo Vale?
 
 Vinte e cinco ambiguidades da spec, resolvidas e justificadas antes da primeira
-linha de código, mais as que cada fase mediu depois. Hoje são cinquenta,
-D1–D50, mais dez emendas e as duas declarações da Fase 4, uma delas revogada.
+linha de código, mais as que cada fase mediu depois. Hoje são cinquenta e
+uma, D1–D51, mais dez emendas e as duas declarações da Fase 4, uma delas
+revogada.
 
 **Onde este documento e `spec.md` discordarem, este documento vence.**
 
@@ -1685,3 +1686,105 @@ pendência arbitrada em 1 h creditou 1 h, com `rule_hours` 3 e o motivo gravado.
   congelado então (D34). Não recalcula depois, como o resto (D15).
 - Os zeros aprovados antes desta decisão passam a aparecer no histórico. Nenhum
   saldo muda: eles nunca tiveram linha no ledger.
+
+---
+
+## A decisão que veio da #25
+
+### D51 — Aviso push em dois gatilhos, e em nenhum outro
+
+Ninguém ficava sabendo de nada sem abrir o app: o adulto não via pendência nova
+na fila, e o menino não sabia que o registro dele tinha sido decidido.
+
+**Decisão.** Web Push com VAPID, pela biblioteca `web-push`. Sem Firebase, sem
+conta na Apple, sem serviço de terceiros além dos servidores de push dos
+próprios navegadores. Exatamente dois gatilhos:
+
+1. **Nasce uma entrada pendente do menino** → aviso para os **dois adultos**
+   ativos. Os caminhos são os que já existem: o *Enviar* do cronômetro, a
+   sessão que parou sozinha pelo limite ou pela virada do dia (D16, D31), e o
+   pedido sem cronômetro (D49). Sessão descartada pelo piso (D44) e abandono não
+   avisam: não viram entrada.
+2. **O adulto decide uma pendência**, aprovando, com ou sem valor arbitrado
+   (D50), ou recusando → aviso **só para o menino dono da entrada**.
+
+Nada mais dispara push: nem o lançamento do adulto (D18), nem liberar, estornar,
+editar ou configurar.
+
+- **O texto é curto e fala só da entrada.** "Para aprovar" / "Kid1: Ler livro"
+  para o adulto; "Aprovado" / "Ler livro: 1h30" ou "Recusado" / "Ler livro"
+  para o menino. Nunca saldo, nunca nada do irmão, e nunca o motivo da recusa,
+  que fica no histórico. O toque abre `/admin/fila` para o adulto e `/menino`
+  para o menino, focando o app se ele já estiver aberto.
+- **O envio não segura a ação.** O server action chama o envio e não espera por
+  ele, e a função nunca rejeita: falha no push não derruba nem desfaz nada, e é
+  descartada em silêncio (não há `console` em `src/`). O registro é a verdade; o
+  aviso é lembrete. Um servidor de push que não responde é cortado em 10 s.
+- **A assinatura é do usuário da sessão (D33).** `push_subscriptions` guarda
+  usuário, `endpoint`, `p256dh`, `auth` e data, uma linha por `endpoint`, e um
+  usuário pode ter várias. O servidor salva para quem está logado; nenhum id vem
+  do navegador. O mesmo aparelho salvo por outro login muda de dono. O
+  `endpoint` só é aceito em `https`, sem porta, num servidor de push conhecido
+  (Google, Apple, Mozilla, Microsoft): o servidor faz POST nele a cada gatilho,
+  e sem essa lista um menino logado apontaria esse POST para dentro da rede.
+- **Assinatura morta é apagada, e a D14 não se aplica.** Quando o servidor de
+  push responde 404 ou 410, a linha sai do banco. A D14 protege linhas para as
+  quais o histórico aponta — um registro de três meses atrás precisa saber de
+  que atividade veio. Nenhuma tabela aponta para uma assinatura, e um endpoint
+  que nunca mais vai funcionar não conta nada a ninguém. Qualquer outra falha
+  (429, 5xx, tempo esgotado) mantém a linha.
+- **Ativação por toque.** Em `/conta`, o painel "Avisos" mostra o estado deste
+  aparelho — ativado, não ativado, bloqueado no aparelho, navegador sem suporte
+  (Safari fora do app instalado), servidor sem chave — e o botão "Ativar
+  avisos", sem ícone (D42). Nada pede permissão ao carregar: o iOS só aceita o
+  pedido a partir de um toque. Com o aviso já ativado, abrir `/conta` salva a
+  assinatura de novo para quem está logado.
+- **O service worker ganha `push` e `notificationclick`, e continua sem
+  `fetch` e sem Cache API.** A D46 fica intacta, e `pwa.test.ts` continua
+  reprovando um service worker que escute `fetch`.
+- **O ícone do aviso é arte do sistema**, o `icon-192.png` da instalação (D46),
+  não ícone de interface. A regra "ícone só na barra de navegação" continua
+  falando da interface.
+- **Duas variáveis novas, opcionais e sensíveis:** `VAPID_PRIVATE_KEY` e
+  `VAPID_SUBJECT` (`mailto:`). Sem elas o app funciona igual e não manda aviso.
+  São opcionais porque o deploy é automático (D43): obrigatórias, o merge
+  derrubaria a produção até alguém pôr as chaves no Coolify.
+  `assert-no-build-secrets.sh` recusa as duas no ambiente do build (D40). Onde
+  a D23, a D40 e a D45 dizem "duas variáveis", leia "duas obrigatórias e duas
+  opcionais".
+- **A chave pública não é variável.** O servidor a calcula da privada
+  (`publicKeyOf`). Uma variável à parte podia discordar da privada; e não há
+  marcação que sirva a ela: não sensível, o varlock a embute no build (o
+  comentário de `DATABASE_PATH` no schema de variáveis mediu isso), e sensível,
+  a detecção de vazamento do varlock a barra ao chegar ao navegador.
+
+**Por quê.** Os quatro já têm o app na tela inicial (D46), e o aviso é o que
+faltava para a fila andar sem alguém lembrar de abrir. Dois gatilhos porque são
+os dois momentos em que alguém está esperando outra pessoa. Tudo o que o adulto
+faz sozinho, ele já sabe que fez.
+
+**Considerado e descartado.**
+
+- *Esperar o envio dentro da action.* Um servidor de push lento seguraria o
+  toque de *Aprovar* e o *Enviar* do cronômetro.
+- *Desativar a assinatura morta em vez de apagar,* por analogia à D14. Uma
+  linha inativa que nunca mais pode ser usada é só lixo com data.
+- *Avisar a sessão que parou sozinha no instante do corte.* Nada roda sem
+  leitura (D16); o aviso sai quando a próxima leitura a registra.
+
+**A migration não move saldo.** `0008` só cria `push_subscriptions` e dois
+índices; não reconstrói nem altera outra tabela. Medido num banco construído
+com o código anterior (seed, dado de demonstração, uma pendência e um
+cronômetro aberto): saldos iguais (id 3: 10,83 h; id 4: −6,25 h), contagens
+iguais e as sete tabelas antigas idênticas por hash, `integrity_check` ok e
+`foreign_key_check` vazio.
+
+**Resíduos aceitos.**
+
+- Push não é garantia de entrega: modo Foco, bateria, assinatura expirada.
+  Nada no app depende de o aviso ter chegado.
+- A sessão que parou sozinha avisa quando alguém abre o cronômetro do menino,
+  que pode ser horas depois do corte.
+- Sair não apaga a assinatura. Num aparelho usado por duas contas, o aviso vai
+  para a última que o ativou ou abriu `/conta` nele.
+- Falha de envio não deixa rastro: nem log, nem contador.

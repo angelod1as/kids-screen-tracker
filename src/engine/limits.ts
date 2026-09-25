@@ -7,16 +7,10 @@
 /** Narrowest halving band (D35). Not a float floor: exactness is D39's job. */
 export const MIN_DECAY_STEP_HOURS = 0.25;
 
-/**
- * The rate D35 argues the floor against; named so `limits.test.ts` measures the
- * argument.
- */
+/** The rate D35 argues the floor against, named so `limits.test.ts` measures the argument. */
 export const SEED_RATE = 1.5;
 
-/**
- * One day: D6's window includes the day itself, so zero is a permanent bonus
- * (D36).
- */
+/** D6's window includes the day itself, so zero would be a permanent bonus (D36). */
 export const MIN_RETURN_BONUS_AFTER_DAYS = 1;
 
 /**
@@ -43,10 +37,7 @@ export function isUsableDecayStep(decayStepHours: number | null): boolean {
   return decayStepHours >= MIN_DECAY_STEP_HOURS;
 }
 
-/**
- * Both halves are load-bearing: zero bonus with zero days is the seed's "no
- * bonus".
- */
+/** Both halves are load-bearing: zero bonus with zero days is the seed's "no bonus". */
 export function isUsableReturnBonus(
   returnBonusPct: number,
   returnBonusAfterDays: number,

@@ -13,6 +13,7 @@ import type { Refused } from "../../db/refusal";
 import { refusedOr } from "../../db/refusal";
 import type { TimedActivity } from "../../db/timers";
 import { listTimedActivities } from "../../db/timers";
+import { notifyReviewed } from "../../push/notify";
 
 /**
  * `requireAdmin`: the queue holds both boys, so there is no `targetUserId`.
@@ -50,6 +51,8 @@ export async function approveLogAction(
 
   return refusedOr(() => {
     approveLog(getConnection(), logId, session.userId, edits, new Date());
+    // D51: not awaited, and it never rejects; the push is a reminder, not the record.
+    void notifyReviewed(getConnection(), logId);
 
     return queue();
   });
@@ -77,6 +80,7 @@ export async function rejectLogAction(
     trimmed === "" ? null : trimmed,
     new Date(),
   );
+  void notifyReviewed(getConnection(), logId);
 
   return queue();
 }

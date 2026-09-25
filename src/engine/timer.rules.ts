@@ -1,18 +1,8 @@
 import type { Reconciliation, TimerState } from "./timer";
 
-/**
- * The rules of #18 and #19, written out one case at a time.
- *
- * Same shape and same reason as `src/auth/access.rules.ts`: two files run this
- * table. `timer.test.ts` asserts the real functions answer every case, and
- * `timer.sabotage.test.ts` rewrites `timer.ts` one clause at a time and asserts
- * each mutant gets at least one case wrong. A rule with no case sharp enough to
- * tell it apart from its own absence is not being tested.
- *
- * Every case is a pure question with a primitive answer, because the module
- * under test is pure: `now` is an argument, so "what does this timer look like
- * when it is read at such-and-such an instant" is a function call and not a
- * mocked clock.
+/*
+ * The rules of #18 and #19, one case at a time. `timer.test.ts` runs the table on
+ * the real functions, and `timer.sabotage.test.ts` on mutants that must fail it.
  */
 
 export type TimerRules = {
@@ -41,12 +31,8 @@ export type TimerCase = {
 };
 
 /**
- * Ten in the morning in São Paulo on a Tuesday, as an instant.
- *
- * Morning and not noon so that the twelve-hour abandonment still fits inside
- * the day: a session ends when its day does, so a pause that begins after
- * midday is ended by the calendar before the twelve hours are up, and the cases
- * below would be asking about a rule they never reach.
+ * 10:00 in São Paulo. Not noon: a pause begun after midday is ended by midnight
+ * (D31) before the twelve-hour abandonment is reached.
  */
 export const START = new Date("2026-09-01T13:00:00.000Z");
 
@@ -97,17 +83,8 @@ const PARKED: TimerState = {
 };
 
 /**
- * A reconciliation as one comparable string.
- *
- * Everything that matters about a settlement is in it — the state it lands in,
- * the seconds it reports, the seconds it *stores*, when it says it happened,
- * and whether the record has to be marked — so a mutant that gets any one of
- * them wrong fails the case, and the failure names which case.
- *
- * The reported seconds and the stored ones are both here because they are two
- * different numbers that happen to agree: the sabotage matrix caught the
- * difference, by freezing the row at what the clock said while still reporting
- * the limit. The screen would have been right and the database wrong.
+ * Reported and stored seconds both, because they can disagree: a mutant froze the
+ * row at the clock while reporting the limit, the screen right and the row wrong.
  */
 export function summarise(reconciliation: Reconciliation): string {
   const settled = reconciliation.settledAt;
@@ -122,7 +99,6 @@ export function summarise(reconciliation: Reconciliation): string {
 }
 
 export const TIMER_CASES: readonly TimerCase[] = [
-  // --- #18: pausar existe para interrupção real e não conta tempo -----------
   {
     rule: "a pause does not count time",
     name: "a running session counts the seconds since it started",
@@ -156,7 +132,6 @@ export const TIMER_CASES: readonly TimerCase[] = [
     expected: 0,
   },
 
-  // --- #19: para no limite exato -------------------------------------------
   {
     rule: "the limit is on active time and the cut is exact",
     name: "a session with no pause stops at started_at plus the limit",
@@ -210,7 +185,6 @@ export const TIMER_CASES: readonly TimerCase[] = [
     expected: "running · 7199 · 0 · open · manual",
   },
 
-  // --- #19: o resultado independe de quando o app foi aberto ----------------
   {
     rule: "the answer comes from the stamps, not from the read",
     name: "opened one hour after the limit",
@@ -232,7 +206,6 @@ export const TIMER_CASES: readonly TimerCase[] = [
     expected: `stopped · 7200 · 7200 · ${at(HOUR + 90 * MINUTE).toISOString()} · auto`,
   },
 
-  // --- #19: pausado há mais de 12h vira abandoned, sem registro -------------
   {
     rule: "a pause of twelve hours is abandoned and produces no record",
     name: "the twelve hours are counted from the pause",
@@ -248,9 +221,7 @@ export const TIMER_CASES: readonly TimerCase[] = [
   {
     rule: "a pause of twelve hours is abandoned and produces no record",
     name: "a session that was paused and resumed is not on its way either",
-    // `paused_at` is filled on a running session too — it carries the boundary
-    // of the current stretch — so "is there a pause stamp" is not the question.
-    // The status is.
+    // `paused_at` is filled on a running session too, so the status decides.
     run: (rules) => rules.abandonAt(RESUMED) ?? "none",
     expected: "none",
   },
@@ -278,7 +249,6 @@ export const TIMER_CASES: readonly TimerCase[] = [
     expected: `abandoned · 1800 · 1800 · ${at(30 * MINUTE + 12 * HOUR).toISOString()} · manual`,
   },
 
-  // --- D3: a sessão não atravessa a virada do dia ---------------------------
   {
     rule: "a session ends with the day it began on",
     name: "the day ends at the São Paulo midnight after the session started",
@@ -308,8 +278,6 @@ export const TIMER_CASES: readonly TimerCase[] = [
   {
     rule: "a session ends with the day it began on",
     name: "a session parked paused overnight ends at midnight with what it counted",
-    // The lever this rule exists to remove: started at 23:55, paused, and
-    // resumed the next afternoon, its hours would land in a day already over.
     run: (rules) => summarise(rules.reconcileTimer(PARKED, 120, at(30 * HOUR))),
     expected: `stopped · 60 · 60 · ${DAY_END.toISOString()} · auto`,
   },
@@ -342,9 +310,6 @@ export const TIMER_CASES: readonly TimerCase[] = [
     expected: "open",
   },
 
-  // --- D17 emendada (#71): arredondado ao minuto mais próximo, sem piso -----
-  // O dono mediu dez segundos e a fila recebeu um minuto. O piso saiu; o
-  // arredondamento ao mais próximo ficou.
   {
     rule: "the duration is the active minutes, rounded to the nearest, no floor",
     name: "a session of no length is worth no minutes",
@@ -413,9 +378,7 @@ export const TIMER_CASES: readonly TimerCase[] = [
   },
   {
     rule: "the duration is the active minutes, rounded to the nearest, no floor",
-    // Started 10:00, paused 10:30 to 11:00, stopped at 11:00 + 10s: ninety
-    // minutes of wall clock, thirty minutes and ten seconds of activity. D17
-    // excludes the pause, and the ten seconds round away.
+    // Stopped at 11:00:10: thirty minutes and ten seconds of activity.
     name: "a session with a pause is priced on its active seconds alone",
     run: (rules) =>
       rules.durationMinutes(

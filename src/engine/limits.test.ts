@@ -11,20 +11,7 @@ import {
   SEED_RATE,
 } from "./limits";
 
-/**
- * The two floors the Configuration screen puts in front of the engine (#26).
- *
- * The cases at the bottom are the ones that matter, and they are not assertions
- * about the floors — they are assertions about the **engine**, swept. A floor
- * justified only by a constant equal to itself is a floor nobody can argue with
- * and nobody can trust: what makes 0,25 the right number is that the engine
- * inverts below it and does not at or above it, and that is a thing to measure
- * rather than to declare.
- *
- * Both sweeps are bounded so the suite stays fast. The wide grids that chose
- * the number are in the pull request; what is kept here is the narrow pair that
- * fails if either half of the claim stops being true.
- */
+/** The sweeps are bounded to stay fast; the wide grids are in D35 and D39. */
 
 const DAY = "2026-09-13";
 
@@ -38,7 +25,6 @@ const ACTIVITY = {
   repeatCooldownDays: 0,
 };
 
-/** A bucket of `minutes` already done in the category, on the same day (D3). */
 function bucket(minutes: number): ApprovedLog[] {
   if (minutes === 0) return [];
 
@@ -56,7 +42,6 @@ function bucket(minutes: number): ApprovedLog[] {
   ];
 }
 
-/** What an entry of `minutes` pays, at `rate` and `step`, on that bucket. */
 function paid(
   bucketMinutes: number,
   minutes: number,
@@ -82,7 +67,6 @@ function paid(
   }).hours;
 }
 
-/** Every pair of neighbouring durations where a longer entry paid less. */
 function inversions(
   rate: number,
   step: number,
@@ -112,10 +96,9 @@ function inversions(
 
 describe("the asymptote a category is calibrated by", () => {
   it("is the identity decisions.md opens with: rate × step × 2", () => {
-    // The four decaying rows of the seed, against the table in `decisions.md`.
-    expect(asymptoteHours(2, 2)).toBe(8); // Corpo, ~8h a day
-    expect(asymptoteHours(2, 1)).toBe(4); // Mente, ~4h
-    expect(asymptoteHours(1, 2)).toBe(4); // Escola, ~4h
+    expect(asymptoteHours(2, 2)).toBe(8);
+    expect(asymptoteHours(2, 1)).toBe(4);
+    expect(asymptoteHours(1, 2)).toBe(4);
   });
 
   it("is nothing at all for a category that never decays (D2)", () => {
@@ -123,8 +106,7 @@ describe("the asymptote a category is calibrated by", () => {
   });
 
   it("is nothing at all for a category that declares no rate (D11)", () => {
-    // Convívio, Casa and Curinga. Guessing a rate here would put a number on
-    // screen that the engine will never read.
+    // A guessed rate would put a number on screen the engine never reads.
     expect(asymptoteHours(null, 1)).toBeNull();
     expect(asymptoteHours(null, null)).toBeNull();
   });
@@ -146,44 +128,20 @@ describe("the decay step floor (D35)", () => {
     expect(isUsableDecayStep(-1)).toBe(false);
   });
 
-  /**
-   * The floor pinned by its consequence, not by a copy of itself.
-   *
-   * The previous version of this file asserted `isUsableDecayStep(0.24) ===
-   * false`, which is the constant compared with itself: lowering the floor to
-   * 0,15 failed that one case and nothing else, and the sweep that was supposed
-   * to justify the number stayed green.
-   *
-   * D35's argument is about the *shape* of the table: at the seed's rate the
-   * floor is the step at which a category is worth `taxa × 0,5` a day — 0,75 h
-   * at 1,5 since #110 — and it is the largest such step. Both halves
-   * are asserted, so the constant cannot move in either direction without a
-   * case failing for the reason the decision gives.
-   */
+  /** Pinned by D35's consequence, not by a copy of the constant, in both directions. */
   it("is the step at which the seed's rate yields half of itself a day", () => {
     expect(asymptoteHours(SEED_RATE, MIN_DECAY_STEP_HOURS)).toBe(0.75);
   });
 
   it("is the largest step for which that is true", () => {
-    // One hundredth lower — the finest the field can express — already pays
-    // less, so nothing between here and the floor is a category worth
-    // configuring rather than switching off.
+    // A hundredth is the finest the field can express.
     const finer = Math.round((MIN_DECAY_STEP_HOURS - 0.01) * 100) / 100;
 
     expect(asymptoteHours(SEED_RATE, finer)).toBeLessThan(0.75);
     expect(isUsableDecayStep(finer)).toBe(false);
   });
 
-  /**
-   * The property the floor used to be justified by, now held by the engine
-   * itself — at every step, including the ones the floor refuses.
-   *
-   * This is the case that fails if D39's exact arithmetic is ever reverted, and
-   * it is deliberately swept *below* the floor as well: the guarantee is not
-   * "the values we allow happen to be safe", it is "the engine is monotone".
-   * Under the old float chain these grids produced inversions at 0,05, 0,1,
-   * 0,15 and 0,25 alike.
-   */
+  /** Fails if D39 is reverted. Swept below the floor too: the engine is monotone, not the floor. */
   it("never pays less for more, at any step the field can express", () => {
     const offenders: string[] = [];
 
@@ -197,10 +155,8 @@ describe("the decay step floor (D35)", () => {
   });
 
   it("holds past the durations where every float step used to break", () => {
-    // Measured on the float engine: 0,25 first inverted at 771 min, 0,5 at
-    // 1.587, 1 at 3.107 and 2 at 6.275 — always around 53 halvings. Nothing
-    // caps a duration at 1.440 minutes: `requireDurationMinutes` accepts up to
-    // a million, and D31 lets a session reach a full day.
+    // Just past where the float engine first inverted (D35). Nothing caps a
+    // duration at 1.440 min: `requireDurationMinutes` accepts up to a million.
     const offenders: string[] = [
       ...inversions(3, 0.25, [22], 900),
       ...inversions(3, 0.5, [0], 1700),
@@ -212,8 +168,7 @@ describe("the decay step floor (D35)", () => {
   });
 
   it("still pays the named pairs the same or more, never less", () => {
-    // The two pairs the review named, and the one from the original report.
-    // Each used to drop a cent; each is now flat or rising.
+    // Each of these used to drop a cent in float.
     for (const [bucket, at, rate, step] of [
       [22, 785, 3, 0.25],
       [7, 815, 1.5, 0.25],
@@ -229,8 +184,7 @@ describe("the decay step floor (D35)", () => {
 
 describe("the return bonus threshold", () => {
   it("lets a category with no bonus keep any threshold, including zero", () => {
-    // The pair the seed writes for the four categories with no bonus, D12's
-    // Curinga among them.
+    // The seed's pair for the categories with no bonus.
     expect(isUsableReturnBonus(0, 0)).toBe(true);
     expect(isUsableReturnBonus(0, 7)).toBe(true);
   });
@@ -244,13 +198,7 @@ describe("the return bonus threshold", () => {
     expect(isUsableReturnBonus(0.5, 3)).toBe(true);
   });
 
-  /**
-   * The measurement the threshold exists for, reproduced.
-   *
-   * D6's window is `[day − n, day]` and D34 made it two-sided, so at `n = 0` it
-   * is the day itself. The first entry of the category on any day finds nothing
-   * in that window and is paid as a return — every day, for ever.
-   */
+  /** D36's measurement, reproduced. */
   it("is what stops a return bonus from being a permanent one", () => {
     const fixed = {
       id: 2,
@@ -287,19 +235,13 @@ describe("the return bonus threshold", () => {
         },
         occurredOn: DAY,
         history: yesterday,
-        // Wide enough for both ends of the contrast. Pinned to the day itself,
-        // `pay(3)` threw — the engine refuses a window shorter than the rules
-        // it is about to apply — so the comparison the case is named for was
-        // not merely missing, it was unreachable.
+        // Wide enough for `pay(3)`: the engine refuses a shorter window.
         historyFrom: "2026-09-10",
         historyTo: "2026-09-16",
         categoryFirstDay: "2026-09-12",
       }).hours;
 
-    // Done yesterday, so this is not a return by any reading. At zero days it
-    // is paid as one anyway — 2 h becomes 3 h — and at the seed's three days
-    // it is not. That contrast is the whole measurement, and it is why the
-    // threshold exists.
+    // Done yesterday, so not a return; at zero days it is paid as one anyway.
     expect(pay(0)).toBe(3);
     expect(pay(3)).toBe(2);
   });
