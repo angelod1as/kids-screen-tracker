@@ -5,13 +5,17 @@ import { useState, useTransition } from "react";
 import { Button } from "../../../../ui/button";
 import type { Choice } from "../../../../ui/choice";
 import { ChoiceGroup } from "../../../../ui/choice";
-import { failureText } from "../../../../ui/failure";
+import { ConfirmMovement } from "../../../../ui/confirm-movement";
+import { failureText, previewFailureText } from "../../../../ui/failure";
 import { Field } from "../../../../ui/field";
 import { formatHours, parseTypedHours } from "../../../../ui/hours";
 import { KidSelect } from "../../../../ui/kid-select";
 import { BORDER_CLASS, balanceToneClass } from "../../../../ui/style";
-import type { Movement } from "../../../actions/ledger";
-import { releaseHoursAction } from "../../../actions/ledger";
+import type { Movement, MovementPreview } from "../../../actions/ledger";
+import {
+  previewReleaseAction,
+  releaseHoursAction,
+} from "../../../actions/ledger";
 import type { Kid } from "../../../actions/people";
 
 /**
@@ -32,6 +36,7 @@ export function ReleaseForm({ kids }: { kids: Kid[] }) {
   const [hours, setHours] = useState(DEFAULT_HOURS);
   const [destination, setDestination] = useState("");
 
+  const [preview, setPreview] = useState<MovementPreview | null>(null);
   const [done, setDone] = useState<Movement | null>(null);
   const [failed, setFailed] = useState<string | null>(null);
   const [busy, startAction] = useTransition();
@@ -43,6 +48,25 @@ export function ReleaseForm({ kids }: { kids: Kid[] }) {
     apply();
     setDone(null);
     setFailed(null);
+  }
+
+  function ask() {
+    if (typed === null) return;
+
+    startAction(async () => {
+      try {
+        setPreview(
+          await previewReleaseAction({
+            userId,
+            hours: typed,
+            destination: destination.trim() === "" ? null : destination.trim(),
+          }),
+        );
+        setFailed(null);
+      } catch (error) {
+        setFailed(previewFailureText(error));
+      }
+    });
   }
 
   function release() {
@@ -61,6 +85,8 @@ export function ReleaseForm({ kids }: { kids: Kid[] }) {
       } catch (error) {
         setFailed(failureText(error));
       }
+
+      setPreview(null);
     });
   }
 
@@ -74,6 +100,17 @@ export function ReleaseForm({ kids }: { kids: Kid[] }) {
 
   return (
     <div className="flex flex-col gap-6">
+      {preview === null ? null : (
+        <ConfirmMovement
+          action="Liberar"
+          busy={busy}
+          confirmLabel="Confirmar liberação"
+          onCancel={() => setPreview(null)}
+          onConfirm={release}
+          preview={preview}
+        />
+      )}
+
       {failed === null ? null : (
         <p className={`${BORDER_CLASS} bg-white p-4 text-lg text-black`}>
           {failed}
@@ -129,7 +166,7 @@ export function ReleaseForm({ kids }: { kids: Kid[] }) {
         value={destination}
       />
 
-      <Button disabled={busy || typed === null} onClick={release} type="button">
+      <Button disabled={busy || typed === null} onClick={ask} type="button">
         Liberar
       </Button>
     </div>
