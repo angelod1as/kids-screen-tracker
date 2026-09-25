@@ -95,6 +95,52 @@ describe("the confirmation (D52)", () => {
     expect(ledger.releaseHoursAction).not.toHaveBeenCalled();
   });
 
+  it("puts the form behind it out of reach while open", async () => {
+    const form = () => container.querySelector("#horas")?.closest("[inert]");
+
+    expect(form()).toBeNull();
+
+    await act(async () => button("Liberar").click());
+
+    expect(form()).not.toBeNull();
+
+    await act(async () => button("Cancelar").click());
+
+    expect(form()).toBeNull();
+  });
+
+  it("cancels on Escape and writes nothing", async () => {
+    await act(async () => button("Liberar").click());
+    await act(async () =>
+      dialog()?.dispatchEvent(
+        new KeyboardEvent("keydown", { key: "Escape", bubbles: true }),
+      ),
+    );
+
+    expect(dialog()).toBeNull();
+    expect(ledger.releaseHoursAction).not.toHaveBeenCalled();
+  });
+
+  it("ignores Escape while the write is out", async () => {
+    let answer: (movement: unknown) => void = () => {};
+    ledger.releaseHoursAction.mockReturnValue(
+      new Promise((resolve) => {
+        answer = resolve;
+      }),
+    );
+
+    await releaseAndConfirm();
+    await act(async () =>
+      dialog()?.dispatchEvent(
+        new KeyboardEvent("keydown", { key: "Escape", bubbles: true }),
+      ),
+    );
+
+    expect(dialog()).not.toBeNull();
+
+    await act(async () => answer({ hours: 1, balance: -1 }));
+  });
+
   it("writes nothing when cancelled", async () => {
     await act(async () => button("Liberar").click());
     await act(async () => button("Cancelar").click());
