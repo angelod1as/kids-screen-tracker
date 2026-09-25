@@ -51,7 +51,7 @@ export function EntryList({
           />
         ) : (
           <li className={ROW_CLASS} key={`ledger-${entry.id}`}>
-            <span className="flex min-w-0 flex-col gap-1">
+            <span className="flex min-w-0 flex-1 flex-col gap-1">
               <span className="break-words text-base font-bold text-black">
                 {entry.label}
               </span>
@@ -87,7 +87,7 @@ export function EntryList({
 function RejectedRow({ entry }: { entry: RejectedEntry }) {
   return (
     <li className={`${ROW_CLASS} bg-black text-white`}>
-      <span className="flex min-w-0 flex-col gap-1">
+      <span className="flex min-w-0 flex-1 flex-col gap-1">
         <span className="break-words text-base font-bold text-white">
           {entry.label}
         </span>
@@ -144,7 +144,7 @@ function VoidedText({ voided }: { voided: VoidMark }) {
 function ZeroRow({ entry, action }: { entry: ZeroEntry; action: ReactNode }) {
   return (
     <li className={ROW_CLASS}>
-      <span className="flex min-w-0 flex-col gap-1">
+      <span className="flex min-w-0 flex-1 flex-col gap-1">
         <span className="break-words text-base font-bold text-black">
           {entry.label}
         </span>

@@ -45,9 +45,15 @@ export function VoidControl({
 
   if (!asking) {
     return (
-      <Button onClick={() => setAsking(true)} type="button" variant="secondary">
-        Anular
-      </Button>
+      <div className="w-36">
+        <Button
+          onClick={() => setAsking(true)}
+          type="button"
+          variant="secondary"
+        >
+          Anular
+        </Button>
+      </div>
     );
   }
 
