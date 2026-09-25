@@ -83,6 +83,7 @@ const ENTRIES: LedgerEntry[] = [
     occurredOn: "2026-09-02",
     label: "Xbox",
     override: null,
+    voided: null,
   },
   {
     id: 20,
@@ -91,6 +92,7 @@ const ENTRIES: LedgerEntry[] = [
     occurredOn: "2026-09-01",
     label: "Ler livro",
     override: null,
+    voided: null,
   },
   {
     id: 10,
@@ -99,6 +101,7 @@ const ENTRIES: LedgerEntry[] = [
     occurredOn: "2026-08-31",
     label: "Estorno da tarde",
     override: null,
+    voided: null,
   },
 ];
 

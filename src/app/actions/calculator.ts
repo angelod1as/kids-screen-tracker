@@ -1,6 +1,6 @@
 "use server";
 
-import { and, asc, eq, gte, min, ne } from "drizzle-orm";
+import { and, asc, eq, gte, isNull, min, ne } from "drizzle-orm";
 
 import { requireAccess } from "../../auth/guard";
 import { getDb } from "../../db";
@@ -123,6 +123,8 @@ export async function fetchCalculatorDataAction(
         eq(activityLogs.userId, targetUserId),
         // D19.
         eq(activityLogs.status, "approved"),
+        // D52.
+        isNull(activityLogs.voidedAt),
         gte(activityLogs.occurredOn, historyFrom),
       ),
     )
@@ -148,6 +150,7 @@ export async function fetchCalculatorDataAction(
           and(
             eq(activityLogs.userId, targetUserId),
             eq(activityLogs.status, "approved"),
+            isNull(activityLogs.voidedAt),
           ),
         )
         .groupBy(activityLogs.categoryId)

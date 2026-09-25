@@ -282,6 +282,11 @@ export const activityLogs = sqliteTable(
       .notNull()
       .default(sql`(cast(unixepoch('subsec') * 1000 as integer))`),
     reviewedAt: integer("reviewed_at", { mode: "timestamp_ms" }),
+    /** D52: out of the balance and the engine, kept in the history. Null is in force. */
+    voidedAt: integer("voided_at", { mode: "timestamp_ms" }),
+    voidedBy: integer("voided_by").references(() => users.id, {
+      onDelete: "restrict",
+    }),
   },
   (table) => [
     // D3, D8.
@@ -417,6 +422,11 @@ export const ledger = sqliteTable(
     createdAt: integer("created_at", { mode: "timestamp_ms" })
       .notNull()
       .default(sql`(cast(unixepoch('subsec') * 1000 as integer))`),
+    /** D52: a release or refund only; an activity's credit is voided on its log. */
+    voidedAt: integer("voided_at", { mode: "timestamp_ms" }),
+    voidedBy: integer("voided_by").references(() => users.id, {
+      onDelete: "restrict",
+    }),
   },
   (table) => [
     index("ledger_user_day_idx").on(table.userId, table.occurredOn),

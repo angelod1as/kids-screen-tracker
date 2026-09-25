@@ -185,6 +185,7 @@ describe("the server actions this app has", () => {
       "stopTimerAction",
       "updateActivityAction",
       "updateCategoryAction",
+      "voidEntryAction",
     ]);
   });
 

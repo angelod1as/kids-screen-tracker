@@ -1,4 +1,4 @@
-import { and, asc, eq, gte, lte } from "drizzle-orm";
+import { and, asc, eq, gte, isNull, lte } from "drizzle-orm";
 
 import type { ApprovedLog, Calculation } from "../engine/calculate";
 import {
@@ -133,6 +133,8 @@ function historyFor(
     .where(
       and(
         eq(activityLogs.userId, userId),
+        // D52.
+        isNull(activityLogs.voidedAt),
         // D19.
         eq(activityLogs.status, "approved"),
         gte(activityLogs.occurredOn, historyFrom),

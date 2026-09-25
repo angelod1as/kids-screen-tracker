@@ -1,9 +1,15 @@
 import { notFound } from "next/navigation";
 
-import { EntryList, HISTORY_LIMIT } from "../../../../../ui/entries";
+import {
+  EntryList,
+  HISTORY_LIMIT,
+  signedHours,
+} from "../../../../../ui/entries";
 import { Panel, PanelText } from "../../../../../ui/panel";
+import { fetchBalanceAction } from "../../../../actions/balance";
 import { fetchHistoryAction } from "../../../../actions/history";
 import { listKidsAction } from "../../../../actions/people";
+import { VoidControl } from "./void-control";
 
 /**
  * The boy's own list component, so the two screens cannot drift. The URL id is
@@ -22,7 +28,10 @@ export default async function AdminKidHistoryPage({
     notFound();
   }
 
-  const entries = await fetchHistoryAction(kid.id, HISTORY_LIMIT);
+  const [entries, balance] = await Promise.all([
+    fetchHistoryAction(kid.id, HISTORY_LIMIT),
+    fetchBalanceAction(kid.id),
+  ]);
 
   return (
     <div className="flex flex-col gap-4 lg:max-w-2xl lg:gap-6">
@@ -36,6 +45,22 @@ export default async function AdminKidHistoryPage({
         top
       >
         <EntryList
+          action={(entry) => (
+            <VoidControl
+              after={
+                entry.kind === "zero"
+                  ? balance
+                  : // D9: two decimals, as the balance itself.
+                    Math.round((balance - signedHours(entry)) * 100) / 100
+              }
+              before={balance}
+              // A zero has no ledger row (D10); its id is the log's.
+              target={{
+                kind: entry.kind === "zero" ? "log" : "ledger",
+                id: entry.id,
+              }}
+            />
+          )}
           emptyText={`${kid.displayName} ainda não tem lançamentos. O que ele ganhar, gastar ou tiver recusado aparece aqui, do mais recente para o mais antigo.`}
           entries={entries}
         />

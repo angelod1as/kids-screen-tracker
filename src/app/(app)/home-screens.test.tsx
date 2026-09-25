@@ -179,6 +179,7 @@ describe("the balance is the largest element on the screen, by a large margin (#
           occurredOn: "2026-09-01",
           label: "Ler livro",
           override: null,
+          voided: null,
         },
       ],
     });
@@ -237,6 +238,7 @@ describe("the rest of the boy's home screen (#15)", () => {
       occurredOn: "2026-09-01",
       label: `Entrada ${index}`,
       override: null,
+      voided: null,
     }));
 
     const screen = await kidHome({ balance: 1, entries });
