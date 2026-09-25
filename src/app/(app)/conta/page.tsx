@@ -1,8 +1,10 @@
 import { requireSession } from "../../../auth/guard";
+import { vapidPublicKey } from "../../../push/vapid";
 import { Button } from "../../../ui/button";
 import { LinkButton } from "../../../ui/link-button";
 import { Panel } from "../../../ui/panel";
 import { logoutAction } from "../../actions/session";
+import { PushToggle } from "./push-toggle";
 
 /**
  * Configuração lives here, not in the bar: not a daily operation, and still two
@@ -34,6 +36,10 @@ export default async function AccountPage() {
             <Button type="submit">Sair</Button>
           </form>
         </div>
+      </Panel>
+
+      <Panel title="Avisos">
+        <PushToggle publicKey={vapidPublicKey()} />
       </Panel>
     </div>
   );

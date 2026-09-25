@@ -178,6 +178,7 @@ describe("the server actions this app has", () => {
       "releaseHoursAction",
       "requestLogAction",
       "resumeTimerAction",
+      "savePushSubscriptionAction",
       "setActivityActiveAction",
       "setCategoryActiveAction",
       "startTimerAction",
