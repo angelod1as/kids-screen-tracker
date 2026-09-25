@@ -368,7 +368,7 @@ describe("a dead subscription (D51)", () => {
 
 describe("saving a subscription (D33, D51)", () => {
   const body = {
-    endpoint: "https://push.test/new-phone",
+    endpoint: "https://fcm.googleapis.com/fcm/send/new-phone",
     keys: { p256dh: "key", auth: "secret" },
     userId: KID2,
   };
@@ -398,6 +398,19 @@ describe("saving a subscription (D33, D51)", () => {
     expect(ownerOf(body.endpoint)).toBe(KID1);
   });
 
+  it.each([
+    "https://fcm.googleapis.com/fcm/send/abc",
+    "https://web.push.apple.com/QGx",
+    "https://updates.push.services.mozilla.com/wpush/v2/abc",
+    "https://wns2-par02p.notify.windows.com/w/?token=abc",
+  ])("accepts the push service at %s", async (endpoint) => {
+    mocked.username = "kid1";
+
+    await savePushSubscriptionAction({ ...body, endpoint });
+
+    expect(ownerOf(endpoint)).toBe(KID1);
+  });
+
   it("refuses without a session", async () => {
     mocked.username = null;
 
@@ -408,7 +421,30 @@ describe("saving a subscription (D33, D51)", () => {
 
   it.each([
     ["no endpoint", { keys: body.keys }],
-    ["a plain-http endpoint", { ...body, endpoint: "http://push.test/x" }],
+    [
+      "a plain-http endpoint",
+      { ...body, endpoint: "http://fcm.googleapis.com/fcm/send/x" },
+    ],
+    [
+      "an endpoint that is no push service",
+      { ...body, endpoint: "https://localhost/admin" },
+    ],
+    [
+      "an internal address",
+      { ...body, endpoint: "https://169.254.169.254/latest" },
+    ],
+    [
+      "a push host on another port",
+      { ...body, endpoint: "https://fcm.googleapis.com:8443/x" },
+    ],
+    [
+      "a push host as userinfo",
+      { ...body, endpoint: "https://fcm.googleapis.com@evil.test/x" },
+    ],
+    [
+      "a push host as a prefix",
+      { ...body, endpoint: "https://fcm.googleapis.com.evil.test/x" },
+    ],
     ["no keys", { endpoint: body.endpoint }],
     ["a key that is not text", { ...body, keys: { p256dh: 1, auth: "a" } }],
     ["nothing", null],

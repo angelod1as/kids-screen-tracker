@@ -1711,7 +1711,10 @@ editar ou configurar.
 - **A assinatura é do usuário da sessão (D33).** `push_subscriptions` guarda
   usuário, `endpoint`, `p256dh`, `auth` e data, uma linha por `endpoint`, e um
   usuário pode ter várias. O servidor salva para quem está logado; nenhum id vem
-  do navegador. O mesmo aparelho salvo por outro login muda de dono.
+  do navegador. O mesmo aparelho salvo por outro login muda de dono. O
+  `endpoint` só é aceito em `https`, sem porta, num servidor de push conhecido
+  (Google, Apple, Mozilla, Microsoft): o servidor faz POST nele a cada gatilho,
+  e sem essa lista um menino logado apontaria esse POST para dentro da rede.
 - **Assinatura morta é apagada, e a D14 não se aplica.** Quando o servidor de
   push responde 404 ou 410, a linha sai do banco. A D14 protege linhas para as
   quais o histórico aponta — um registro de três meses atrás precisa saber de

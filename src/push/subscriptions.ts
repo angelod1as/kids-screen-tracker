@@ -25,6 +25,31 @@ function field(value: unknown, name: string): string {
   return value;
 }
 
+/** D51: the server posts to this URL, so any other host would let a login aim it anywhere. */
+const PUSH_HOSTS = [
+  "fcm.googleapis.com",
+  "web.push.apple.com",
+  "updates.push.services.mozilla.com",
+];
+const PUSH_HOST_SUFFIX = ".notify.windows.com";
+
+function isPushService(endpoint: string): boolean {
+  let url: URL;
+
+  try {
+    url = new URL(endpoint);
+  } catch {
+    return false;
+  }
+
+  return (
+    url.protocol === "https:" &&
+    url.port === "" &&
+    (PUSH_HOSTS.includes(url.hostname) ||
+      url.hostname.endsWith(PUSH_HOST_SUFFIX))
+  );
+}
+
 /** The body comes from the browser, so its shape is checked here and not trusted (D33). */
 export function parseSubscription(input: unknown): PushKeys {
   const body = (input ?? {}) as {
@@ -33,8 +58,8 @@ export function parseSubscription(input: unknown): PushKeys {
   };
   const endpoint = field(body.endpoint, "an endpoint");
 
-  if (!endpoint.startsWith("https://")) {
-    throw new Error("a push endpoint is an https URL");
+  if (!isPushService(endpoint)) {
+    throw new Error("a push endpoint is an https URL of a known push service");
   }
 
   return {

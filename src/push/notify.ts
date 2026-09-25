@@ -14,7 +14,7 @@ import { pushSender } from "./vapid";
 
 export type PushMessage = { title: string; body: string; url: string };
 
-export async function deliver(
+async function deliver(
   connection: Connection,
   userIds: number[],
   message: PushMessage,
