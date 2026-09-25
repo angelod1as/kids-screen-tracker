@@ -602,6 +602,15 @@ encosta na regra.
 **Estendida pela D47 (#113):** a estreia pendente de uma categoria bloqueia
 também fora da janela, enquanto nada aprovado vier antes dela.
 
+**Emenda (#7): a frase chega ao navegador.** Lançada, a recusa virava um
+`digest` no build de produção do Next, e o adulto só lia o motivo porque a tela
+relia o estado depois. Esta recusa e a da D37 são `RefusalError`, em português,
+e a action que pode dá-las devolve `{ refused }` em vez de lançar. Só elas: a
+guarda de acesso roda antes e continua lançando uma frase fixa, que não explica
+nada a quem forjou o pedido, e qualquer outra falha continua lançada. A frase
+nomeia a entrada — número, atividade, data — e nunca o menino, e só um adulto
+chega às actions que a devolvem.
+
 ### D33 — A guarda de item inativo vale no endpoint
 
 **Decisão.** Item inativo some das listas **e é recusado pelo servidor**:
