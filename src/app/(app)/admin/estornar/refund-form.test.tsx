@@ -181,6 +181,18 @@ describe("the confirmation (D53)", () => {
     );
   });
 
+  it("puts the form behind it out of reach while open", async () => {
+    const form = () => container.querySelector("#horas")?.closest("[inert]");
+
+    await type("#horas", "1");
+
+    expect(form()).toBeNull();
+
+    await act(async () => refundButton().click());
+
+    expect(form()).not.toBeNull();
+  });
+
   it("writes nothing when cancelled", async () => {
     await type("#horas", "1");
     await act(async () => refundButton().click());

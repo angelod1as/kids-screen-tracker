@@ -141,6 +141,32 @@ describe("the confirmation (D53)", () => {
     await act(async () => answer({ hours: 1, balance: -1 }));
   });
 
+  it("writes the request it previewed, not the form as it is when confirmed", async () => {
+    let answer: (preview: unknown) => void = () => {};
+    ledger.previewReleaseAction.mockReturnValue(
+      new Promise((resolve) => {
+        answer = resolve;
+      }),
+    );
+
+    await act(async () => button("Liberar").click());
+    await act(async () => button("2h").click());
+    await act(async () =>
+      answer({ displayName: "Kid2", hours: 1, before: 0, after: -1 }),
+    );
+    await act(async () => button("Confirmar liberação").click());
+
+    expect(ledger.releaseHoursAction).toHaveBeenCalledWith(
+      expect.objectContaining({ userId: 7, hours: 1 }),
+    );
+  });
+
+  it("names the action to a screen reader", async () => {
+    await act(async () => button("Liberar").click());
+
+    expect(dialog()?.getAttribute("aria-label")).toBe("Confirmar liberação");
+  });
+
   it("writes nothing when cancelled", async () => {
     await act(async () => button("Liberar").click());
     await act(async () => button("Cancelar").click());
