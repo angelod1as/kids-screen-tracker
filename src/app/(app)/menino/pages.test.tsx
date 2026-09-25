@@ -4,7 +4,7 @@ import { describe, expect, it, vi } from "vitest";
 import type { Session } from "../../../auth/access";
 import { HISTORY_LIMIT } from "../../../ui/entries";
 import { NEGATIVE_CLASS, PENDING_BG_CLASS } from "../../../ui/style";
-import type { HistoryEntry } from "../../actions/history";
+import type { AdultValue, HistoryEntry } from "../../actions/history";
 
 /**
  * The id each page hands its action. For a kid a wrong id is refused, but an
@@ -70,6 +70,7 @@ function entry(id: number): HistoryEntry {
     hours: 1,
     occurredOn: "2026-09-02",
     label: `Linha ${id}`,
+    override: null,
   };
 }
 
@@ -179,5 +180,82 @@ describe("the refusal the boy used to watch vanish (#72)", () => {
     expect(markup).toContain("bg-black");
     expect(markup).not.toContain(NEGATIVE_CLASS);
     expect(markup).not.toContain(PENDING_BG_CLASS);
+  });
+});
+
+describe("a value an adult decided says so on the boy's history (D50)", () => {
+  async function markupOf(entries: HistoryEntry[]): Promise<string> {
+    mocked.session = KID1;
+    mocked.entries = entries;
+
+    return renderToStaticMarkup(await KidHistoryPage());
+  }
+
+  function earn(override: AdultValue | null): HistoryEntry {
+    return {
+      id: 1,
+      kind: "earn",
+      hours: 1,
+      occurredOn: "2026-09-02",
+      label: "Sair com os amigos",
+      override,
+    };
+  }
+
+  it("marks an overridden earn, and only that one", async () => {
+    const markup = await markupOf([
+      earn({ ruleHours: null, reason: null }),
+      entry(2),
+    ]);
+
+    expect(markup.match(/valor decidido por um adulto/g)).toHaveLength(1);
+  });
+
+  it("says what the rule would have paid, and the reason", async () => {
+    const markup = await markupOf([
+      earn({ ruleHours: 3, reason: "Ficou só uma hora" }),
+    ]);
+
+    expect(markup).toContain("Pela regra: 3h");
+    expect(markup).toContain("Motivo: Ficou só uma hora");
+  });
+
+  it("invents neither when there is none", async () => {
+    const markup = await markupOf([earn({ ruleHours: null, reason: null })]);
+
+    expect(markup).not.toContain("Pela regra");
+    expect(markup).not.toContain("Motivo");
+  });
+
+  it("shows an approved zero, which has no ledger line (D10)", async () => {
+    const markup = await markupOf([
+      {
+        id: 9,
+        kind: "zero",
+        occurredOn: "2026-09-02",
+        label: "Lavar o carro",
+        override: null,
+      },
+    ]);
+
+    expect(markup).toContain("Lavar o carro");
+    expect(markup).toContain("0 min");
+    expect(markup).not.toContain("+0 min");
+    expect(markup).not.toContain("valor decidido por um adulto");
+  });
+
+  it("marks a zero an adult decided", async () => {
+    const markup = await markupOf([
+      {
+        id: 9,
+        kind: "zero",
+        occurredOn: "2026-09-02",
+        label: "Sair com os amigos",
+        override: { ruleHours: 3, reason: null },
+      },
+    ]);
+
+    expect(markup).toContain("valor decidido por um adulto");
+    expect(markup).toContain("Pela regra: 3h");
   });
 });

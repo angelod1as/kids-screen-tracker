@@ -236,6 +236,14 @@ export function AdultGuide({ data }: { data: HowItWorksData }) {
             e dar o valor de uma atividade avulsa pedida.
           </li>
           <li>
+            <strong>Valor final:</strong> em vez de corrigir o relato, dá para
+            dizer quanto a entrada vale, em horas, em qualquer atividade, fixa
+            inclusive. A regra não é consultada. O desgaste do dia continua
+            contando o tempo que a atividade durou, e a repetição e o bônus a
+            contam como feita. O menino vê no histórico que o valor foi decidido
+            por um adulto, quanto a regra daria e o motivo, se você escrever um.
+          </li>
+          <li>
             <strong>Ordem:</strong> uma entrada não pode ser aprovada enquanto
             houver outra pendente anterior a ela, pela data e pela hora em que
             foi criada, dentro do período que a conta dela lê. A fila já lista

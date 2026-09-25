@@ -1,7 +1,9 @@
 import type {
+  AdultValue,
   HistoryEntry,
   LedgerEntry,
   RejectedEntry,
+  ZeroEntry,
 } from "../app/actions/history";
 import { formatDay, formatSignedHours } from "./dates";
 import { formatDuration, formatHours } from "./hours";
@@ -35,6 +37,8 @@ export function EntryList({
       {entries.map((entry) =>
         entry.kind === "rejected" ? (
           <RejectedRow entry={entry} key={`rejected-${entry.id}`} />
+        ) : entry.kind === "zero" ? (
+          <ZeroRow entry={entry} key={`zero-${entry.id}`} />
         ) : (
           <li className={ROW_CLASS} key={`ledger-${entry.id}`}>
             <span className="flex min-w-0 flex-col gap-1">
@@ -43,7 +47,11 @@ export function EntryList({
               </span>
               <span className={`${META_CLASS} text-black`}>
                 {kindLabel(entry.kind)} · {formatDay(entry.occurredOn)}
+                {entry.override === null ? "" : ` · ${OVERRIDDEN_TEXT}`}
               </span>
+              {entry.override === null ? null : (
+                <AdultValueText override={entry.override} />
+              )}
             </span>
             <span className={`${READOUT_CLASS} shrink-0 text-black`}>
               {formatSignedHours(signedHours(entry))}
@@ -79,6 +87,50 @@ function RejectedRow({ entry }: { entry: RejectedEntry }) {
         )}
       </span>
       <span className={`${READOUT_CLASS} shrink-0 text-white`}>
+        {formatHours(0)}
+      </span>
+    </li>
+  );
+}
+
+/** D50: said on the row, so a number that differs from the rule is not read as a bug. */
+const OVERRIDDEN_TEXT = "valor decidido por um adulto";
+
+/** No invented line: the rule's number only where it could price, the reason only if written. */
+function AdultValueText({ override }: { override: AdultValue }) {
+  return (
+    <>
+      {override.ruleHours === null ? null : (
+        <span className="break-words text-base text-black">
+          Pela regra: {formatHours(override.ruleHours)}
+        </span>
+      )}
+      {override.reason === null ? null : (
+        <span className="break-words text-base text-black">
+          Motivo: {override.reason}
+        </span>
+      )}
+    </>
+  );
+}
+
+/** D10: an approved zero stays visible; it counted for the cooldown and the bucket. */
+function ZeroRow({ entry }: { entry: ZeroEntry }) {
+  return (
+    <li className={ROW_CLASS}>
+      <span className="flex min-w-0 flex-col gap-1">
+        <span className="break-words text-base font-bold text-black">
+          {entry.label}
+        </span>
+        <span className={`${META_CLASS} text-black`}>
+          {kindLabel("earn")} · {formatDay(entry.occurredOn)}
+          {entry.override === null ? "" : ` · ${OVERRIDDEN_TEXT}`}
+        </span>
+        {entry.override === null ? null : (
+          <AdultValueText override={entry.override} />
+        )}
+      </span>
+      <span className={`${READOUT_CLASS} shrink-0 text-black`}>
         {formatHours(0)}
       </span>
     </li>

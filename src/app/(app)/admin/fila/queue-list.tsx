@@ -10,7 +10,11 @@ import { ChoiceGroup } from "../../../../ui/choice";
 import { formatDay } from "../../../../ui/dates";
 import { failureText, RESYNCED_TEXT } from "../../../../ui/failure";
 import { Field } from "../../../../ui/field";
-import { formatHours, formatRecordedDuration } from "../../../../ui/hours";
+import {
+  formatHours,
+  formatRecordedDuration,
+  parseTypedHours,
+} from "../../../../ui/hours";
 import { Panel, PanelText } from "../../../../ui/panel";
 import { PendingMark } from "../../../../ui/pending";
 import { Select } from "../../../../ui/select";
@@ -110,15 +114,23 @@ export function canApprove(
   minutes: string,
   grade: number | null = null,
   value = "",
+  override = "",
 ): boolean {
   if (entry.blockedBy !== null) return false;
 
+  // D50: the adult's final number stands in for the grade or value the rule lacks.
+  const overridden = editing && override.trim() !== "";
+  if (overridden && parseTypedHours(override) === null) return false;
+
   // The stopwatch never grades, so a graded activity waits for the adult's grade (D37).
-  const graded = entry.qualityGraded && (grade ?? entry.quality) === null;
+  const graded =
+    !overridden && entry.qualityGraded && (grade ?? entry.quality) === null;
 
   // D49: a `free` activity a boy requested has no value until an adult types one.
   const priced =
-    entry.calcMode !== "free" || Number(value.replace(",", ".")) >= 0.01;
+    overridden ||
+    entry.calcMode !== "free" ||
+    Number(value.replace(",", ".")) >= 0.01;
 
   if (!editing) return !graded && entry.calcMode !== "free";
 
@@ -149,6 +161,8 @@ type Edits = {
   durationMinutes?: number;
   quality?: number | null;
   freeValue?: number;
+  overrideHours?: number;
+  overrideReason?: string | null;
   note?: string | null;
 };
 
@@ -173,6 +187,8 @@ function Card({
   const [note, setNote] = useState(entry.note ?? "");
   const [reason, setReason] = useState("");
   const [value, setValue] = useState("");
+  const [override, setOverride] = useState("");
+  const [overrideReason, setOverrideReason] = useState("");
 
   const typed = Number(minutes);
   const timed = entry.durationMinutes !== null;
@@ -264,6 +280,34 @@ function Card({
             </>
           ) : null}
 
+          {/* D50: a second path beside correcting the report, for any mode. */}
+          <div className="flex flex-col gap-1">
+            <Field
+              id={`valor-final-${entry.id}`}
+              inputMode="decimal"
+              label="Valor final em horas (opcional)"
+              onChange={(event) => setOverride(event.target.value)}
+              type="text"
+              value={override}
+            />
+            <p className="text-base text-black">
+              Vazio, o app calcula pela regra. Preenchido, vale este número, e o
+              menino vê no histórico que foi decisão de um adulto e quanto a
+              regra daria.
+            </p>
+          </div>
+
+          {override.trim() === "" ? null : (
+            <Field
+              id={`motivo-valor-${entry.id}`}
+              label="Motivo do valor final (opcional)"
+              maxLength={500}
+              onChange={(event) => setOverrideReason(event.target.value)}
+              type="text"
+              value={overrideReason}
+            />
+          )}
+
           <Field
             id={`nota-${entry.id}`}
             label="Observação"
@@ -299,16 +343,26 @@ function Card({
         <div className="lg:flex-1">
           <Button
             disabled={
-              busy || !canApprove(entry, editing, minutes, grade, value)
+              busy ||
+              !canApprove(entry, editing, minutes, grade, value, override)
             }
             onClick={() =>
               onApprove(
                 editing
                   ? {
                       ...(timed ? { activityId, durationMinutes: typed } : {}),
-                      ...(entry.calcMode === "free"
+                      ...(entry.calcMode === "free" && value.trim() !== ""
                         ? { freeValue: Number(value.replace(",", ".")) }
                         : {}),
+                      ...(override.trim() === ""
+                        ? {}
+                        : {
+                            overrideHours: Number(override.replace(",", ".")),
+                            overrideReason:
+                              overrideReason.trim() === ""
+                                ? null
+                                : overrideReason.trim(),
+                          }),
                       quality: grade,
                       note: note.trim() === "" ? null : note.trim(),
                     }
