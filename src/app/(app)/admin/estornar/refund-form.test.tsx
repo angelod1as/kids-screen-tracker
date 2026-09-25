@@ -151,6 +151,36 @@ describe("the confirmation (D52)", () => {
     expect(container.textContent).toContain("Estornado 1h para Kid2.");
   });
 
+  it("closes when the form behind it changes, so nothing stale is confirmed", async () => {
+    await type("#horas", "1");
+    await act(async () => refundButton().click());
+    await type("#horas", "2");
+
+    expect(dialog()).toBeNull();
+    expect(ledger.refundHoursAction).not.toHaveBeenCalled();
+  });
+
+  it("writes the request it previewed, not the form as it is when confirmed", async () => {
+    let answer: (preview: unknown) => void = () => {};
+    ledger.previewRefundAction.mockReturnValue(
+      new Promise((resolve) => {
+        answer = resolve;
+      }),
+    );
+
+    await type("#horas", "1");
+    await act(async () => refundButton().click());
+    await type("#horas", "2");
+    await act(async () =>
+      answer({ displayName: "Kid2", hours: 1, before: 2, after: 3 }),
+    );
+    await act(async () => button("Confirmar estorno").click());
+
+    expect(ledger.refundHoursAction).toHaveBeenCalledWith(
+      expect.objectContaining({ userId: 7, hours: 1 }),
+    );
+  });
+
   it("writes nothing when cancelled", async () => {
     await type("#horas", "1");
     await act(async () => refundButton().click());

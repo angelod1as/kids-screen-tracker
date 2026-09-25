@@ -87,6 +87,14 @@ describe("the confirmation (D52)", () => {
     expect(container.textContent).toContain("Liberado 1h para Kid2.");
   });
 
+  it("closes when the form behind it changes, so nothing stale is confirmed", async () => {
+    await act(async () => button("Liberar").click());
+    await act(async () => button("2h").click());
+
+    expect(dialog()).toBeNull();
+    expect(ledger.releaseHoursAction).not.toHaveBeenCalled();
+  });
+
   it("writes nothing when cancelled", async () => {
     await act(async () => button("Liberar").click());
     await act(async () => button("Cancelar").click());

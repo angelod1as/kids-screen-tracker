@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-
+import type { Release } from "../../../../db/ledger";
 import { Button } from "../../../../ui/button";
 import type { Choice } from "../../../../ui/choice";
 import { ChoiceGroup } from "../../../../ui/choice";
@@ -36,7 +36,11 @@ export function ReleaseForm({ kids }: { kids: Kid[] }) {
   const [hours, setHours] = useState(DEFAULT_HOURS);
   const [destination, setDestination] = useState("");
 
-  const [preview, setPreview] = useState<MovementPreview | null>(null);
+  /** D52: confirming writes the request that was previewed, never the form as it is now. */
+  const [asked, setAsked] = useState<{
+    request: Release;
+    preview: MovementPreview;
+  } | null>(null);
   const [done, setDone] = useState<Movement | null>(null);
   const [failed, setFailed] = useState<string | null>(null);
   const [busy, startAction] = useTransition();
@@ -46,6 +50,7 @@ export function ReleaseForm({ kids }: { kids: Kid[] }) {
 
   function change(apply: () => void) {
     apply();
+    setAsked(null);
     setDone(null);
     setFailed(null);
   }
@@ -53,15 +58,15 @@ export function ReleaseForm({ kids }: { kids: Kid[] }) {
   function ask() {
     if (typed === null) return;
 
+    const request: Release = {
+      userId,
+      hours: typed,
+      destination: destination.trim() === "" ? null : destination.trim(),
+    };
+
     startAction(async () => {
       try {
-        setPreview(
-          await previewReleaseAction({
-            userId,
-            hours: typed,
-            destination: destination.trim() === "" ? null : destination.trim(),
-          }),
-        );
+        setAsked({ request, preview: await previewReleaseAction(request) });
         setFailed(null);
       } catch (error) {
         setFailed(previewFailureText(error));
@@ -70,23 +75,17 @@ export function ReleaseForm({ kids }: { kids: Kid[] }) {
   }
 
   function release() {
-    if (typed === null) return;
+    if (asked === null) return;
 
     startAction(async () => {
       try {
-        setDone(
-          await releaseHoursAction({
-            userId,
-            hours: typed,
-            destination: destination.trim() === "" ? null : destination.trim(),
-          }),
-        );
+        setDone(await releaseHoursAction(asked.request));
         setFailed(null);
       } catch (error) {
         setFailed(failureText(error));
       }
 
-      setPreview(null);
+      setAsked(null);
     });
   }
 
@@ -100,14 +99,14 @@ export function ReleaseForm({ kids }: { kids: Kid[] }) {
 
   return (
     <div className="flex flex-col gap-6">
-      {preview === null ? null : (
+      {asked === null ? null : (
         <ConfirmMovement
           action="Liberar"
           busy={busy}
           confirmLabel="Confirmar liberação"
-          onCancel={() => setPreview(null)}
+          onCancel={() => setAsked(null)}
           onConfirm={release}
-          preview={preview}
+          preview={asked.preview}
         />
       )}
 

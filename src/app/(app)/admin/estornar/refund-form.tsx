@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-
+import type { Refund } from "../../../../db/ledger";
 import { Button } from "../../../../ui/button";
 import { ConfirmMovement } from "../../../../ui/confirm-movement";
 import { failureText, previewFailureText } from "../../../../ui/failure";
@@ -36,7 +36,11 @@ export function RefundForm({ kids, today }: { kids: Kid[]; today: string }) {
   const [occurredOn, setOccurredOn] = useState(today);
   const [reason, setReason] = useState(DEFAULT_REFUND_REASON);
 
-  const [preview, setPreview] = useState<MovementPreview | null>(null);
+  /** D52: confirming writes the request that was previewed, never the form as it is now. */
+  const [asked, setAsked] = useState<{
+    request: Refund;
+    preview: MovementPreview;
+  } | null>(null);
   const [done, setDone] = useState<Movement | null>(null);
   const [failed, setFailed] = useState<string | null>(null);
   const [busy, startAction] = useTransition();
@@ -45,6 +49,7 @@ export function RefundForm({ kids, today }: { kids: Kid[]; today: string }) {
 
   function change(apply: () => void) {
     apply();
+    setAsked(null);
     setDone(null);
     setFailed(null);
   }
@@ -54,16 +59,16 @@ export function RefundForm({ kids, today }: { kids: Kid[]; today: string }) {
 
     if (typed === null || reason.trim() === "") return;
 
+    const request: Refund = {
+      userId,
+      hours: typed,
+      occurredOn,
+      reason: reason.trim(),
+    };
+
     startAction(async () => {
       try {
-        setPreview(
-          await previewRefundAction({
-            userId,
-            hours: typed,
-            occurredOn,
-            reason: reason.trim(),
-          }),
-        );
+        setAsked({ request, preview: await previewRefundAction(request) });
         setFailed(null);
       } catch (error) {
         setFailed(previewFailureText(error));
@@ -72,26 +77,17 @@ export function RefundForm({ kids, today }: { kids: Kid[]; today: string }) {
   }
 
   function refund() {
-    const typed = parseTypedHours(hours);
-
-    if (typed === null || reason.trim() === "") return;
+    if (asked === null) return;
 
     startAction(async () => {
       try {
-        setDone(
-          await refundHoursAction({
-            userId,
-            hours: typed,
-            occurredOn,
-            reason: reason.trim(),
-          }),
-        );
+        setDone(await refundHoursAction(asked.request));
         setFailed(null);
       } catch (error) {
         setFailed(failureText(error));
       }
 
-      setPreview(null);
+      setAsked(null);
     });
   }
 
@@ -105,14 +101,14 @@ export function RefundForm({ kids, today }: { kids: Kid[]; today: string }) {
 
   return (
     <div className="flex flex-col gap-6">
-      {preview === null ? null : (
+      {asked === null ? null : (
         <ConfirmMovement
           action="Estornar"
           busy={busy}
           confirmLabel="Confirmar estorno"
-          onCancel={() => setPreview(null)}
+          onCancel={() => setAsked(null)}
           onConfirm={refund}
-          preview={preview}
+          preview={asked.preview}
         />
       )}
 
