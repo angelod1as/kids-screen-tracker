@@ -41,6 +41,16 @@ export const UNCERTAIN_TEXT =
 export const REFUSED_TEXT =
   "O servidor recusou o pedido. A tela pode estar desatualizada ou a sua entrada no app pode ter expirado: recarregue a página, confira o que está salvo e só então tente de novo.";
 
+/** A preview writes nothing (D52), so here, unlike `failureText`, that much is certain. */
+export function previewFailureText(
+  error: unknown,
+  online: boolean = isOnline(),
+): string {
+  return failureKind(error, online) === "refused"
+    ? "O servidor recusou o pedido, e nada foi lançado. Recarregue a página, confira o que está salvo e só então tente de novo."
+    : "A resposta do servidor não chegou, e nada foi lançado: sem ela não há saldo para conferir. Confira a internet e toque de novo.";
+}
+
 /**
  * The session lives in the database (D16, D17), so a failed connection does not
  * erase it. Not "nothing is lost": D16 still abandons a session paused over 12 h.
