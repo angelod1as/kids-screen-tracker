@@ -209,7 +209,12 @@ db_files="$(docker exec "$app" sh -c 'ls -A /data' | tr '\n' ' ')"
 ok "/data is empty"
 
 section "migrate creates the schema from zero"
-db_cli "$app" db-migrate.mjs
+migrate_output="$(db_cli "$app" db-migrate.mjs)"
+printf '%s\n' "$migrate_output"
+case "$migrate_output" in
+  *": ${committed_migrations} in the database, ${committed_migrations} in this image"*) ;;
+  *) fail "migrate did not report both counts" ;;
+esac
 summary="$(db_summary "$app")"
 expected="migrations=${committed_migrations} users=0 categories=0 activities=0 user_version=0"
 [ "$summary" = "$expected" ] || fail "expected [${expected}], got [${summary}]"

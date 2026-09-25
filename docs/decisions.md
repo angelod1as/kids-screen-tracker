@@ -1221,17 +1221,25 @@ roda: a `main`, além do PR.
 Coolify, e o painel não pergunta pelo CI. A decisão descreve o caminho
 automático, não tranca o manual.
 
-**Emenda (#23) — a migration não vai no "Pre-deployment command".** O campo fica
-vazio. No Coolify 4.3.21 ele roda com `docker exec` no container que está
-servindo, antes de a imagem nova ser construída: o banco é o real, mas a pasta
-`drizzle/` é a da imagem anterior, então a migration nova não é vista, o
-`db-migrate` sai com 0 e o deploy segue. O "Post-deployment command" roda na
-imagem nova, mas depois de o código novo estar no ar, e sua falha não reprova o
-deploy. Nenhum dos dois cumpre o que `deploy.md` exige de uma migration: falhar
-uma vez, legível, com o schema velho servindo. A migration continua manual, e
-`deploy.md` diz como conferir que o banco está em dia. Evidência, com trechos e
-links, em `deploy.md`, "Por que não pelo Pre-deployment command". O caminho
-automático que substitui o manual é decisão a tomar, na #23.
+**Emenda (#23) — a migration roda no "Post-deployment command".** O Coolify
+roda `db-migrate.mjs` sozinho, no container novo, depois de ele ficar saudável.
+O `db-migrate` termina imprimindo as migrations do banco e as da imagem, e o
+log do deploy mostra que o banco está em dia sem outro comando.
+
+O "Pre-deployment command" fica vazio. No Coolify 4.3.21 ele roda com
+`docker exec` no container que está servindo, antes de a imagem nova ser
+construída: a pasta `drizzle/` é a da imagem anterior, a migration nova não é
+vista e o `db-migrate` sai com 0 sem aplicar nada.
+
+**Por quê.** Esquecer o comando manual quebrou a tela ao menos uma vez. O preço
+do post-deploy é o código novo servir contra o schema velho por alguns
+segundos, e uma migration que falha deixar o deploy verde, com o erro no log e
+as telas novas quebradas até alguém agir. O dono aceitou (25/09/2026): o app é
+caseiro e ficar fora um minuto não é problema. Continua valendo o que
+`deploy.md` recusa: a migration não roda no start do container, e não há
+crash-loop, porque o post-deploy roda uma vez por deploy. Evidência, com trechos
+e links, em `deploy.md`, "No Coolify" e "Por que não pelo Pre-deployment
+command".
 
 ---
 
