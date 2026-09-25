@@ -42,7 +42,7 @@ export function ConfirmMovement({
 
   return (
     <div
-      aria-label="Confirmar"
+      aria-label={confirmLabel}
       aria-modal="true"
       className={`${SURFACE_BG_CLASS} ${NAV_SAFE_BOTTOM_CLASS} fixed inset-0 z-10 overflow-y-auto`}
       onKeyDown={(event) => {

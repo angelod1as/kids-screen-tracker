@@ -112,7 +112,7 @@ export function RefundForm({ kids, today }: { kids: Kid[]; today: string }) {
         />
       )}
 
-      {/* aria-modal promises the rest is out of reach (D53). */}
+      {/* The form is out of reach; leaving by the nav is a cancel (D53). */}
       <div className="flex flex-col gap-6" inert={asked !== null}>
         {failed === null ? null : (
           <p className={`${BORDER_CLASS} bg-white p-4 text-lg text-black`}>
