@@ -1,5 +1,3 @@
-import type { Locks } from "../db/pending";
-
 /**
  * What a failed server action says on screen (#29). Only a `digest` proves the
  * server answered; anything else may already be written, so the default is
@@ -42,40 +40,6 @@ export const UNCERTAIN_TEXT =
 
 export const REFUSED_TEXT =
   "O servidor recusou o pedido. A tela pode estar desatualizada ou a sua entrada no app pode ter expirado: recarregue a página, confira o que está salvo e só então tente de novo.";
-
-/**
- * On Configuration the lasting refusal is D37's lock, so the text names what ends
- * it instead of a reload that would be refused again.
- */
-export function configFailureText(
-  error: unknown,
-  locks: Locks | null,
-  online: boolean = isOnline(),
-): string {
-  if (
-    failureKind(error, online) !== "refused" ||
-    locks === null ||
-    locks.queued + locks.running === 0
-  ) {
-    return failureText(error, online);
-  }
-
-  const why =
-    locks.queued > 0 && locks.running > 0
-      ? "há entrada esperando na fila e cronômetro aberto"
-      : locks.queued > 0
-        ? "há entrada esperando na fila"
-        : "há cronômetro aberto";
-
-  const what =
-    locks.queued > 0 && locks.running > 0
-      ? "Decida a fila e espere o cronômetro ser parado"
-      : locks.queued > 0
-        ? "Decida a fila primeiro"
-        : "Espere o cronômetro ser parado";
-
-  return `O servidor recusou o pedido: ${why}, e o que define o valor do que já foi feito não muda agora. ${what}, e então tente de novo.`;
-}
 
 /**
  * The session lives in the database (D16, D17), so a failed connection does not

@@ -14,7 +14,7 @@ import {
   MIN_RETURN_BONUS_AFTER_DAYS,
 } from "../../../../engine/limits";
 import { Button } from "../../../../ui/button";
-import { configFailureText, failureText } from "../../../../ui/failure";
+import { failureText } from "../../../../ui/failure";
 import { Field } from "../../../../ui/field";
 import {
   formatDecimalHours,
@@ -331,15 +331,12 @@ export function CategoryList({
         setLocks(await fetchLocksAction());
         setFailed(null);
       } catch (error) {
-        let fresh: Locks | null = null;
         try {
-          fresh = await fetchLocksAction();
-          setLocks(fresh);
+          setLocks(await fetchLocksAction());
         } catch {
           // The list already says something went wrong.
         }
-        // D37's refusal says what is under way instead of sending the adult to reload.
-        setFailed(configFailureText(error, fresh));
+        setFailed(failureText(error));
       }
     });
   }

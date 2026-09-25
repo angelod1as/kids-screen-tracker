@@ -9,7 +9,7 @@ import type { Refused } from "../../../../db/refusal";
 import { DEFAULT_MIN_SESSION_MINUTES } from "../../../../engine/timer";
 import { Button } from "../../../../ui/button";
 import { ChoiceGroup } from "../../../../ui/choice";
-import { configFailureText } from "../../../../ui/failure";
+import { failureText } from "../../../../ui/failure";
 import { Field } from "../../../../ui/field";
 import {
   formatDecimalHours,
@@ -21,7 +21,6 @@ import { Select } from "../../../../ui/select";
 import { BORDER_CLASS, HEADING_CLASS } from "../../../../ui/style";
 import {
   createActivityAction,
-  fetchLocksAction,
   setActivityActiveAction,
   updateActivityAction,
 } from "../../../actions/config";
@@ -273,14 +272,7 @@ export function ActivityList({
         setFailed(null);
         onChanged();
       } catch (error) {
-        // `locks` came with the page; D37's refusal is read fresh.
-        let fresh: Locks | null = null;
-        try {
-          fresh = await fetchLocksAction();
-        } catch {
-          // Nothing to add to a failure already on screen.
-        }
-        setFailed(configFailureText(error, fresh));
+        setFailed(failureText(error));
       }
     });
   }
