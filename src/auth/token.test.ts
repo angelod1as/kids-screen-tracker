@@ -56,11 +56,8 @@ describe("a token this app signed", () => {
   });
 
   it("carries a username and an expiry, and nothing else", () => {
-    // No password, obviously — but also no role and no user id. Both are read
-    // from the database on every request instead, so a deactivated person is
-    // logged out on their next click rather than in thirty days, and a
-    // database rebuilt from the seed cannot leave a month-old cookie pointing
-    // at a different row.
+    // No role or id either: `currentSession` reads them per request, so a
+    // deactivation bites on the next click and a reseed cannot remap a cookie.
     const value = signSessionToken(issuedAt("kid2", NOW), SECRET);
     const payload = JSON.parse(
       Buffer.from(value.split(".")[0] ?? "", "base64url").toString("utf8"),
@@ -139,10 +136,8 @@ describe("a value that is not a token at all", () => {
   });
 
   it("refuses a correctly signed payload that is not a session", () => {
-    // The signature check passes here and the parse is what has to refuse:
-    // `verifySessionToken` returns a typed object, and a caller that trusted a
-    // `username` of `undefined` would look up nobody and get whatever the
-    // database does with that.
+    // The signature passes; the parse must refuse, or a caller would trust a
+    // `username` of `undefined`.
     const payload = Buffer.from(JSON.stringify([1, 2, 3]), "utf8").toString(
       "base64url",
     );
@@ -157,9 +152,8 @@ describe("a value that is not a token at all", () => {
 });
 
 describe("a secret too short to sign with (#12)", () => {
-  // Varlock guarantees the variable exists; nothing guaranteed it was any
-  // good. The security review set it to "x" and forged a valid cookie in 26
-  // attempts, and set it to "" and watched tokens verify normally.
+  // Varlock checks the variable exists, not that it is any good: with "x" a
+  // valid cookie was forged in 26 attempts, and with "" tokens verified.
   const WEAK = ["", "x", "short-secret", "a".repeat(31)];
 
   it.each(WEAK.map((secret) => ({ length: secret.length, secret })))(
@@ -201,10 +195,8 @@ describe("a secret too short to sign with (#12)", () => {
   });
 
   it("refuses one Varlock never resolved, with the same message", () => {
-    // `ENV.SESSION_SECRET` is typed `string` and is `undefined` at runtime when
-    // Varlock could not read the file — `next dev` prints its report and keeps
-    // serving. Against a running instance in that state, the check read
-    // `undefined.length` and the deploy saw a TypeError from a minified chunk.
+    // Typed `string`, but `undefined` when Varlock could not read the file and
+    // `next dev` kept serving; the check then threw a bare TypeError.
     expect(() =>
       assertUsableSecret(undefined as unknown as string),
     ).toThrowError(/not set[\s\S]*openssl rand/);

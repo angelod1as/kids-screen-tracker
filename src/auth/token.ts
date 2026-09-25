@@ -95,7 +95,6 @@ export function verifySessionToken(
   return token;
 }
 
-/** Builds a token that expires `SESSION_TTL_MS` after `nowMs`. */
 export function issuedAt(username: string, nowMs: number): SessionToken {
   return { username, expiresAt: nowMs + SESSION_TTL_MS };
 }
