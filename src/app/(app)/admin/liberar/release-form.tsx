@@ -110,64 +110,69 @@ export function ReleaseForm({ kids }: { kids: Kid[] }) {
         />
       )}
 
-      {failed === null ? null : (
-        <p className={`${BORDER_CLASS} bg-white p-4 text-lg text-black`}>
-          {failed}
-        </p>
-      )}
-
-      {done === null ? null : (
-        <section className={`${BORDER_CLASS} flex flex-col gap-3 bg-white p-4`}>
-          <p className="text-lg font-bold text-black">
-            Liberado {formatHours(done.hours)} para {kid?.displayName}
-            {destination.trim() === "" ? "" : ` em ${destination.trim()}`}.
+      {/* aria-modal promises the rest is out of reach (D52). */}
+      <div className="flex flex-col gap-6" inert={asked !== null}>
+        {failed === null ? null : (
+          <p className={`${BORDER_CLASS} bg-white p-4 text-lg text-black`}>
+            {failed}
           </p>
-          <p
-            className={`${balanceToneClass(done.balance)} text-2xl font-bold tabular-nums`}
+        )}
+
+        {done === null ? null : (
+          <section
+            className={`${BORDER_CLASS} flex flex-col gap-3 bg-white p-4`}
           >
-            {formatHours(done.balance)}
-          </p>
-          <p className="text-base text-black">
-            Agora, nos aparelhos: ligue o que você liberou e ajuste o limite à
-            mão. O app não liga nem desliga nada — ele só guarda o saldo.
-          </p>
-        </section>
-      )}
+            <p className="text-lg font-bold text-black">
+              Liberado {formatHours(done.hours)} para {kid?.displayName}
+              {destination.trim() === "" ? "" : ` em ${destination.trim()}`}.
+            </p>
+            <p
+              className={`${balanceToneClass(done.balance)} text-2xl font-bold tabular-nums`}
+            >
+              {formatHours(done.balance)}
+            </p>
+            <p className="text-base text-black">
+              Agora, nos aparelhos: ligue o que você liberou e ajuste o limite à
+              mão. O app não liga nem desliga nada — ele só guarda o saldo.
+            </p>
+          </section>
+        )}
 
-      <KidSelect
-        kids={kids}
-        onChange={(chosen) => change(() => setUserId(chosen))}
-        value={userId}
-      />
+        <KidSelect
+          kids={kids}
+          onChange={(chosen) => change(() => setUserId(chosen))}
+          value={userId}
+        />
 
-      <ChoiceGroup
-        legend="Quanto"
-        onSelect={(chosen) => change(() => setHours(String(chosen)))}
-        options={HOUR_CHOICES}
-        value={typed ?? 0}
-      />
+        <ChoiceGroup
+          legend="Quanto"
+          onSelect={(chosen) => change(() => setHours(String(chosen)))}
+          options={HOUR_CHOICES}
+          value={typed ?? 0}
+        />
 
-      <Field
-        id="horas"
-        inputMode="decimal"
-        label="Horas"
-        onChange={(event) => change(() => setHours(event.target.value))}
-        type="text"
-        value={hours}
-      />
+        <Field
+          id="horas"
+          inputMode="decimal"
+          label="Horas"
+          onChange={(event) => change(() => setHours(event.target.value))}
+          type="text"
+          value={hours}
+        />
 
-      <Field
-        id="destino"
-        label="Destino (opcional)"
-        maxLength={500}
-        onChange={(event) => change(() => setDestination(event.target.value))}
-        type="text"
-        value={destination}
-      />
+        <Field
+          id="destino"
+          label="Destino (opcional)"
+          maxLength={500}
+          onChange={(event) => change(() => setDestination(event.target.value))}
+          type="text"
+          value={destination}
+        />
 
-      <Button disabled={busy || typed === null} onClick={ask} type="button">
-        Liberar
-      </Button>
+        <Button disabled={busy || typed === null} onClick={ask} type="button">
+          Liberar
+        </Button>
+      </div>
     </div>
   );
 }

@@ -112,68 +112,73 @@ export function RefundForm({ kids, today }: { kids: Kid[]; today: string }) {
         />
       )}
 
-      {failed === null ? null : (
-        <p className={`${BORDER_CLASS} bg-white p-4 text-lg text-black`}>
-          {failed}
-        </p>
-      )}
-
-      {done === null ? null : (
-        <section className={`${BORDER_CLASS} flex flex-col gap-2 bg-white p-4`}>
-          <p className="text-lg font-bold text-black">
-            Estornado {formatHours(done.hours)} para {kid?.displayName}.
+      {/* aria-modal promises the rest is out of reach (D52). */}
+      <div className="flex flex-col gap-6" inert={asked !== null}>
+        {failed === null ? null : (
+          <p className={`${BORDER_CLASS} bg-white p-4 text-lg text-black`}>
+            {failed}
           </p>
-          <p
-            className={`${balanceToneClass(done.balance)} text-2xl font-bold tabular-nums`}
+        )}
+
+        {done === null ? null : (
+          <section
+            className={`${BORDER_CLASS} flex flex-col gap-2 bg-white p-4`}
           >
-            {formatHours(done.balance)}
-          </p>
-          <p className="text-base text-black">
-            Aparece no histórico dele como estorno, no dia que você escolheu.
-          </p>
-        </section>
-      )}
+            <p className="text-lg font-bold text-black">
+              Estornado {formatHours(done.hours)} para {kid?.displayName}.
+            </p>
+            <p
+              className={`${balanceToneClass(done.balance)} text-2xl font-bold tabular-nums`}
+            >
+              {formatHours(done.balance)}
+            </p>
+            <p className="text-base text-black">
+              Aparece no histórico dele como estorno, no dia que você escolheu.
+            </p>
+          </section>
+        )}
 
-      <KidSelect
-        kids={kids}
-        onChange={(chosen) => change(() => setUserId(chosen))}
-        value={userId}
-      />
+        <KidSelect
+          kids={kids}
+          onChange={(chosen) => change(() => setUserId(chosen))}
+          value={userId}
+        />
 
-      <Field
-        id="horas"
-        inputMode="decimal"
-        label="Horas"
-        onChange={(event) => change(() => setHours(event.target.value))}
-        type="text"
-        value={hours}
-      />
+        <Field
+          id="horas"
+          inputMode="decimal"
+          label="Horas"
+          onChange={(event) => change(() => setHours(event.target.value))}
+          type="text"
+          value={hours}
+        />
 
-      <Field
-        id="dia"
-        label="Dia"
-        max={today}
-        onChange={(event) => change(() => setOccurredOn(event.target.value))}
-        type="date"
-        value={occurredOn}
-      />
+        <Field
+          id="dia"
+          label="Dia"
+          max={today}
+          onChange={(event) => change(() => setOccurredOn(event.target.value))}
+          type="date"
+          value={occurredOn}
+        />
 
-      <Field
-        id="motivo"
-        label="Motivo"
-        maxLength={500}
-        onChange={(event) => change(() => setReason(event.target.value))}
-        type="text"
-        value={reason}
-      />
+        <Field
+          id="motivo"
+          label="Motivo"
+          maxLength={500}
+          onChange={(event) => change(() => setReason(event.target.value))}
+          type="text"
+          value={reason}
+        />
 
-      <Button
-        disabled={busy || !canRefund(hours, reason)}
-        onClick={ask}
-        type="button"
-      >
-        Estornar
-      </Button>
+        <Button
+          disabled={busy || !canRefund(hours, reason)}
+          onClick={ask}
+          type="button"
+        >
+          Estornar
+        </Button>
+      </div>
     </div>
   );
 }
