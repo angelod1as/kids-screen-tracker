@@ -2,7 +2,7 @@
 
 Vinte e cinco ambiguidades da spec, resolvidas e justificadas antes da primeira
 linha de código, mais as que cada fase mediu depois. Hoje são cinquenta e
-uma, D1–D51, mais dez emendas e as duas declarações da Fase 4, uma delas
+duas, D1–D52, mais dez emendas e as duas declarações da Fase 4, uma delas
 revogada.
 
 **Onde este documento e `spec.md` discordarem, este documento vence.**
@@ -226,6 +226,9 @@ carimbos de auditoria são instantes de verdade.
 **Por quê.** As chaves estrangeiras dos logs dependem delas, e o congelamento exige
 que um log de três meses atrás ainda saiba de que atividade veio. Item inativo
 some das listas de lançamento e continua legível no histórico.
+
+**Estendida pela D52 (#31):** uma entrada lançada por engano também não se
+apaga. Ela é anulada: sai do saldo e do motor, e fica no histórico.
 
 ### D15 — Mexer nas taxas não reescreve o passado
 
@@ -1788,3 +1791,86 @@ iguais e as sete tabelas antigas idênticas por hash, `integrity_check` ok e
 - Sair não apaga a assinatura. Num aparelho usado por duas contas, o aviso vai
   para a última que o ativou ou abriu `/conta` nele.
 - Falha de envio não deixa rastro: nem log, nem contador.
+
+---
+
+## A decisão que veio da #31
+
+### D52 — Entrada lançada por engano se anula, não se apaga
+
+O dono lançou 3 h para o menino errado, tentou desfazer com um estorno e
+estornou do outro. Desfazer era compensar com lançamento novo, e cada erro
+virava duas linhas no histórico de dois meninos.
+
+**Decisão.** O adulto **anula** uma entrada. Ela deixa de contar e continua no
+banco e no histórico, com quem anulou e quando. Nada é apagado (D14).
+
+- **O que se anula.** Registro aprovado — lançamento do adulto (D18), entrada
+  da fila, zero aprovado (D10) — e liberação e estorno. Pendência se decide na
+  fila; recusa não moveu nada (D19). Anular de novo é recusado com a frase.
+- **Onde mora.** `voided_at` e `voided_by`, nulos, em `activity_logs` e em
+  `ledger`. A atividade se anula **no registro**, que é o que o motor lê; a
+  liberação e o estorno, que não têm registro, na própria linha do ledger. Uma
+  linha de ledger que credita registro, quando pedida, anula o registro. Cada
+  fato fica num lugar só.
+- **O saldo** soma só o ledger que não está anulado nem credita registro
+  anulado. Volta exatamente ao que era antes da entrada.
+- **O motor não vê o anulado.** Ele sai do balde do dia (D3), da repetição (D6)
+  e da estreia da categoria (D47): o que não aconteceu não gasta torneira do
+  que vem depois. Vale para o lançamento, a fila e a calculadora.
+- **O passado congelado não se move (D15).** Quem congelou com o anulado dentro
+  do balde fica com o valor que tinha.
+- **Só o adulto (D33).** A guarda é `requireAdmin` no server action, e o menino
+  é lido da entrada, nunca do pedido.
+- **Dois toques.** "Anular" embaixo da linha, no histórico do menino aberto
+  pelo adulto; a confirmação mostra o saldo antes e depois, os dois do
+  servidor, e "Confirmar anulação" escreve.
+- **O menino vê a linha no lugar,** com as horas riscadas e "Anulado por
+  Admin1 em 25/09/2026. Não conta no saldo." Sem cor (D42): a frase diz, o
+  risco reforça.
+- **Sem aviso push (D51).**
+
+**Medido,** Mente a 1,5 com passo de 1 h, tudo no mesmo dia
+(`src/app/actions/void.test.ts`):
+
+| | 2 h por engano | 1 h real | anula | próxima 1 h real |
+|---|---|---|---|---|
+| anulando (**esta decisão**) | 2,25 h | 0,38 h | 0,38 h fica | **0,75 h** |
+| sem o engano | — | 1,50 h | — | 0,75 h |
+| o engano continuando no balde | 2,25 h | 0,38 h | — | 0,19 h |
+
+A hora congelada com o engano dentro perde 1,12 h e não é recalculada. Se o
+adulto quiser devolver, é um estorno, com motivo.
+
+**Considerado e descartado.**
+
+- *Apagar a linha.* O ledger é o que sustenta o saldo; sem a linha ninguém
+  reconstrói por que ele mudou.
+- *Um `status` novo, `voided`.* Exigiria reconstruir `activity_logs` em
+  produção e derrubar o gatilho que não deixa registro creditado sair de
+  `approved` (`0001`).
+- *Manter o anulado no balde, como o valor arbitrado da D50.* A D50 conta a
+  atividade porque ela aconteceu. A anulada não aconteceu: contar puniria a
+  hora real seguinte do menino, 0,19 h em vez de 0,75 h.
+- *Recalcular o que congelou depois.* É o que a D15 proíbe.
+
+**A migration não move saldo.** `0009` só adiciona as quatro colunas nulas,
+com `ALTER TABLE`: não reconstrói tabela nem toca em linha. Medido num banco
+construído com o código anterior (seed, dado de demonstração, uma pendência e
+um cronômetro aberto): saldos iguais (id 3: 10,83 h; id 4: −6,25 h) pela
+consulta antiga e pela nova, contagens iguais nas oito tabelas, colunas
+antigas idênticas por hash, prévia da pendência idêntica, `integrity_check` ok
+e `foreign_key_check` vazio.
+
+**Resíduos aceitos.**
+
+- Anular não se desfaz. Anulou errado, lança de novo.
+- Sem janela de tempo: dá para anular entrada de qualquer dia. O saldo muda
+  hoje, inclusive para baixo de zero.
+- A linha anulada fica na data em que a entrada aconteceu. Anular algo de
+  semanas atrás muda o saldo de hoje por uma linha que o menino pode não ver
+  sem rolar.
+- A hora congelada com o engano no balde fica paga a menos (tabela acima).
+- Nenhum `CHECK` amarra `voided_at` a `voided_by`, nem proíbe anular no ledger
+  uma linha que credita registro: seria reconstruir as duas tabelas, e só
+  `voidEntry` escreve as colunas.
