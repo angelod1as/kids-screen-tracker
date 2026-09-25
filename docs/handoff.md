@@ -5,7 +5,7 @@ Estado do projeto e como o trabalho anda, para uma sessão nova.
 **Retrato de 23/09/2026, `main` em `052d8cc` (PR #2).** Não se atualiza
 sozinho: confira com `gh pr list`, `gh issue list` e `git log -5`.
 
-Normativo é o [`decisions.md`](decisions.md) (47 decisões, D1–D47); convenções
+Normativo é o [`decisions.md`](decisions.md) (51 decisões, D1–D51); convenções
 no [`CLAUDE.md`](../CLAUDE.md). Se esta página discordar, vale o `decisions.md`.
 
 ---
@@ -30,7 +30,9 @@ As issues abertas foram migradas e renumeradas:
 | #9 | #32 | Dashboard analítico. Não construir agora. |
 | #10 | #28 | Contraste e alvo de toque em iPhone e Android reais. |
 
-Notificação push está fora do escopo (#31 do arquivo).
+Notificação push existe desde a #25, em dois gatilhos só (D51): pendência nova
+avisa os adultos, decisão avisa o menino dono. Sem as chaves VAPID no ambiente,
+fica desligada ([`deploy.md`](deploy.md), "Variáveis").
 
 Nada público traz nome de pessoa da família, endereço de produção, IP ou token.
 Nos exemplos: `admin1`, `admin2`, `kid1`, `kid2`.
