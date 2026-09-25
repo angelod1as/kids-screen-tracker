@@ -5,10 +5,11 @@ import { useState, useTransition } from "react";
 import type { ActivityInput, ActivityRow } from "../../../../db/activities";
 import type { CategoryRow } from "../../../../db/categories";
 import type { Locks } from "../../../../db/pending";
+import type { Refused } from "../../../../db/refusal";
 import { DEFAULT_MIN_SESSION_MINUTES } from "../../../../engine/timer";
 import { Button } from "../../../../ui/button";
 import { ChoiceGroup } from "../../../../ui/choice";
-import { configFailureText } from "../../../../ui/failure";
+import { failureText } from "../../../../ui/failure";
 import { Field } from "../../../../ui/field";
 import {
   formatDecimalHours,
@@ -20,7 +21,6 @@ import { Select } from "../../../../ui/select";
 import { BORDER_CLASS, HEADING_CLASS } from "../../../../ui/style";
 import {
   createActivityAction,
-  fetchLocksAction,
   setActivityActiveAction,
   updateActivityAction,
 } from "../../../actions/config";
@@ -257,21 +257,22 @@ export function ActivityList({
   const [failed, setFailed] = useState<string | null>(null);
   const [busy, startAction] = useTransition();
 
-  function act(call: () => Promise<ActivityRow[]>) {
+  function act(call: () => Promise<ActivityRow[] | Refused>) {
     startAction(async () => {
       try {
-        setRows(await call());
+        const result = await call();
+
+        // D37's sentence, as the server wrote it: it names the entry to decide first.
+        if ("refused" in result) {
+          setFailed(result.refused);
+          return;
+        }
+
+        setRows(result);
         setFailed(null);
         onChanged();
       } catch (error) {
-        // `locks` came with the page; D37's refusal is read fresh.
-        let fresh: Locks | null = null;
-        try {
-          fresh = await fetchLocksAction();
-        } catch {
-          // Nothing to add to a failure already on screen.
-        }
-        setFailed(configFailureText(error, fresh));
+        setFailed(failureText(error));
       }
     });
   }
@@ -354,7 +355,7 @@ export function ActivityList({
                         activity.id,
                         input,
                       );
-                      setEditing(null);
+                      if (!("refused" in next)) setEditing(null);
 
                       return next;
                     });

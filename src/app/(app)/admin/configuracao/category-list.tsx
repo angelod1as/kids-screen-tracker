@@ -5,6 +5,7 @@ import { useState, useTransition } from "react";
 import type { ActivityRow } from "../../../../db/activities";
 import type { CategoryInput, CategoryRow } from "../../../../db/categories";
 import type { Locks } from "../../../../db/pending";
+import type { Refused } from "../../../../db/refusal";
 import {
   asymptoteHours,
   isUsableDecayStep,
@@ -13,7 +14,7 @@ import {
   MIN_RETURN_BONUS_AFTER_DAYS,
 } from "../../../../engine/limits";
 import { Button } from "../../../../ui/button";
-import { configFailureText, failureText } from "../../../../ui/failure";
+import { failureText } from "../../../../ui/failure";
 import { Field } from "../../../../ui/field";
 import {
   formatDecimalHours,
@@ -309,23 +310,33 @@ export function CategoryList({
   const [failed, setFailed] = useState<string | null>(null);
   const [busy, startAction] = useTransition();
 
-  function act(call: () => Promise<CategoryRow[]>) {
+  function act(call: () => Promise<CategoryRow[] | Refused>) {
     startAction(async () => {
       try {
-        setRows(await call());
+        const result = await call();
+
+        // D37's sentence, as the server wrote it: it names the entry to decide first.
+        if ("refused" in result) {
+          setFailed(result.refused);
+          try {
+            setLocks(await fetchLocksAction());
+          } catch {
+            // The sentence already says what is waiting.
+          }
+          return;
+        }
+
+        setRows(result);
         // What is under way changes with the boy, so it is re-read every time.
         setLocks(await fetchLocksAction());
         setFailed(null);
       } catch (error) {
-        let fresh: Locks | null = null;
         try {
-          fresh = await fetchLocksAction();
-          setLocks(fresh);
+          setLocks(await fetchLocksAction());
         } catch {
           // The list already says something went wrong.
         }
-        // D37's refusal says what is under way instead of sending the adult to reload.
-        setFailed(configFailureText(error, fresh));
+        setFailed(failureText(error));
       }
     });
   }
@@ -422,7 +433,7 @@ export function CategoryList({
 
                   act(async () => {
                     const next = await updateCategoryAction(category.id, input);
-                    setEditing(null);
+                    if (!("refused" in next)) setEditing(null);
 
                     return next;
                   });

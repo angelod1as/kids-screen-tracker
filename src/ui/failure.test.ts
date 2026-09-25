@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 
 import {
-  configFailureText,
   failureKind,
   failureText,
   REFUSED_TEXT,
@@ -25,8 +24,6 @@ const REFUSED = Object.assign(
   ),
   { digest: "1234567890" },
 );
-
-const NO_LOCKS = { activityIds: [], categoryIds: [], queued: 0, running: 0 };
 
 describe("which failure it was (#29)", () => {
   it("reads an error the server answered with, digest and all, as a refusal", () => {
@@ -99,33 +96,6 @@ describe("what the screen says (#29)", () => {
 
     expect(timerFailureText(ABORTED, true)).toContain(
       "uma falha de conexão não apaga a sessão",
-    );
-  });
-});
-
-describe("what the Configuration screen says (D37)", () => {
-  it("points at the queue when the server refused and an entry is waiting", () => {
-    const text = configFailureText(REFUSED, { ...NO_LOCKS, queued: 1 }, true);
-
-    expect(text).toMatch(/há entrada esperando na fila/);
-    expect(text).toMatch(/Decida a fila primeiro/);
-  });
-
-  it("points at the stopwatch when only a session is open", () => {
-    const text = configFailureText(REFUSED, { ...NO_LOCKS, running: 1 }, true);
-
-    expect(text).toMatch(/há cronômetro aberto/);
-    expect(text).toMatch(/Espere o cronômetro ser parado/);
-  });
-
-  it("falls back to the plain sentences when nothing is under way", () => {
-    expect(configFailureText(REFUSED, NO_LOCKS, true)).toBe(REFUSED_TEXT);
-    expect(configFailureText(REFUSED, null, true)).toBe(REFUSED_TEXT);
-  });
-
-  it("does not blame a lock for a failure that may not be a refusal", () => {
-    expect(configFailureText(ABORTED, { ...NO_LOCKS, queued: 2 }, true)).toBe(
-      UNCERTAIN_TEXT,
     );
   });
 });

@@ -13,6 +13,7 @@ import type { Connection, Transaction } from "./client";
 import { writeTransaction } from "./client";
 import { categoryFirstDay, pendingDebutBefore } from "./debut";
 import { requireHours, requireNonNegativeHours, requireText } from "./input";
+import { RefusalError } from "./refusal";
 import { activities, activityLogs, categories, ledger, users } from "./schema";
 
 /**
@@ -473,8 +474,8 @@ export function approveLog(
     const blocking = pendingBefore(tx, edited);
 
     if (blocking !== undefined) {
-      throw new Error(
-        `log ${logId} cannot be approved yet: log ${blocking.id} (${blocking.activityName}, ${blocking.occurredOn}) comes before it and is still waiting; decide that one first`,
+      throw new RefusalError(
+        `Não dá para aprovar a entrada ${logId} ainda: a entrada ${blocking.id} (${blocking.activityName}, ${blocking.occurredOn}) vem antes dela e está esperando na fila. Decida essa primeiro.`,
       );
     }
 

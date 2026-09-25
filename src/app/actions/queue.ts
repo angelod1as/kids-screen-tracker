@@ -9,6 +9,8 @@ import {
   listPendingLogs,
   rejectLog,
 } from "../../db/queue";
+import type { Refused } from "../../db/refusal";
+import { refusedOr } from "../../db/refusal";
 import type { TimedActivity } from "../../db/timers";
 import { listTimedActivities } from "../../db/timers";
 import { notifyReviewed } from "../../push/notify";
@@ -40,17 +42,20 @@ export async function countPendingLogsAction(): Promise<number> {
   return countPendingLogs(getConnection());
 }
 
+/** D32's refusal is returned: thrown, production shows the browser only a digest. */
 export async function approveLogAction(
   logId: number,
   edits: LogEdits = {},
-): Promise<QueueData> {
+): Promise<QueueData | Refused> {
   const session = await requireAdmin();
 
-  approveLog(getConnection(), logId, session.userId, edits, new Date());
-  // D51: not awaited, and it never rejects; the push is a reminder, not the record.
-  void notifyReviewed(getConnection(), logId);
+  return refusedOr(() => {
+    approveLog(getConnection(), logId, session.userId, edits, new Date());
+    // D51: not awaited, and it never rejects; the push is a reminder, not the record.
+    void notifyReviewed(getConnection(), logId);
 
-  return queue();
+    return queue();
+  });
 }
 
 /** D19: nothing is credited or created. */

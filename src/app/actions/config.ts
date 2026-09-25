@@ -18,11 +18,13 @@ import {
 } from "../../db/categories";
 import type { Locks } from "../../db/pending";
 import { currentLocks } from "../../db/pending";
+import type { Refused } from "../../db/refusal";
+import { refusedOr } from "../../db/refusal";
 
 /**
  * `requireAdmin`, not `requireAccess`: a category belongs to nobody, so there is
- * no `targetUserId` to guard. Mutations answer with the whole list so the
- * asymptote on screen is never stale.
+ * no `targetUserId` to guard. Mutations answer with the whole list, so the
+ * asymptote is never stale, or with D37's refusal, word for word (#7).
  */
 
 export async function fetchCategoriesAction(): Promise<CategoryRow[]> {
@@ -52,24 +54,28 @@ export async function createCategoryAction(
 export async function updateCategoryAction(
   categoryId: number,
   input: CategoryInput,
-): Promise<CategoryRow[]> {
+): Promise<CategoryRow[] | Refused> {
   await requireAdmin();
 
-  updateCategory(getConnection(), categoryId, input);
+  return refusedOr(() => {
+    updateCategory(getConnection(), categoryId, input);
 
-  return listCategories(getConnection());
+    return listCategories(getConnection());
+  });
 }
 
 /** D14: nothing is deleted. */
 export async function setCategoryActiveAction(
   categoryId: number,
   active: boolean,
-): Promise<CategoryRow[]> {
+): Promise<CategoryRow[] | Refused> {
   await requireAdmin();
 
-  setCategoryActive(getConnection(), categoryId, active);
+  return refusedOr(() => {
+    setCategoryActive(getConnection(), categoryId, active);
 
-  return listCategories(getConnection());
+    return listCategories(getConnection());
+  });
 }
 
 export async function fetchActivitiesAction(
@@ -99,12 +105,14 @@ export async function updateActivityAction(
   categoryId: number,
   activityId: number,
   input: ActivityInput,
-): Promise<ActivityRow[]> {
+): Promise<ActivityRow[] | Refused> {
   await requireAdmin();
 
-  updateActivity(getConnection(), activityId, input);
+  return refusedOr(() => {
+    updateActivity(getConnection(), activityId, input);
 
-  return listActivities(getConnection(), categoryId);
+    return listActivities(getConnection(), categoryId);
+  });
 }
 
 /** D14: nothing is deleted. */
@@ -112,10 +120,12 @@ export async function setActivityActiveAction(
   categoryId: number,
   activityId: number,
   active: boolean,
-): Promise<ActivityRow[]> {
+): Promise<ActivityRow[] | Refused> {
   await requireAdmin();
 
-  setActivityActive(getConnection(), activityId, active);
+  return refusedOr(() => {
+    setActivityActive(getConnection(), activityId, active);
 
-  return listActivities(getConnection(), categoryId);
+    return listActivities(getConnection(), categoryId);
+  });
 }

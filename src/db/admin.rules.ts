@@ -403,7 +403,7 @@ export const ADMIN_CASES: readonly AdminCase[] = [
         ),
       )} — ${world.ledgerText()}`;
     },
-    expected: `refused: this entry cannot be launched yet: log 1 (${BOOK}, ${THAT_DAY}) comes before it and is still waiting; decide that one first — no ledger`,
+    expected: `refused: Não dá para lançar esta entrada ainda: a entrada 1 (${BOOK}, ${THAT_DAY}) vem antes dela e está esperando na fila. Decida essa primeiro. — no ledger`,
   },
   {
     rule: "an entry is not frozen out of the canonical order",
@@ -429,7 +429,7 @@ export const ADMIN_CASES: readonly AdminCase[] = [
         ),
       );
     },
-    expected: `refused: this entry cannot be launched yet: log 1 (${CAR}, 2026-09-06) comes before it and is still waiting; decide that one first`,
+    expected: `refused: Não dá para lançar esta entrada ainda: a entrada 1 (${CAR}, 2026-09-06) vem antes dela e está esperando na fila. Decida essa primeiro.`,
   },
   {
     rule: "an entry is not frozen out of the canonical order",
@@ -487,7 +487,7 @@ export const ADMIN_CASES: readonly AdminCase[] = [
         ),
       );
     },
-    expected: `refused: this entry cannot be launched yet: log 1 (${BOOK}, 2026-09-06) comes before it and is still waiting; decide that one first`,
+    expected: `refused: Não dá para lançar esta entrada ainda: a entrada 1 (${BOOK}, 2026-09-06) vem antes dela e está esperando na fila. Decida essa primeiro.`,
   },
   {
     rule: "an entry is not frozen out of the canonical order",
@@ -540,7 +540,7 @@ export const ADMIN_CASES: readonly AdminCase[] = [
         ),
       );
     },
-    expected: `refused: this entry cannot be launched yet: log 1 (${BOOK}, 2026-09-07) comes before it and is still waiting; decide that one first`,
+    expected: `refused: Não dá para lançar esta entrada ainda: a entrada 1 (${BOOK}, 2026-09-07) vem antes dela e está esperando na fila. Decida essa primeiro.`,
   },
   {
     rule: "an entry is not frozen out of the canonical order",
