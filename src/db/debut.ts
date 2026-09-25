@@ -1,4 +1,4 @@
-import { and, asc, eq, lt, min } from "drizzle-orm";
+import { and, asc, eq, isNull, lt, min } from "drizzle-orm";
 
 import type { Connection, Transaction } from "./client";
 import type { BlockingEntry } from "./queue";
@@ -23,6 +23,8 @@ export function categoryFirstDay(
       and(
         eq(activityLogs.userId, userId),
         eq(activityLogs.status, "approved"),
+        // D52.
+        isNull(activityLogs.voidedAt),
         eq(activityLogs.categoryId, categoryId),
       ),
     )

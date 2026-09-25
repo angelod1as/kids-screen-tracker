@@ -1,4 +1,4 @@
-import { and, asc, eq, gte, lte } from "drizzle-orm";
+import { and, asc, eq, gte, isNull, lte } from "drizzle-orm";
 
 import type { Calculation } from "../engine/calculate";
 import {
@@ -165,6 +165,8 @@ function calculationFor(db: Db, log: PendingLog): Calculation {
         eq(activityLogs.userId, log.userId),
         // D19: only an approved entry counts.
         eq(activityLogs.status, "approved"),
+        // D52.
+        isNull(activityLogs.voidedAt),
         gte(activityLogs.occurredOn, historyFrom),
         lte(activityLogs.occurredOn, historyTo),
       ),

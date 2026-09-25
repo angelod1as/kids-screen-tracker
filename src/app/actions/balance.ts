@@ -1,10 +1,10 @@
 "use server";
 
-import { eq } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 
 import { requireAccess } from "../../auth/guard";
 import { getDb } from "../../db";
-import { ledger } from "../../db/schema";
+import { activityLogs, ledger } from "../../db/schema";
 
 /**
  * #13: a forged POST with the brother's id is refused by the first line.
@@ -18,7 +18,15 @@ export async function fetchBalanceAction(
   const rows = getDb()
     .select({ kind: ledger.kind, hours: ledger.hours })
     .from(ledger)
-    .where(eq(ledger.userId, targetUserId))
+    // D52: a release or refund is voided on its row, an activity on its log.
+    .leftJoin(activityLogs, eq(ledger.activityLogId, activityLogs.id))
+    .where(
+      and(
+        eq(ledger.userId, targetUserId),
+        isNull(ledger.voidedAt),
+        isNull(activityLogs.voidedAt),
+      ),
+    )
     .all();
 
   const total = rows.reduce(
