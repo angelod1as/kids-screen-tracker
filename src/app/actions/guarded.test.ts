@@ -173,6 +173,8 @@ describe("the server actions this app has", () => {
       "logoutAction",
       "pauseTimerAction",
       "previewEntryAction",
+      "previewRefundAction",
+      "previewReleaseAction",
       "refundHoursAction",
       "rejectLogAction",
       "releaseHoursAction",
