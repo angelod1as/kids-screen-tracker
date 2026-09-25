@@ -1,8 +1,6 @@
 /**
- * Exact rational arithmetic for the decay (D39): in `double` a longer session
- * could pay less than a shorter one. `fromNumber` reads the decimal that was
- * typed, which keeps denominators small. No Node built-ins: it ships to
- * the client.
+ * Exact rationals for the decay (D39). `fromNumber` reads the typed decimal,
+ * which keeps denominators small. No Node built-ins: it ships to the client.
  */
 
 /*
@@ -43,7 +41,6 @@ function floorDiv(n: bigint, d: bigint): bigint {
   return n >= 0n || quotient * d === n ? quotient : quotient - 1n;
 }
 
-/** `n / d`, normalised. Throws on a zero denominator rather than inventing one. */
 export function fraction(n: bigint, d: bigint): Fraction {
   if (d === 0n) {
     throw new Error("a fraction cannot have a denominator of zero");
@@ -113,7 +110,6 @@ export function isPositive(value: Fraction): boolean {
   return value.n > 0n;
 }
 
-/** −1, 0 or 1, the way a comparator wants it. */
 export function compare(a: Fraction, b: Fraction): number {
   const left = a.n * b.d;
   const right = b.n * a.d;
@@ -142,12 +138,12 @@ const MAX_START_HALVINGS = 4096n;
  */
 const EXACT_TAIL_HALVINGS = 8192n;
 
-/** `2^-k` as an exact fraction. `k` may not be negative. */
+/** `k` may not be negative. */
 function halving(k: bigint): Fraction {
   return { n: 1n, d: 1n << k };
 }
 
-/** `floor(value / divisor)`, for a positive `divisor`. */
+/** For a positive `divisor`. */
 function floorQuotient(value: Fraction, divisor: Fraction): bigint {
   return floorDiv(value.n * divisor.d, value.d * divisor.n);
 }

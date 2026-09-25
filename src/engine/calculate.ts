@@ -16,29 +16,17 @@ import {
   toCents,
 } from "./exact";
 
-/**
- * Re-exported so existing callers keep working; they live in `./day` so the
- * stopwatch skips the engine.
- */
+/** Re-exported for existing callers; they live in `./day` so the stopwatch skips the engine. */
 export { daysBetween, saoPauloDay, shiftDate } from "./day";
 
-/**
- * The calculation engine: pure, one copy shared by the boy's calculator and the
- * admin's entry, applying D7's order over what was frozen before this entry
- * (D34).
- */
-
 /*
- * Safe to import from a `"use client"` component: the schema import is
- * `import type`, and `./day` and `./exact` are pure arithmetic.
+ * Pure, one copy shared by the boy's calculator and the admin's entry. Safe in a
+ * `"use client"` component: the schema import is `import type`.
  */
 
 const MINUTES_PER_HOUR = 60;
 
-/**
- * Same ceiling as `activity_logs_computed_hours_check`, refused here so the
- * queue shows a reason instead of a failing approval.
- */
+/** `activity_logs_computed_hours_check`'s ceiling, refused here so the queue shows a reason. */
 const MAX_ENTRY_HOURS = 1_000_000;
 
 /** The five grades the spec allows, and the same five the schema's CHECK holds. */
@@ -46,10 +34,7 @@ const QUALITY_GRADES = [0, 0.3, 0.5, 0.7, 1];
 
 const COOLDOWN_MULTIPLIER: Fraction = { n: 1n, d: 2n };
 
-/**
- * Past this, the rest of the decay folds into one line: a tiny step would
- * otherwise print thousands.
- */
+/** Past this the decay folds into one line: a tiny step would print thousands. */
 const MAX_DECAY_LINES = 8;
 
 /** Never "nada": the decay has no floor to announce (D2). */
@@ -57,10 +42,7 @@ const DEEP_DECAY_TEXT = "cada vez menos";
 
 export type CalcMode = Activity["calcMode"];
 
-/**
- * `Pick` on the schema row so a column that changes shape breaks this file at
- * compile time.
- */
+/** `Pick`, so a schema column that changes shape breaks this at compile time. */
 export type EngineActivity = Pick<
   Activity,
   | "id"
@@ -121,10 +103,7 @@ export function approvedOnly<
   return rows as (T & { status: "approved"; categoryId: number })[];
 }
 
-/**
- * D8's canonical position. No longer used by the arithmetic (D34); only D32
- * reads it.
- */
+/** D8's canonical position. Not used by the arithmetic (D34); only D32 reads it. */
 export type CanonicalPosition = { createdAt: Date; id: number } | "new";
 
 export type CalculationInput = {
@@ -145,15 +124,9 @@ export type CalculationInput = {
    * is the caller's job.
    */
   history: ApprovedLog[];
-  /**
-   * Declared, not assumed: a short window silently over-credits, so the engine
-   * refuses it.
-   */
+  /** Declared, not assumed: a short window silently over-credits. */
   historyFrom: string;
-  /**
-   * Declared for the same reason: under D34 a retroactive entry reads later
-   * days too.
-   */
+  /** Declared too: under D34 a retroactive entry reads later days. */
   historyTo: string;
   /**
    * The earliest `occurred_on` among this user's logs of this category frozen
@@ -163,13 +136,9 @@ export type CalculationInput = {
   categoryFirstDay: string | null;
 };
 
-/**
- * Addends, not a running total: signed, and they sum to `Calculation.hours`
- * exactly (D9).
- */
+/** Signed addends, not a running total: they sum to `Calculation.hours` exactly (D9). */
 export type ExplanationLine = {
   step: "base" | "quality" | "cooldown" | "decay" | "bonus";
-  /** pt-BR, written to be read by a teenager. */
   text: string;
   /** Signed hours, already rounded to 2 decimals. */
   hours: number;
@@ -184,9 +153,7 @@ export type Calculation = {
   lines: ExplanationLine[];
 };
 
-/**
- * Zero still means "fetch the day itself": the daily bucket (D3) lives there.
- */
+/** Zero still means "fetch the day itself": the daily bucket (D3) lives there. */
 export function historyLookbackDays(
   activity: Pick<EngineActivity, "repeatCooldownDays">,
   category: Pick<EngineCategory, "returnBonusPct" | "returnBonusAfterDays">,
@@ -206,10 +173,7 @@ export function historyWindowStart(
   return shiftDate(occurredOn, -historyLookbackDays(activity, category));
 }
 
-/**
- * The first day of the return bonus's window (D6). An entry of the category
- * before it is what makes this one a return (D47).
- */
+/** D6's bonus window start; an entry of the category before it makes this a return (D47). */
 export function returnBonusWindowStart(
   occurredOn: string,
   category: Pick<EngineCategory, "returnBonusAfterDays">,
@@ -217,10 +181,7 @@ export function returnBonusWindowStart(
   return shiftDate(occurredOn, -category.returnBonusAfterDays);
 }
 
-/**
- * Not zero because of D34: a retroactive entry reads what later days already
- * spent.
- */
+/** Not zero because of D34: a retroactive entry reads what later days spent. */
 export function historyWindowEnd(
   occurredOn: string,
   activity: Pick<EngineActivity, "repeatCooldownDays">,
@@ -235,7 +196,6 @@ export function calculateEarnedHours(input: CalculationInput): Calculation {
   assertOwnHistory(input);
   requireHistoryWindow(input);
 
-  // D34: the caller handed over exactly what was frozen before this entry.
   const counted = input.history;
 
   const drafts: DraftLine[] = [];
@@ -512,18 +472,14 @@ function awayText(
 }
 
 /**
- * `index * step` in floating point drifts ("2000,01h" for 2000h). `step` has
- * two decimals on every path that sets it, so rounding recovers the exact
- * bound.
+ * `index * step` in float drifts ("2000,01h" for 2000h); `step` has two decimals
+ * on every path that sets it, so rounding recovers the exact bound.
  */
 function bandBound(index: bigint, step: number): number {
   return Math.round(Number(index) * step * 100) / 100;
 }
 
-/**
- * States the rule ("de 1h a 2h"), not the boy's history; collapses when both
- * bounds round alike.
- */
+/** States the rule ("de 1h a 2h"), not the boy's history. */
 function bandText(index: bigint, step: number): string {
   const from = formatHours(bandBound(index, step));
   const to = formatHours(bandBound(index + 1n, step));
@@ -545,10 +501,7 @@ function fractionText(index: bigint): string {
   }
 }
 
-/**
- * `minutes / 60` exactly: 20 minutes is 1/3 of an hour, which no `double`
- * holds.
- */
+/** Exact: 20 minutes is 1/3 of an hour, which no `double` holds. */
 function exactHours(minutes: number): Fraction {
   return divide(fromNumber(minutes), fromNumber(MINUTES_PER_HOUR));
 }
@@ -557,7 +510,6 @@ function round2(value: number): number {
   return Math.round(value * 100) / 100;
 }
 
-/** pt-BR decimals: "3,94", "2". */
 function formatNumber(value: number): string {
   return String(round2(value)).replace(".", ",");
 }
@@ -584,10 +536,7 @@ function durationText(minutes: number): string {
     : `${formatNumber(minutes)}min`;
 }
 
-/**
- * One decimal, like the table ("2,0"); a more precise rate is shown in full so
- * the line closes.
- */
+/** One decimal like the table ("2,0"); a more precise rate in full, so the line closes. */
 function formatRate(value: number): string {
   if (round2(value) !== value) return String(value).replace(".", ",");
 
@@ -603,10 +552,7 @@ function formatRate(value: number): string {
  * bug.
  */
 
-/**
- * A short window is invisible and generous: a cooldown that never fires, a
- * bonus that fires when it should not.
- */
+/** A short window is invisible and generous: a cooldown that never fires, a bonus that does. */
 function requireHistoryWindow(input: CalculationInput): void {
   const from = historyWindowStart(
     input.occurredOn,
@@ -633,10 +579,7 @@ function requireHistoryWindow(input: CalculationInput): void {
   }
 }
 
-/**
- * A `where` missing `user_id = ?` still type-checks: every row carries *a* user
- * id.
- */
+/** A `where` missing `user_id = ?` still type-checks: every row carries *a* user id. */
 function assertOwnHistory(input: CalculationInput): void {
   for (const log of input.history) {
     if (log.userId !== input.userId) {

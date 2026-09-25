@@ -6,37 +6,17 @@ import type {
   EngineCategory,
 } from "./calculate";
 
-/**
- * The fixtures of the case table of issue #11, kept out of the test file so
- * that the table itself reads as a table.
- *
- * The rule that governs everything here: **the expected numbers are derived
- * from `docs/decisions.md`, never from `src/engine/calculate.ts`.** The engine
- * was written under issue #10 by someone else; #11 exists so that the person
- * who imagined the implementation is not the person who says what the
- * specification asks for. So nothing in this file imports a value, a formula or
- * a helper from the engine — only its types, which are the contract and not the
- * arithmetic.
- *
- * In particular the date arithmetic is written out by hand rather than taken
- * from the engine's exported `shiftDate`: a table that measures the engine with
- * the engine's own ruler measures nothing.
+/*
+ * Fixtures for the case table of #11. Expected numbers come from `decisions.md`,
+ * never from the engine: only its types are imported, never a value or helper.
  */
 
-/** The seed's own rows, as the engine reads them. */
 export type SeedRow = {
   category: EngineCategory;
   activity: EngineActivity;
 };
 
-/**
- * Narrows away a null the table knows cannot happen, and says so out loud.
- *
- * A `!` would do the same and say nothing: when the assumption stops holding —
- * a seeded row that loses its `value`, a calculation that comes back with no
- * lines — the test that breaks has to name the assumption rather than throw
- * "cannot read properties of undefined" three frames away from it.
- */
+/** Not `!`: a broken assumption has to name itself, not throw three frames away. */
 export function present<T>(value: T | null | undefined, what: string): T {
   if (value === null || value === undefined) {
     throw new Error(`the case table expected ${what}, and there is none`);
@@ -47,13 +27,7 @@ export function present<T>(value: T | null | undefined, what: string): T {
 
 const MS_PER_DAY = 86_400_000;
 
-/**
- * `YYYY-MM-DD` shifted by whole days, written here rather than imported.
- *
- * Deliberately duplicated from the engine: the engine's version is one of the
- * things under test, and a test that shifts its dates with the code it is
- * checking cannot see the day the two disagree.
- */
+/** Duplicated from the engine's `shiftDate` on purpose: that one is under test. */
 export function day(date: string, offset = 0): string {
   const shifted = new Date(
     Date.parse(`${date}T00:00:00Z`) + offset * MS_PER_DAY,
@@ -65,15 +39,7 @@ export function day(date: string, offset = 0): string {
   return `${year}-${month}-${dayOfMonth}`;
 }
 
-/**
- * Every seed row, flattened: seven categories and thirty-two activities, with
- * the same ids the database carries.
- *
- * `NewCategory` and `NewActivity` make the columns with a schema default
- * optional, so the fallbacks below are the schema's defaults and not a guess —
- * `return_bonus_pct` and `repeat_cooldown_days` default to 0, `quality_graded`
- * to false.
- */
+/** The fallbacks are the schema's column defaults, not a guess. */
 export const SEED_ROWS: readonly SeedRow[] = SEED_CATEGORIES.flatMap(
   (seedCategory) => {
     const category: EngineCategory = {
@@ -110,11 +76,8 @@ export function seedRow(activityId: number): SeedRow {
 }
 
 /**
- * The inputs a mode needs, so a table can walk all four without a special case.
- *
- * One hour for `duration`, because one hour is the unit the decay table of
- * `decisions.md` is written in; full marks for `delivery`, so the grade is a
- * no-op and what is left is the base value; and a typed value for `free`.
+ * One hour, the unit of the decay table in `decisions.md`; full marks, so the
+ * grade is a no-op and what is left is the base value.
  */
 export const ONE_HOUR_MINUTES = 60;
 export const FULL_MARKS = 1;
@@ -134,12 +97,7 @@ export function modeInputs(activity: EngineActivity): {
   };
 }
 
-/**
- * An approved log of the user, as the engine's history type wants it.
- *
- * `createdAt` is derived from the sequence number so that the canonical order
- * `(occurred_on, created_at, id)` of D8 is the order of the calls.
- */
+/** `createdAt` follows `id`, so D8's canonical order is the order of the calls. */
 export function approved(log: {
   id: number;
   occurredOn: string;
@@ -159,20 +117,12 @@ export function approved(log: {
   };
 }
 
-/** Kid1. Any id would do; a named one keeps the assertions readable. */
 export const KID1 = 3;
 export const KID2 = 4;
 
 /**
- * Builds a calculation input with the boilerplate filled in.
- *
- * `historyFrom` and `historyTo` default to a month either side, which is
- * further than any rule in `decisions.md` reaches in either direction: the
- * engine refuses a window that is too short, and a table that has to compute
- * the minimum window per row would be computing it with the engine's own
- * helper. The far end exists because of D34 — an entry counts what was frozen
- * before it, and that can sit on a later day than its own. `categoryFirstDay`
- * defaults to what the history shows, so an empty history is a debut (D47).
+ * A month either side is further than any rule reaches (D34 reads later days);
+ * computing the minimum would use the engine's own helper. Empty history: debut (D47).
  */
 export function input(
   overrides: Partial<CalculationInput> &
