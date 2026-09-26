@@ -1,15 +1,19 @@
 "use client";
 
 import { useState, useTransition } from "react";
-
+import type { Refund } from "../../../../db/ledger";
 import { Button } from "../../../../ui/button";
-import { failureText } from "../../../../ui/failure";
+import { ConfirmMovement } from "../../../../ui/confirm-movement";
+import { failureText, previewFailureText } from "../../../../ui/failure";
 import { Field } from "../../../../ui/field";
 import { formatHours, parseTypedHours } from "../../../../ui/hours";
 import { KidSelect } from "../../../../ui/kid-select";
 import { BORDER_CLASS, balanceToneClass } from "../../../../ui/style";
-import type { Movement } from "../../../actions/ledger";
-import { refundHoursAction } from "../../../actions/ledger";
+import type { Movement, MovementPreview } from "../../../actions/ledger";
+import {
+  previewRefundAction,
+  refundHoursAction,
+} from "../../../actions/ledger";
 import type { Kid } from "../../../actions/people";
 
 /**
@@ -32,6 +36,11 @@ export function RefundForm({ kids, today }: { kids: Kid[]; today: string }) {
   const [occurredOn, setOccurredOn] = useState(today);
   const [reason, setReason] = useState(DEFAULT_REFUND_REASON);
 
+  /** D53: confirming writes the request that was previewed, never the form as it is now. */
+  const [asked, setAsked] = useState<{
+    request: Refund;
+    preview: MovementPreview;
+  } | null>(null);
   const [done, setDone] = useState<Movement | null>(null);
   const [failed, setFailed] = useState<string | null>(null);
   const [busy, startAction] = useTransition();
@@ -40,29 +49,45 @@ export function RefundForm({ kids, today }: { kids: Kid[]; today: string }) {
 
   function change(apply: () => void) {
     apply();
+    setAsked(null);
     setDone(null);
     setFailed(null);
   }
 
-  function refund() {
+  function ask() {
     const typed = parseTypedHours(hours);
 
     if (typed === null || reason.trim() === "") return;
 
+    const request: Refund = {
+      userId,
+      hours: typed,
+      occurredOn,
+      reason: reason.trim(),
+    };
+
     startAction(async () => {
       try {
-        setDone(
-          await refundHoursAction({
-            userId,
-            hours: typed,
-            occurredOn,
-            reason: reason.trim(),
-          }),
-        );
+        setAsked({ request, preview: await previewRefundAction(request) });
+        setFailed(null);
+      } catch (error) {
+        setFailed(previewFailureText(error));
+      }
+    });
+  }
+
+  function refund() {
+    if (asked === null) return;
+
+    startAction(async () => {
+      try {
+        setDone(await refundHoursAction(asked.request));
         setFailed(null);
       } catch (error) {
         setFailed(failureText(error));
       }
+
+      setAsked(null);
     });
   }
 
@@ -76,68 +101,84 @@ export function RefundForm({ kids, today }: { kids: Kid[]; today: string }) {
 
   return (
     <div className="flex flex-col gap-6">
-      {failed === null ? null : (
-        <p className={`${BORDER_CLASS} bg-white p-4 text-lg text-black`}>
-          {failed}
-        </p>
+      {asked === null ? null : (
+        <ConfirmMovement
+          action="Estornar"
+          busy={busy}
+          confirmLabel="Confirmar estorno"
+          onCancel={() => setAsked(null)}
+          onConfirm={refund}
+          preview={asked.preview}
+        />
       )}
 
-      {done === null ? null : (
-        <section className={`${BORDER_CLASS} flex flex-col gap-2 bg-white p-4`}>
-          <p className="text-lg font-bold text-black">
-            Estornado {formatHours(done.hours)} para {kid?.displayName}.
+      {/* The form is out of reach; leaving by the nav is a cancel (D53). */}
+      <div className="flex flex-col gap-6" inert={asked !== null}>
+        {failed === null ? null : (
+          <p className={`${BORDER_CLASS} bg-white p-4 text-lg text-black`}>
+            {failed}
           </p>
-          <p
-            className={`${balanceToneClass(done.balance)} text-2xl font-bold tabular-nums`}
+        )}
+
+        {done === null ? null : (
+          <section
+            className={`${BORDER_CLASS} flex flex-col gap-2 bg-white p-4`}
           >
-            {formatHours(done.balance)}
-          </p>
-          <p className="text-base text-black">
-            Aparece no histórico dele como estorno, no dia que você escolheu.
-          </p>
-        </section>
-      )}
+            <p className="text-lg font-bold text-black">
+              Estornado {formatHours(done.hours)} para {kid?.displayName}.
+            </p>
+            <p
+              className={`${balanceToneClass(done.balance)} text-2xl font-bold tabular-nums`}
+            >
+              {formatHours(done.balance)}
+            </p>
+            <p className="text-base text-black">
+              Aparece no histórico dele como estorno, no dia que você escolheu.
+            </p>
+          </section>
+        )}
 
-      <KidSelect
-        kids={kids}
-        onChange={(chosen) => change(() => setUserId(chosen))}
-        value={userId}
-      />
+        <KidSelect
+          kids={kids}
+          onChange={(chosen) => change(() => setUserId(chosen))}
+          value={userId}
+        />
 
-      <Field
-        id="horas"
-        inputMode="decimal"
-        label="Horas"
-        onChange={(event) => change(() => setHours(event.target.value))}
-        type="text"
-        value={hours}
-      />
+        <Field
+          id="horas"
+          inputMode="decimal"
+          label="Horas"
+          onChange={(event) => change(() => setHours(event.target.value))}
+          type="text"
+          value={hours}
+        />
 
-      <Field
-        id="dia"
-        label="Dia"
-        max={today}
-        onChange={(event) => change(() => setOccurredOn(event.target.value))}
-        type="date"
-        value={occurredOn}
-      />
+        <Field
+          id="dia"
+          label="Dia"
+          max={today}
+          onChange={(event) => change(() => setOccurredOn(event.target.value))}
+          type="date"
+          value={occurredOn}
+        />
 
-      <Field
-        id="motivo"
-        label="Motivo"
-        maxLength={500}
-        onChange={(event) => change(() => setReason(event.target.value))}
-        type="text"
-        value={reason}
-      />
+        <Field
+          id="motivo"
+          label="Motivo"
+          maxLength={500}
+          onChange={(event) => change(() => setReason(event.target.value))}
+          type="text"
+          value={reason}
+        />
 
-      <Button
-        disabled={busy || !canRefund(hours, reason)}
-        onClick={refund}
-        type="button"
-      >
-        Estornar
-      </Button>
+        <Button
+          disabled={busy || !canRefund(hours, reason)}
+          onClick={ask}
+          type="button"
+        >
+          Estornar
+        </Button>
+      </div>
     </div>
   );
 }

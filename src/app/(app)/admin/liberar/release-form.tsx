@@ -1,17 +1,21 @@
 "use client";
 
 import { useState, useTransition } from "react";
-
+import type { Release } from "../../../../db/ledger";
 import { Button } from "../../../../ui/button";
 import type { Choice } from "../../../../ui/choice";
 import { ChoiceGroup } from "../../../../ui/choice";
-import { failureText } from "../../../../ui/failure";
+import { ConfirmMovement } from "../../../../ui/confirm-movement";
+import { failureText, previewFailureText } from "../../../../ui/failure";
 import { Field } from "../../../../ui/field";
 import { formatHours, parseTypedHours } from "../../../../ui/hours";
 import { KidSelect } from "../../../../ui/kid-select";
 import { BORDER_CLASS, balanceToneClass } from "../../../../ui/style";
-import type { Movement } from "../../../actions/ledger";
-import { releaseHoursAction } from "../../../actions/ledger";
+import type { Movement, MovementPreview } from "../../../actions/ledger";
+import {
+  previewReleaseAction,
+  releaseHoursAction,
+} from "../../../actions/ledger";
 import type { Kid } from "../../../actions/people";
 
 /**
@@ -32,6 +36,11 @@ export function ReleaseForm({ kids }: { kids: Kid[] }) {
   const [hours, setHours] = useState(DEFAULT_HOURS);
   const [destination, setDestination] = useState("");
 
+  /** D53: confirming writes the request that was previewed, never the form as it is now. */
+  const [asked, setAsked] = useState<{
+    request: Release;
+    preview: MovementPreview;
+  } | null>(null);
   const [done, setDone] = useState<Movement | null>(null);
   const [failed, setFailed] = useState<string | null>(null);
   const [busy, startAction] = useTransition();
@@ -41,26 +50,42 @@ export function ReleaseForm({ kids }: { kids: Kid[] }) {
 
   function change(apply: () => void) {
     apply();
+    setAsked(null);
     setDone(null);
     setFailed(null);
   }
 
-  function release() {
+  function ask() {
     if (typed === null) return;
+
+    const request: Release = {
+      userId,
+      hours: typed,
+      destination: destination.trim() === "" ? null : destination.trim(),
+    };
 
     startAction(async () => {
       try {
-        setDone(
-          await releaseHoursAction({
-            userId,
-            hours: typed,
-            destination: destination.trim() === "" ? null : destination.trim(),
-          }),
-        );
+        setAsked({ request, preview: await previewReleaseAction(request) });
+        setFailed(null);
+      } catch (error) {
+        setFailed(previewFailureText(error));
+      }
+    });
+  }
+
+  function release() {
+    if (asked === null) return;
+
+    startAction(async () => {
+      try {
+        setDone(await releaseHoursAction(asked.request));
         setFailed(null);
       } catch (error) {
         setFailed(failureText(error));
       }
+
+      setAsked(null);
     });
   }
 
@@ -74,64 +99,80 @@ export function ReleaseForm({ kids }: { kids: Kid[] }) {
 
   return (
     <div className="flex flex-col gap-6">
-      {failed === null ? null : (
-        <p className={`${BORDER_CLASS} bg-white p-4 text-lg text-black`}>
-          {failed}
-        </p>
+      {asked === null ? null : (
+        <ConfirmMovement
+          action="Liberar"
+          busy={busy}
+          confirmLabel="Confirmar liberação"
+          onCancel={() => setAsked(null)}
+          onConfirm={release}
+          preview={asked.preview}
+        />
       )}
 
-      {done === null ? null : (
-        <section className={`${BORDER_CLASS} flex flex-col gap-3 bg-white p-4`}>
-          <p className="text-lg font-bold text-black">
-            Liberado {formatHours(done.hours)} para {kid?.displayName}
-            {destination.trim() === "" ? "" : ` em ${destination.trim()}`}.
+      {/* The form is out of reach; leaving by the nav is a cancel (D53). */}
+      <div className="flex flex-col gap-6" inert={asked !== null}>
+        {failed === null ? null : (
+          <p className={`${BORDER_CLASS} bg-white p-4 text-lg text-black`}>
+            {failed}
           </p>
-          <p
-            className={`${balanceToneClass(done.balance)} text-2xl font-bold tabular-nums`}
+        )}
+
+        {done === null ? null : (
+          <section
+            className={`${BORDER_CLASS} flex flex-col gap-3 bg-white p-4`}
           >
-            {formatHours(done.balance)}
-          </p>
-          <p className="text-base text-black">
-            Agora, nos aparelhos: ligue o que você liberou e ajuste o limite à
-            mão. O app não liga nem desliga nada — ele só guarda o saldo.
-          </p>
-        </section>
-      )}
+            <p className="text-lg font-bold text-black">
+              Liberado {formatHours(done.hours)} para {kid?.displayName}
+              {destination.trim() === "" ? "" : ` em ${destination.trim()}`}.
+            </p>
+            <p
+              className={`${balanceToneClass(done.balance)} text-2xl font-bold tabular-nums`}
+            >
+              {formatHours(done.balance)}
+            </p>
+            <p className="text-base text-black">
+              Agora, nos aparelhos: ligue o que você liberou e ajuste o limite à
+              mão. O app não liga nem desliga nada — ele só guarda o saldo.
+            </p>
+          </section>
+        )}
 
-      <KidSelect
-        kids={kids}
-        onChange={(chosen) => change(() => setUserId(chosen))}
-        value={userId}
-      />
+        <KidSelect
+          kids={kids}
+          onChange={(chosen) => change(() => setUserId(chosen))}
+          value={userId}
+        />
 
-      <ChoiceGroup
-        legend="Quanto"
-        onSelect={(chosen) => change(() => setHours(String(chosen)))}
-        options={HOUR_CHOICES}
-        value={typed ?? 0}
-      />
+        <ChoiceGroup
+          legend="Quanto"
+          onSelect={(chosen) => change(() => setHours(String(chosen)))}
+          options={HOUR_CHOICES}
+          value={typed ?? 0}
+        />
 
-      <Field
-        id="horas"
-        inputMode="decimal"
-        label="Horas"
-        onChange={(event) => change(() => setHours(event.target.value))}
-        type="text"
-        value={hours}
-      />
+        <Field
+          id="horas"
+          inputMode="decimal"
+          label="Horas"
+          onChange={(event) => change(() => setHours(event.target.value))}
+          type="text"
+          value={hours}
+        />
 
-      <Field
-        id="destino"
-        label="Destino (opcional)"
-        maxLength={500}
-        onChange={(event) => change(() => setDestination(event.target.value))}
-        type="text"
-        value={destination}
-      />
+        <Field
+          id="destino"
+          label="Destino (opcional)"
+          maxLength={500}
+          onChange={(event) => change(() => setDestination(event.target.value))}
+          type="text"
+          value={destination}
+        />
 
-      <Button disabled={busy || typed === null} onClick={release} type="button">
-        Liberar
-      </Button>
+        <Button disabled={busy || typed === null} onClick={ask} type="button">
+          Liberar
+        </Button>
+      </div>
     </div>
   );
 }
