@@ -9,6 +9,7 @@ import {
   BORDER_PX,
   CONTENT_BOTTOM_CLASS,
   CONTROL_RADIUS_CLASS,
+  DESTRUCTIVE_BG_CLASS,
   NAV_BAR_PX,
   NAV_SAFE_BOTTOM_CLASS,
   NEGATIVE_CLASS,
@@ -90,7 +91,7 @@ describe("no decorative animation (#14)", () => {
 
 /**
  * Every shaded colour the app may serve, and the file allowed to write it (D42).
- * `meaning` is CLAUDE.md's two; `chrome` is furniture and says nothing.
+ * `meaning` is CLAUDE.md's three; `chrome` is furniture and says nothing.
  */
 const PALETTE = [
   {
@@ -104,6 +105,12 @@ const PALETTE = [
     file: join("ui", "style.ts"),
     kind: "meaning",
     rule: "a pendency",
+  },
+  {
+    utility: DESTRUCTIVE_BG_CLASS,
+    file: join("ui", "style.ts"),
+    kind: "meaning",
+    rule: "a destructive action",
   },
   {
     utility: ACCENT_BG_CLASS,
@@ -137,13 +144,25 @@ describe("the palette is declared, and nothing else is served (#14, #74, D42)", 
     }
   });
 
-  it("still lets colour mean exactly two things", () => {
-    // A third meaning is a third thing a reader has to learn to see.
+  it("lets colour mean exactly three things (D42, amended by #35)", () => {
+    // A fourth meaning is a fourth thing a reader has to learn to see.
     expect(
       PALETTE.filter((entry) => entry.kind === "meaning")
         .map((entry) => entry.rule)
         .sort(),
-    ).toEqual(["a negative balance", "a pendency"]);
+    ).toEqual(["a destructive action", "a negative balance", "a pendency"]);
+  });
+
+  it("lets only red carry two meanings", () => {
+    const hue = (utility: string) => utility.replace(/^[a-z]+-|-\d+$/g, "");
+    const meaningsPerHue = new Map<string, number>();
+
+    for (const entry of PALETTE.filter((item) => item.kind === "meaning")) {
+      const key = hue(entry.utility);
+      meaningsPerHue.set(key, (meaningsPerHue.get(key) ?? 0) + 1);
+    }
+
+    expect(Object.fromEntries(meaningsPerHue)).toEqual({ red: 2, yellow: 1 });
   });
 
   it("gives each job a utility of its own", () => {
@@ -202,6 +221,7 @@ const TEXT_PAIRS = [
   { ink: "black", ground: SURFACE_BG_CLASS, ratio: 19.17 },
   { ink: "black", ground: PENDING_BG_CLASS, ratio: 15.83 },
   { ink: NEGATIVE_CLASS, ground: "white", ratio: 6.42 },
+  { ink: "white", ground: DESTRUCTIVE_BG_CLASS, ratio: 6.42 },
 ];
 
 /** The sRGB channels, 0 to 1, of a palette utility or of black and white. */

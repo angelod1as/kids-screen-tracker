@@ -47,6 +47,12 @@ export function balanceToneClass(hours: number): string {
  */
 export const PENDING_BG_CLASS = "bg-yellow-300";
 
+/**
+ * Red's second meaning, a way out (D42, amended by #35). A fill, not the
+ * negative balance's ink, so each meaning keeps a utility the checks can name.
+ */
+export const DESTRUCTIVE_BG_CLASS = "bg-red-700";
+
 /** Capped by the narrowest phone, not taste (docs/design.md, Tipografia). */
 export const BALANCE_CLASS = "text-6xl";
 

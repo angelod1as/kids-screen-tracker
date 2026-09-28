@@ -25,10 +25,10 @@ shade_re='\.(text|bg|border|ring|outline|decoration|divide|from|via|to|fill|stro
 
 motion_re='(\.transition[-{]|\.animate-[a-z]|\.duration-[0-9]|\.ease-[a-z]|@keyframes)'
 
-# The whole permission (D42, docs/design.md): red-700 negative balance,
-# yellow-300 pendency, blue-800 and slate-100 furniture. A new colour is a
+# The whole permission (D42, docs/design.md): red-700 negative balance and
+# destructive action, yellow-300 pendency, blue-800 and slate-100 furniture. A new colour is a
 # reviewed diff here and in `src/ui/style.ts`.
-allowed_re='^\.(text-red-700|bg-yellow-300|bg-blue-800|bg-slate-100)$'
+allowed_re='^\.(text-red-700|bg-red-700|bg-yellow-300|bg-blue-800|bg-slate-100)$'
 
 while IFS= read -r file; do
   [ -n "$file" ] || continue
