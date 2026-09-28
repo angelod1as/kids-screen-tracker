@@ -11,7 +11,8 @@ os números alinhados numa coluna. Algo entre o painel de um relógio de ponto e
 uma tabela bem desenhada.
 
 Alvo de toque de 48 px, nada se move, alto contraste em todo lugar, e cor
-carregando significado em exatamente dois lugares — pendência e saldo negativo.
+carregando três significados em duas cores — pendência em amarelo; saldo
+negativo e a ação de sair em vermelho (emenda #35 à D42).
 
 **Por que não é mais só preto e branco:** o dono achou a primeira versão, preto
 e branco, seca demais ("queria que parecesse mais um app"). O app ganhou uma
@@ -121,6 +122,7 @@ impedir:
 | **mobília** | `slate-100` | o chão em que os painéis pousam | texto preto por cima |
 | **significado** | `yellow-300` | pendência | texto preto por cima |
 | **significado** | `red-700` | saldo negativo | tinta sobre branco |
+| **significado** | `red-700` | ação de sair (*Sair*, na Conta) | fundo, texto branco por cima |
 
 Preto e branco completam as seis. O contraste de cada par está medido em
 [Contraste, medido](#contraste-medido).
@@ -132,8 +134,13 @@ e a etiqueta `3 ESPERANDO`, e nada mais. `design.test.ts` chega a testar isso �
 nenhuma cor de mobília pode ser vermelha, laranja, âmbar ou rosa.
 
 **A mobília pode crescer; os significados não.** Um teste fixa a metade de
-significado em exatamente dois, porque um terceiro significado é uma terceira coisa
-que o leitor tem que aprender a enxergar. A mobília é desenho e pode ganhar um
+significado em exatamente três, e outro fixa que só o vermelho diz duas coisas,
+porque um significado a mais é uma coisa a mais que o leitor tem que aprender a
+enxergar. O terceiro entrou na #35, por pedido do dono: vermelho é a cor que
+todo app dá ao botão de sair, então é um significado que o leitor já traz. Ele
+não se confunde com o saldo negativo porque a forma é outra — um número pintado
+de um lado, um botão cheio com uma palavra do outro — e cada um tem utilitário
+próprio (`text-red-700`, `bg-red-700`), para os guardas saberem qual é qual. A mobília é desenho e pode ganhar um
 tom novo num diff que alguém lê.
 
 ### Um tom só de azul
@@ -252,12 +259,18 @@ cinza sobre cinza que a regra proíbe, e é o estado que o menino tem mais chanc
 de estar apertando os olhos para ler. Dá para ver isso na fila: o *Aprovar* da
 entrada bloqueada pela D32 fica branco enquanto os outros dois ficam azuis.
 
-### Cor, os dois lugares e nada além
+### Cor, os três lugares e nada além
 
 | lugar | como |
 |---|---|
 | pendência | `bg-yellow-300`, preto por cima |
 | saldo negativo | `text-red-700` sobre branco |
+| ação de sair | `bg-red-700`, branco por cima, no pé da Conta |
+
+*Sair* fica no pé da tela de Conta, fora de qualquer painel, e o primário da
+tela é *Como funciona*. Sair é raro e tira a pessoa do app; entender o app é o
+que se procura ali. O vermelho marca o botão como "pare antes", e a posição o
+tira do caminho do polegar.
 
 O vermelho é **tinta sobre branco** no saldo negativo e nunca sobre a tarja nem
 sobre preto: o mesmo vermelho sobre preto mede 3,27:1 e seria a única exceção
@@ -314,7 +327,7 @@ inline.
 | cronômetro | a sessão | o que espera aprovação | a mesma divisão |
 | histórico | uma coluna só, no máximo 672 px | — | duas colunas de lista cronológica obrigariam o leitor a descobrir se ela lê para baixo e depois para baixo, ou de lado |
 | fila | uma coluna só, no máximo 768 px | — | a ordem da fila é aritmética (D32), não arrumação |
-| conta | uma coluna só, no máximo 448 px | — | são dois controles; esticar não os torna mais fáceis de achar |
+| conta | uma coluna só, no máximo 448 px | — | são poucos controles; esticar não os torna mais fáceis de achar |
 
 A largura máxima da casca sai de `max-w-md` para `max-w-4xl` (896 px). Não mais
 que isso: acima de ~900 px uma linha de texto fica mais difícil de ler, não mais
@@ -342,11 +355,13 @@ número em silêncio.
 | preto sobre `slate-100` (`#f1f5f9`) | texto solto no chão, fora de painel | **19,17:1** | passa | passa |
 | preto sobre `yellow-300` (`#ffdf20`) | etiqueta de pendência | **15,83:1** | passa | passa |
 | `red-700` (`#c10007`) sobre branco | saldo negativo | **6,42:1** | passa | não passa |
+| branco sobre `red-700` (`#c10007`) | botão *Sair*, na Conta | **6,42:1** | passa | não passa |
 | preto sobre branco | todo o resto | 21:1 | passa | passa |
 
-O saldo negativo é o único par abaixo de 7:1, e está sempre em tamanho grande
-(1,5 rem ou mais, negrito) — o limite de AAA para texto grande é 4,5:1, que ele
-passa.
+Os dois pares vermelhos são os únicos abaixo de 7:1 — a razão é simétrica, e é
+o mesmo vermelho com o mesmo branco. O saldo negativo está sempre em tamanho
+grande (1,5 rem ou mais, negrito), onde o limite de AAA é 4,5:1. O *Sair* é
+1 rem em negrito, abaixo do que a WCAG chama de grande, e passa em AA.
 
 Dois pares que o app **não** usa, e por quê: `red-700` sobre preto mede 3,27:1 e
 preto sobre `blue-800` mede 2,38:1. É por isso que a tinta vermelha nunca pousa
