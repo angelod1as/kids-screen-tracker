@@ -103,9 +103,9 @@ export function RefundForm({ kids, today }: { kids: Kid[]; today: string }) {
     <div className="flex flex-col gap-6">
       {asked === null ? null : (
         <ConfirmMovement
-          action="Estornar"
+          action="Dar"
           busy={busy}
-          confirmLabel="Confirmar estorno"
+          confirmLabel="Confirmar e dar"
           onCancel={() => setAsked(null)}
           onConfirm={refund}
           preview={asked.preview}
@@ -125,7 +125,7 @@ export function RefundForm({ kids, today }: { kids: Kid[]; today: string }) {
             className={`${BORDER_CLASS} flex flex-col gap-2 bg-white p-4`}
           >
             <p className="text-lg font-bold text-black">
-              Estornado {formatHours(done.hours)} para {kid?.displayName}.
+              Dado {formatHours(done.hours)} para {kid?.displayName}.
             </p>
             <p
               className={`${balanceToneClass(done.balance)} text-2xl font-bold tabular-nums`}
@@ -133,7 +133,7 @@ export function RefundForm({ kids, today }: { kids: Kid[]; today: string }) {
               {formatHours(done.balance)}
             </p>
             <p className="text-base text-black">
-              Aparece no histórico dele como estorno, no dia que você escolheu.
+              Aparece no histórico dele como “Dado”, no dia que você escolheu.
             </p>
           </section>
         )}
@@ -176,7 +176,7 @@ export function RefundForm({ kids, today }: { kids: Kid[]; today: string }) {
           onClick={ask}
           type="button"
         >
-          Estornar
+          Dar
         </Button>
       </div>
     </div>

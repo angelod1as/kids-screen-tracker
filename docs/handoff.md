@@ -53,14 +53,14 @@ Unauthenticated` do Coolify), sete no arquivo. Confira
 | tela | o que faz |
 |---|---|
 | `/menino` | Saldo. Maior elemento da tela. |
-| `/menino/historico` | Ganhos e gastos, inclusive a recusa com motivo. |
+| `/menino/historico` | Ganhos, horas tiradas e dadas, inclusive a recusa com motivo. |
 | `/menino/cronometro` | As duas escritas do menino, ambas viram entrada pendente: o cronômetro (abaixo da sessão mínima não vira registro, D44) e o pedido sem cronômetro (D49). |
 | `/menino/calculadora` | Quanto uma atividade vale hoje, conta linha a linha. |
 | `/admin` | Saldo dos dois. Tocar abre `/admin/historico/[userId]`. |
 | `/admin/fila` | Aprova, corrige ou recusa na ordem canônica (D32). |
 | `/admin/lancar` | Atividade sem cronômetro. |
-| `/admin/liberar` | Desconta horas liberadas no aparelho. |
-| `/admin/estornar` | Devolve horas; motivo padrão "Não usou". |
+| `/admin/tirar` | Tira horas do saldo, para usar no aparelho. |
+| `/admin/dar` | Dá horas sem atividade; motivo padrão "Não usou". |
 | `/admin/configuracao` | Categorias e atividades, com assíntota ao vivo. Trava o que precifica entrada pendente (D37). |
 | `/conta` | Identidade, aberta pela barra fixa embaixo. |
 | `/conta/como-funciona` | Explicação para meninos e para adultos. |

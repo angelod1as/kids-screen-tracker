@@ -9,7 +9,7 @@ import { countPendingLogsAction } from "../../actions/queue";
 
 /**
  * Balances go through `fetchBalanceAction`, the endpoint a kid is refused on for
- * his brother's id. Liberar and Estornar live here: the bottom bar already holds
+ * his brother's id. Tirar and Dar live here: the bottom bar already holds
  * four tabs. Each balance cell links to that boy's history (#73).
  */
 export default async function AdminHomePage() {
@@ -73,8 +73,8 @@ export default async function AdminHomePage() {
         <Panel title="Do dia a dia">
           <div className="flex flex-col gap-3 p-3">
             <LinkButton href="/admin/lancar">Lançar atividade</LinkButton>
-            <LinkButton href="/admin/liberar">Liberar horas</LinkButton>
-            <LinkButton href="/admin/estornar">Estornar horas</LinkButton>
+            <LinkButton href="/admin/tirar">Tirar horas</LinkButton>
+            <LinkButton href="/admin/dar">Dar horas</LinkButton>
           </div>
         </Panel>
       </div>

@@ -7,7 +7,7 @@ export default async function AdminReleasePage() {
 
   return (
     <section className="flex flex-col gap-4">
-      <h1 className={HEADING_CLASS}>Liberar horas</h1>
+      <h1 className={HEADING_CLASS}>Tirar horas</h1>
 
       <ReleaseForm kids={kids} />
     </section>

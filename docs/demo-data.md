@@ -70,13 +70,13 @@ contexto de quem a escreveu, então a remoção não pode depender de contexto.
 
 ## O que a semana contém
 
-- **Kid1** — sete dias de atividade e cinco movimentos de gasto e estorno,
+- **Kid1** — sete dias de atividade e cinco movimentos de horas tiradas e dadas,
   terminando com um sábado: duas horas de futebol que pagam cheio *e* levam o
   bônus de retorno (D7), uma hora de livro cheia e uma hora de HQ já degradada
   (D1–D3). Saldo positivo.
-- **Kid2** — uma atividade e dois gastos maiores que ela. Saldo negativo, que é
-  a outra tinta da tela do menino e a única coisa dela que não dá para olhar sem
-  dado.
+- **Kid2** — uma atividade e dois movimentos de horas tiradas, cada um maior que
+  ela. Saldo negativo, que é a outra tinta da tela do menino e a única coisa
+  dela que não dá para olhar sem dado.
 
 Os `computed_hours` **não são digitados**: cada log é calculado por
 `calculateEarnedHours`, sobre o histórico construído até ali, exatamente como a

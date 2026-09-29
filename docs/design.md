@@ -407,7 +407,7 @@ Quem guarda: `src/ui/design.test.ts` sobre o código-fonte e
 `scripts/check-served-css.sh` (`pnpm check:css`) sobre a folha de estilo
 construída.
 
-As telas que a #74 não redesenhou — calculadora, lançar, liberar, estornar,
+As telas que a #74 não redesenhou — calculadora, lançar, tirar, dar,
 configuração — herdaram a direção pelos primitivos sem serem tocadas. Passar
 por elas dando a cada bloco o painel que ele merece é trabalho de desenho que
 ainda não foi feito, não uma exceção à regra.

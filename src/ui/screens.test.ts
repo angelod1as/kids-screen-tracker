@@ -39,7 +39,7 @@ const { canApprove } = await import("../app/(app)/admin/fila/queue-list");
 const { canConfirm, entryOf } = await import(
   "../app/(app)/admin/lancar/launch-form"
 );
-const { canRefund } = await import("../app/(app)/admin/estornar/refund-form");
+const { canRefund } = await import("../app/(app)/admin/dar/refund-form");
 
 /**
  * What reaches the screen, which the sabotage matrix cannot see: a list that
@@ -99,7 +99,7 @@ const ENTRIES: LedgerEntry[] = [
     kind: "refund",
     hours: 0.25,
     occurredOn: "2026-08-31",
-    label: "Estorno da tarde",
+    label: "Não usou",
     override: null,
     voided: null,
   },
@@ -130,15 +130,15 @@ describe("the extract (#16)", () => {
 
     for (const fragment of [
       "Xbox",
-      "Gasto",
+      "Tirado",
       "02/09/2026",
       "−1h30",
       "Ler livro",
       "Ganho",
       "01/09/2026",
       "+2h",
-      "Estorno da tarde",
-      "Estorno",
+      "Não usou",
+      "Dado",
       "31/08/2026",
       "+15 min",
     ]) {
@@ -153,7 +153,7 @@ describe("the extract (#16)", () => {
       rendered.indexOf("Ler livro"),
     );
     expect(rendered.indexOf("Ler livro")).toBeLessThan(
-      rendered.indexOf("Estorno da tarde"),
+      rendered.indexOf("Não usou"),
     );
   });
 

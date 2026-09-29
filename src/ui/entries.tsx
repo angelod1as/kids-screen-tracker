@@ -178,8 +178,8 @@ function kindLabel(kind: LedgerEntry["kind"]): string {
     case "earn":
       return "Ganho";
     case "spend":
-      return "Gasto";
+      return "Tirado";
     case "refund":
-      return "Estorno";
+      return "Dado";
   }
 }

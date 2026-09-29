@@ -18,7 +18,7 @@ const KID_NAVIGATION: readonly NavItem[] = [
 ];
 
 /**
- * No Liberar or Estornar: they are home-screen shortcuts, and six cells are too
+ * No Tirar or Dar: they are home-screen shortcuts, and six cells are too
  * narrow. Configuração moved to the account page in #70, still two taps away.
  */
 const ADMIN_NAVIGATION: readonly NavItem[] = [
