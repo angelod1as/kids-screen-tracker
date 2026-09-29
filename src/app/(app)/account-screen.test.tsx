@@ -28,6 +28,8 @@ vi.mock("../../push/vapid", () => ({
 
 const AccountPage = (await import("./conta/page")).default;
 const { PushToggle } = await import("./conta/push-toggle");
+const { Button } = await import("../../ui/button");
+const { LinkButton } = await import("../../ui/link-button");
 
 type Element = { type: unknown; props: Record<string, unknown> };
 
@@ -125,6 +127,41 @@ describe("logging out", () => {
     );
 
     expect(button?.props.type).toBe("submit");
+  });
+});
+
+describe("what stands out, and what waits at the foot (#35)", () => {
+  function linkVariant(page: Element[], href: string): unknown {
+    return page.find(
+      (element) => element.type === LinkButton && element.props.href === href,
+    )?.props.variant;
+  }
+
+  it("makes Como funciona the primary control, for both roles", async () => {
+    for (const session of [KID1, ADMIN1]) {
+      expect(linkVariant(await screen(session), "/conta/como-funciona")).toBe(
+        undefined,
+      );
+    }
+  });
+
+  it("keeps an admin's Configuração secondary", async () => {
+    expect(linkVariant(await screen(ADMIN1), "/admin/configuracao")).toBe(
+      "secondary",
+    );
+  });
+
+  it("puts Sair last, red, and in no panel, for both roles", async () => {
+    for (const session of [KID1, ADMIN1]) {
+      mocked.session = session;
+      const top = (await AccountPage()).props.children as ReactNode[];
+      const last = elements(top.filter(Boolean).at(-1));
+      const button = last.find((element) => element.type === Button);
+
+      expect(last[0]?.type).toBe("form");
+      expect(button?.props.children).toBe("Sair");
+      expect(button?.props.variant).toBe("destructive");
+    }
   });
 });
 

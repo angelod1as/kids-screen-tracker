@@ -15,32 +15,33 @@ export default async function AccountPage() {
   const session = await requireSession();
 
   return (
-    <div className="flex flex-col gap-4 lg:max-w-md lg:gap-6">
+    <div className="flex flex-1 flex-col gap-4 lg:max-w-md lg:gap-6">
       <Panel
         note={session.role === "admin" ? "adulto" : "menino"}
         title={session.displayName}
         top
       >
         <div className="flex flex-col gap-3 p-3">
-          <LinkButton href="/conta/como-funciona" variant="secondary">
-            Como funciona
-          </LinkButton>
+          <LinkButton href="/conta/como-funciona">Como funciona</LinkButton>
 
           {session.role === "admin" ? (
             <LinkButton href="/admin/configuracao" variant="secondary">
               Configuração
             </LinkButton>
           ) : null}
-
-          <form action={logoutAction}>
-            <Button type="submit">Sair</Button>
-          </form>
         </div>
       </Panel>
 
       <Panel title="Avisos">
         <PushToggle publicKey={vapidPublicKey()} />
       </Panel>
+
+      {/* At the foot, apart: the rare way out, never the screen's first control (#35). */}
+      <form action={logoutAction} className="mt-auto">
+        <Button type="submit" variant="destructive">
+          Sair
+        </Button>
+      </form>
     </div>
   );
 }

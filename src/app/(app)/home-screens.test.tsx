@@ -9,7 +9,7 @@ import { BALANCE_CLASS, NEGATIVE_CLASS } from "../../ui/style";
 import type { LedgerEntry } from "../actions/history";
 
 /**
- * One of the two places colour means something: a negative balance's ink. Pages
+ * One of the places colour means something: a negative balance's ink. Pages
  * are called as functions; actions are replaced, their guards have own suites.
  */
 

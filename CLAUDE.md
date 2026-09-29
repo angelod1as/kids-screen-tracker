@@ -103,9 +103,11 @@ mesma base com utilitários `lg:`, nunca uma segunda tela. Detalhe e medidas em
 - **Mobília, sem significado:** `blue-800` com texto branco na tarja de painel,
   no controle primário, no item atual do menu e na opção escolhida;
   `slate-100` no chão da página. É azul e cinza-azulado frio de propósito.
-- **Cor carrega significado em exatamente dois lugares:** pendência
-  (`yellow-300`, preto por cima) e saldo negativo (`red-700`, tinta sobre
-  branco). Nada mais é vermelho ou amarelo, e nenhuma mobília é quente.
+- **Cor carrega três significados, em duas cores:** pendência
+  (`yellow-300`, preto por cima), saldo negativo (`red-700`, tinta sobre
+  branco) e ação de sair (`bg-red-700`, texto branco; emenda #35 à D42). O
+  vermelho diz duas coisas, cada uma com utilitário próprio. Nada mais é
+  vermelho ou amarelo, e nenhuma mobília é quente.
 - **Alto contraste:** todo par de texto mede pelo menos 4,5:1, e cada par tem a
   medida escrita em `docs/design.md`. Nada de cinza sobre cinza, `opacity` ou
   tom pálido. Desativado inverte, não desbota.

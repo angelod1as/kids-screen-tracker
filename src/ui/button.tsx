@@ -4,6 +4,7 @@ import {
   ACCENT_BG_CLASS,
   BORDER_CLASS,
   CONTROL_RADIUS_CLASS,
+  DESTRUCTIVE_BG_CLASS,
   TOUCH_TARGET_CLASS,
 } from "./style";
 
@@ -12,14 +13,16 @@ import {
  * variant here. Disabled inverts rather than fading (D42).
  */
 type ButtonProps = Omit<ComponentProps<"button">, "className"> & {
-  variant?: "primary" | "secondary";
+  variant?: "primary" | "secondary" | "destructive";
 };
 
 export function Button({ variant = "primary", ...props }: ButtonProps) {
   const colors =
     variant === "primary"
       ? `${ACCENT_BG_CLASS} text-white disabled:bg-white disabled:text-black`
-      : "bg-white text-black";
+      : variant === "destructive"
+        ? `${DESTRUCTIVE_BG_CLASS} text-white disabled:bg-white disabled:text-black`
+        : "bg-white text-black";
 
   return (
     <button

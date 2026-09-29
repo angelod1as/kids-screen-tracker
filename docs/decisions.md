@@ -2,7 +2,7 @@
 
 Vinte e cinco ambiguidades da spec, resolvidas e justificadas antes da primeira
 linha de código, mais as que cada fase mediu depois. Hoje são cinquenta e
-três, D1–D53, mais dez emendas e as duas declarações da Fase 4, uma delas
+três, D1–D53, mais onze emendas e as duas declarações da Fase 4, uma delas
 revogada.
 
 **Onde este documento e `spec.md` discordarem, este documento vence.**
@@ -1210,6 +1210,38 @@ para descrever o app, não o contrário.
 **Resíduo aceito.** A etiqueta de pendência usa `rounded` (4 px), um terceiro
 raio que a regra dos dois não descreve. Ficou como estava: esta decisão
 registra o desenho, não o muda.
+
+**Emenda (#35) — o vermelho ganha um segundo significado: sair.** Na tela de
+Conta, *Sair* era o controle primário e *Como funciona* o secundário. Agora
+*Como funciona* é o primário, e *Sair* vai para o pé da tela, fora de qualquer
+painel, como botão de fundo `red-700` e texto branco. Vale para os dois papéis;
+no adulto, *Configuração* segue secundária.
+
+O dono pediu vermelho: *"é cor padrão pra esse tipo de botão"*. A regra muda de
+"cor carrega significado em exatamente dois lugares" para **três significados em
+duas cores**: `yellow-300` na pendência; `red-700` como tinta no saldo negativo
+e como fundo na ação que tira a pessoa do app.
+
+**Por que dois significados no mesmo vermelho é aceitável.** Os dois nunca se
+confundem na forma: o saldo negativo é um número pintado, o *Sair* é um botão
+cheio com uma palavra dentro. E os dois dizem a mesma coisa num nível acima —
+"pare antes de seguir". Vermelho em botão de sair é convenção que o leitor já
+traz de todo outro app; aprender a vê-lo não custa nada.
+
+**O que a regra ainda protege.** Cada significado tem utilitário próprio
+(`text-red-700` e `bg-red-700`), para que os dois guardas saibam dizer qual é
+qual. O par branco sobre `red-700` mede 6,42:1, o mesmo do vermelho sobre
+branco, e está em `design.md`. Mobília continua fria, e um quarto significado é
+um diff revisado, como antes.
+
+**Considerado e descartado.** *Sair* como texto simples no pé, sem caixa e sem
+peso: não gasta cor nenhuma, mas o dono escolheu o vermelho. E *Sair* com
+contorno e tinta vermelhos sobre branco: usaria `text-red-700`, o mesmo
+utilitário do saldo negativo, e os guardas deixariam de distinguir os dois.
+
+**Resíduo aceito.** Na Conta do menino, a única coisa quente da tela passa a
+ser um botão que ele não precisa resolver. Fica no pé, longe do polegar que
+procura *Como funciona*.
 
 ---
 
