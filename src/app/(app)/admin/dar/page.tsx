@@ -9,7 +9,7 @@ export default async function AdminRefundPage() {
 
   return (
     <section className="flex flex-col gap-4">
-      <h1 className={HEADING_CLASS}>Estornar horas</h1>
+      <h1 className={HEADING_CLASS}>Dar horas</h1>
 
       <RefundForm kids={kids} today={saoPauloDay(new Date())} />
     </section>

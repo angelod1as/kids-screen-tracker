@@ -41,7 +41,7 @@ const { canApprove } = await import("../app/(app)/admin/fila/queue-list");
 const { canConfirm, entryOf } = await import(
   "../app/(app)/admin/lancar/launch-form"
 );
-const { canRefund } = await import("../app/(app)/admin/estornar/refund-form");
+const { canRefund } = await import("../app/(app)/admin/dar/refund-form");
 
 /**
  * The sabotage matrix for the screen rules, in `access.sabotage.test.ts`'s shape:
@@ -59,7 +59,7 @@ const TIMER_SCREEN = "../app/(app)/menino/cronometro/timer-screen.tsx";
 const QUEUE_LIST = "../app/(app)/admin/fila/queue-list.tsx";
 
 const LAUNCH_FORM = "../app/(app)/admin/lancar/launch-form.tsx";
-const REFUND_FORM = "../app/(app)/admin/estornar/refund-form.tsx";
+const REFUND_FORM = "../app/(app)/admin/dar/refund-form.tsx";
 
 type Mutation = {
   name: string;

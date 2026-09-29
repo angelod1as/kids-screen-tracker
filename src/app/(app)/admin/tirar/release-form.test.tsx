@@ -57,8 +57,8 @@ function button(label: string): HTMLButtonElement {
 }
 
 async function releaseAndConfirm() {
-  await act(async () => button("Liberar").click());
-  await act(async () => button("Confirmar liberação").click());
+  await act(async () => button("Tirar").click());
+  await act(async () => button("Confirmar e tirar").click());
 }
 
 function dialog(): HTMLElement | null {
@@ -67,14 +67,14 @@ function dialog(): HTMLElement | null {
 
 describe("the confirmation (D53)", () => {
   it("shows the boy, the action, the hours and the server's two balances before writing", async () => {
-    await act(async () => button("Liberar").click());
+    await act(async () => button("Tirar").click());
 
     expect(ledger.previewReleaseAction).toHaveBeenCalledWith(
       expect.objectContaining({ userId: 7, hours: 1 }),
     );
     expect(ledger.releaseHoursAction).not.toHaveBeenCalled();
     expect(dialog()?.textContent).toContain("MeninoKid2");
-    expect(dialog()?.textContent).toContain("AçãoLiberar");
+    expect(dialog()?.textContent).toContain("AçãoTirar");
     expect(dialog()?.textContent).toContain("Horas1h");
     expect(dialog()?.textContent).toContain("Saldo0 min → −1h");
   });
@@ -84,11 +84,11 @@ describe("the confirmation (D53)", () => {
 
     expect(ledger.releaseHoursAction).toHaveBeenCalledTimes(1);
     expect(dialog()).toBeNull();
-    expect(container.textContent).toContain("Liberado 1h para Kid2.");
+    expect(container.textContent).toContain("Tirado 1h de Kid2.");
   });
 
   it("closes when the form behind it changes, so nothing stale is confirmed", async () => {
-    await act(async () => button("Liberar").click());
+    await act(async () => button("Tirar").click());
     await act(async () => button("2h").click());
 
     expect(dialog()).toBeNull();
@@ -100,7 +100,7 @@ describe("the confirmation (D53)", () => {
 
     expect(form()).toBeNull();
 
-    await act(async () => button("Liberar").click());
+    await act(async () => button("Tirar").click());
 
     expect(form()).not.toBeNull();
 
@@ -110,7 +110,7 @@ describe("the confirmation (D53)", () => {
   });
 
   it("cancels on Escape and writes nothing", async () => {
-    await act(async () => button("Liberar").click());
+    await act(async () => button("Tirar").click());
     await act(async () =>
       dialog()?.dispatchEvent(
         new KeyboardEvent("keydown", { key: "Escape", bubbles: true }),
@@ -149,12 +149,12 @@ describe("the confirmation (D53)", () => {
       }),
     );
 
-    await act(async () => button("Liberar").click());
+    await act(async () => button("Tirar").click());
     await act(async () => button("2h").click());
     await act(async () =>
       answer({ displayName: "Kid2", hours: 1, before: 0, after: -1 }),
     );
-    await act(async () => button("Confirmar liberação").click());
+    await act(async () => button("Confirmar e tirar").click());
 
     expect(ledger.releaseHoursAction).toHaveBeenCalledWith(
       expect.objectContaining({ userId: 7, hours: 1 }),
@@ -162,13 +162,13 @@ describe("the confirmation (D53)", () => {
   });
 
   it("names the action to a screen reader", async () => {
-    await act(async () => button("Liberar").click());
+    await act(async () => button("Tirar").click());
 
-    expect(dialog()?.getAttribute("aria-label")).toBe("Confirmar liberação");
+    expect(dialog()?.getAttribute("aria-label")).toBe("Confirmar e tirar");
   });
 
   it("writes nothing when cancelled", async () => {
-    await act(async () => button("Liberar").click());
+    await act(async () => button("Tirar").click());
     await act(async () => button("Cancelar").click());
 
     expect(dialog()).toBeNull();
@@ -210,7 +210,7 @@ describe("the confirmation (D53)", () => {
       new TypeError("Failed to fetch"),
     );
 
-    await act(async () => button("Liberar").click());
+    await act(async () => button("Tirar").click());
 
     expect(dialog()).toBeNull();
     expect(container.textContent).toContain("nada foi lançado");

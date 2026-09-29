@@ -101,9 +101,9 @@ export function ReleaseForm({ kids }: { kids: Kid[] }) {
     <div className="flex flex-col gap-6">
       {asked === null ? null : (
         <ConfirmMovement
-          action="Liberar"
+          action="Tirar"
           busy={busy}
-          confirmLabel="Confirmar liberação"
+          confirmLabel="Confirmar e tirar"
           onCancel={() => setAsked(null)}
           onConfirm={release}
           preview={asked.preview}
@@ -123,7 +123,7 @@ export function ReleaseForm({ kids }: { kids: Kid[] }) {
             className={`${BORDER_CLASS} flex flex-col gap-3 bg-white p-4`}
           >
             <p className="text-lg font-bold text-black">
-              Liberado {formatHours(done.hours)} para {kid?.displayName}
+              Tirado {formatHours(done.hours)} de {kid?.displayName}
               {destination.trim() === "" ? "" : ` em ${destination.trim()}`}.
             </p>
             <p
@@ -132,7 +132,7 @@ export function ReleaseForm({ kids }: { kids: Kid[] }) {
               {formatHours(done.balance)}
             </p>
             <p className="text-base text-black">
-              Agora, nos aparelhos: ligue o que você liberou e ajuste o limite à
+              Agora, nos aparelhos: ligue o que ele vai usar e ajuste o limite à
               mão. O app não liga nem desliga nada — ele só guarda o saldo.
             </p>
           </section>
@@ -170,7 +170,7 @@ export function ReleaseForm({ kids }: { kids: Kid[] }) {
         />
 
         <Button disabled={busy || typed === null} onClick={ask} type="button">
-          Liberar
+          Tirar
         </Button>
       </div>
     </div>

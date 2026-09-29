@@ -59,12 +59,12 @@ function button(label: string): HTMLButtonElement {
 }
 
 function refundButton(): HTMLButtonElement {
-  return button("Estornar");
+  return button("Dar");
 }
 
 async function refundAndConfirm() {
   await act(async () => refundButton().click());
-  await act(async () => button("Confirmar estorno").click());
+  await act(async () => button("Confirmar e dar").click());
 }
 
 function dialog(): HTMLElement | null {
@@ -137,7 +137,7 @@ describe("the confirmation (D53)", () => {
     );
     expect(ledger.refundHoursAction).not.toHaveBeenCalled();
     expect(dialog()?.textContent).toContain("MeninoKid2");
-    expect(dialog()?.textContent).toContain("AçãoEstornar");
+    expect(dialog()?.textContent).toContain("AçãoDar");
     expect(dialog()?.textContent).toContain("Horas1h");
     expect(dialog()?.textContent).toContain("Saldo2h → 3h");
   });
@@ -148,7 +148,7 @@ describe("the confirmation (D53)", () => {
 
     expect(ledger.refundHoursAction).toHaveBeenCalledTimes(1);
     expect(dialog()).toBeNull();
-    expect(container.textContent).toContain("Estornado 1h para Kid2.");
+    expect(container.textContent).toContain("Dado 1h para Kid2.");
   });
 
   it("closes when the form behind it changes, so nothing stale is confirmed", async () => {
@@ -174,7 +174,7 @@ describe("the confirmation (D53)", () => {
     await act(async () =>
       answer({ displayName: "Kid2", hours: 1, before: 2, after: 3 }),
     );
-    await act(async () => button("Confirmar estorno").click());
+    await act(async () => button("Confirmar e dar").click());
 
     expect(ledger.refundHoursAction).toHaveBeenCalledWith(
       expect.objectContaining({ userId: 7, hours: 1 }),

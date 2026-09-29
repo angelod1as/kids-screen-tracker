@@ -263,10 +263,10 @@ export function AdultGuide({ data }: { data: HowItWorksData }) {
         <Points>
           <li>
             Não liga nem desliga aparelho, e não guarda o que está configurado
-            em cada um. Depois de Liberar horas, ajuste o aparelho na mão.
+            em cada um. Depois de Tirar horas, ajuste o aparelho na mão.
           </li>
           <li>
-            O saldo pode ficar negativo. Liberar mais do que o menino tem é
+            O saldo pode ficar negativo. Tirar mais do que o menino tem é
             permitido, e o saldo aparece em vermelho.
           </li>
         </Points>

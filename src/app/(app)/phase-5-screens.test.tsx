@@ -85,8 +85,8 @@ afterEach(() => {
 
 const AdminHomePage = (await import("./admin/page")).default;
 const AdminLaunchPage = (await import("./admin/lancar/page")).default;
-const AdminReleasePage = (await import("./admin/liberar/page")).default;
-const AdminRefundPage = (await import("./admin/estornar/page")).default;
+const AdminReleasePage = (await import("./admin/tirar/page")).default;
+const AdminRefundPage = (await import("./admin/dar/page")).default;
 
 async function markup(page: () => Promise<React.ReactElement>) {
   return renderToStaticMarkup(await page());
@@ -133,10 +133,10 @@ describe("the admin's home screen (#21)", () => {
 
     expect(drawn).toContain('href="/admin/lancar"');
     expect(drawn).toContain("Lançar atividade");
-    expect(drawn).toContain('href="/admin/liberar"');
-    expect(drawn).toContain("Liberar horas");
-    expect(drawn).toContain('href="/admin/estornar"');
-    expect(drawn).toContain("Estornar horas");
+    expect(drawn).toContain('href="/admin/tirar"');
+    expect(drawn).toContain("Tirar horas");
+    expect(drawn).toContain('href="/admin/dar"');
+    expect(drawn).toContain("Dar horas");
     expect(drawn).toContain('href="/admin/fila"');
   });
 });
@@ -175,10 +175,10 @@ describe("releasing hours (#23)", () => {
   it("asks for a boy, an amount and where it went", async () => {
     const drawn = await markup(AdminReleasePage);
 
-    expect(drawn).toContain("Liberar horas");
+    expect(drawn).toContain("Tirar horas");
     expect(drawn).toContain("Quanto");
     expect(drawn).toContain("Destino (opcional)");
-    expect(drawn).toContain(">Liberar<");
+    expect(drawn).toContain(">Tirar<");
   });
 
   it("says nothing about the devices until something has been released", async () => {
@@ -192,10 +192,10 @@ describe("refunding hours (#24)", () => {
   it("asks for a boy, an amount, a day and a reason", async () => {
     const drawn = await markup(AdminRefundPage);
 
-    expect(drawn).toContain("Estornar horas");
+    expect(drawn).toContain("Dar horas");
     expect(drawn).toContain("Horas");
     expect(drawn).toContain("Motivo");
     expect(drawn).toContain('type="date"');
-    expect(drawn).toContain(">Estornar<");
+    expect(drawn).toContain(">Dar<");
   });
 });
