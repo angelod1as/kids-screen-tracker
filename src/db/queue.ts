@@ -49,11 +49,17 @@ export type QueueEntry = {
    * a sentence on it, never a queue page that fails (D19).
    */
   preview: Calculation | null;
-  /** The engine's own message, which names the activity and what is missing. */
-  unpriceable: string | null;
+  /**
+   * What the adult has to supply for the rule to price the entry; empty when
+   * the cause is none of these.
+   */
+  unpriceable: Missing[] | null;
   /** The entry to decide before this one (D32), or null. */
   blockedBy: BlockingEntry | null;
 };
+
+/** D49: a `free` value; D37: a grade; a `duration` entry without minutes. */
+export type Missing = "value" | "grade" | "duration";
 
 /** An entry that stands between another one and its approval (D8). */
 export type BlockingEntry = {
@@ -269,12 +275,38 @@ const PENDING_COLUMNS = {
 function priceOrExplain(
   db: Db,
   log: PendingLog,
-): { preview: Calculation | null; unpriceable: string | null } {
+): { preview: Calculation | null; unpriceable: Missing[] | null } {
   try {
     return { preview: calculationFor(db, log), unpriceable: null };
-  } catch (thrown) {
-    return { preview: null, unpriceable: (thrown as Error).message };
+  } catch {
+    // The engine's English sentence never reaches the screen (#37).
+    return { preview: null, unpriceable: missingFrom(db, log) };
   }
+}
+
+/** Read off the row, never parsed out of the engine's message. */
+function missingFrom(db: Db, log: PendingLog): Missing[] {
+  const activity = db
+    .select({
+      calcMode: activities.calcMode,
+      qualityGraded: activities.qualityGraded,
+    })
+    .from(activities)
+    .where(eq(activities.id, log.activityId))
+    .get();
+
+  if (activity === undefined) return [];
+
+  const missing: Missing[] = [];
+  if (activity.calcMode === "free" && log.freeValue === null) {
+    missing.push("value");
+  }
+  if (activity.qualityGraded && log.quality === null) missing.push("grade");
+  if (activity.calcMode === "duration" && log.durationMinutes === null) {
+    missing.push("duration");
+  }
+
+  return missing;
 }
 
 export function listPendingLogs(connection: Connection): QueueEntry[] {
