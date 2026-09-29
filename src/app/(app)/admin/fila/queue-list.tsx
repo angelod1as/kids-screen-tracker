@@ -164,6 +164,7 @@ export function canApprove(
  * value and the grade are typed on the card itself (D49, D37); the rest is D50's.
  */
 export function unpriceableText(missing: readonly Missing[]): string {
+  // First: without minutes the grade cannot price it either; the final value covers both (D50).
   if (missing.includes("duration")) {
     return "Esta entrada chegou sem duração, e a atividade é medida em tempo. Toque em Corrigir e digite o valor final, ou recuse.";
   }

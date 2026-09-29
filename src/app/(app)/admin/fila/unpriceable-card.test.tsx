@@ -130,6 +130,12 @@ describe("each unpriceable case has its own sentence (#37)", () => {
     expect(new Set(sentences).size).toBe(sentences.length);
   });
 
+  it("says the missing duration over the missing grade", () => {
+    expect(unpriceableText(["duration", "grade"])).toBe(
+      unpriceableText(["duration"]),
+    );
+  });
+
   it("never sends the adult to the Configuration screen", () => {
     for (const missing of CASES) {
       expect(unpriceableText(missing)).not.toMatch(/Configura/);
