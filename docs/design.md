@@ -140,8 +140,8 @@ enxergar. O terceiro entrou na #35, por pedido do dono: vermelho é a cor que
 todo app dá ao botão de sair, então é um significado que o leitor já traz. Ele
 não se confunde com o saldo negativo porque a forma é outra — um número pintado
 de um lado, um botão cheio com uma palavra do outro — e cada um tem utilitário
-próprio (`text-red-700`, `bg-red-700`), para os guardas saberem qual é qual. A mobília é desenho e pode ganhar um
-tom novo num diff que alguém lê.
+próprio (`text-red-700`, `bg-red-700`), para os guardas saberem qual é qual. A
+mobília é desenho e pode ganhar um tom novo num diff que alguém lê.
 
 ### Um tom só de azul
 

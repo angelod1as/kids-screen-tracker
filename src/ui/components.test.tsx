@@ -5,7 +5,11 @@ import type { Session } from "../auth/access";
 import { Button } from "./button";
 import { Field } from "./field";
 import { accountItemFor, navigationFor } from "./navigation";
-import { CONTENT_BOTTOM_CLASS, TOUCH_TARGET_CLASS } from "./style";
+import {
+  CONTENT_BOTTOM_CLASS,
+  DESTRUCTIVE_BG_CLASS,
+  TOUCH_TARGET_CLASS,
+} from "./style";
 
 /**
  * Components that exist only as JSX, walked as plain objects without a DOM.
@@ -146,5 +150,12 @@ describe("the only button in the app (#14)", () => {
 
     expect(String(button.props.className)).toContain("disabled:bg-white");
     expect(String(button.props.className)).toContain("disabled:text-black");
+  });
+
+  it("paints the destructive variant red, white on it (#35)", () => {
+    const button = Button({ children: "Sair", variant: "destructive" });
+
+    expect(String(button.props.className)).toContain(DESTRUCTIVE_BG_CLASS);
+    expect(String(button.props.className)).toContain("text-white");
   });
 });
