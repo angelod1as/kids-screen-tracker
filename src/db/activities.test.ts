@@ -221,7 +221,7 @@ describe("a pending entry is not re-priced by an edit made under it", () => {
       expect(rows).toHaveLength(1);
       expect(rows[0]?.id).toBe(logId);
       expect(rows[0]?.preview).toBeNull();
-      expect(rows[0]?.unpriceable).toMatch(/needs quality/);
+      expect(rows[0]?.unpriceable).toEqual(["grade"]);
 
       // The endpoint still refuses (D33); the tolerance is the list's.
       expect(() =>

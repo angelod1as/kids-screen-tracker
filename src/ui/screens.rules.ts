@@ -225,6 +225,37 @@ export const SCREEN_CASES: readonly ScreenCase[] = [
   },
   {
     rule: "approving is one tap, when it is a tap that can be taken",
+    name: "a `free` entry is approvable from the card once its value is typed (#37)",
+    run: (rules) =>
+      rules.canApprove(
+        {
+          blockedBy: null,
+          qualityGraded: false,
+          quality: null,
+          durationMinutes: null,
+          calcMode: "free",
+        },
+        false,
+        "",
+        null,
+        "2,5",
+      ),
+    expected: true,
+  },
+  {
+    rule: "approving is one tap, when it is a tap that can be taken",
+    name: "a grade chosen on the card makes the entry approvable (#37)",
+    run: (rules) =>
+      rules.canApprove(
+        { blockedBy: null, qualityGraded: true, quality: null },
+        false,
+        "60",
+        0.7,
+      ),
+    expected: true,
+  },
+  {
+    rule: "approving is one tap, when it is a tap that can be taken",
     name: "a final value typed and then closed is not what the tap sends (D50)",
     run: (rules) =>
       rules.canApprove(

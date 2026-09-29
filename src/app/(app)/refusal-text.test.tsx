@@ -6,7 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { ActivityRow } from "../../db/activities";
 import type { CategoryRow } from "../../db/categories";
-import type { QueueEntry } from "../../db/queue";
+import type { Missing, QueueEntry } from "../../db/queue";
 import { REFUSED_TEXT, RESYNCED_TEXT } from "../../ui/failure";
 import type { QueueData } from "../actions/queue";
 
@@ -110,7 +110,7 @@ describe("the queue says D32's refusal as the server wrote it", () => {
       qualityGraded: false,
       quality: null,
       preview: null,
-      unpriceable: "teste",
+      unpriceable: [] as Missing[],
       blockedBy: null,
     } as QueueEntry;
   }

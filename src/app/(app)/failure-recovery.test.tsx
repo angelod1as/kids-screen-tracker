@@ -4,7 +4,7 @@ import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import type { QueueEntry } from "../../db/queue";
+import type { Missing, QueueEntry } from "../../db/queue";
 import {
   RESYNCED_TEXT,
   timerFailureText,
@@ -290,7 +290,7 @@ describe("the queue after a failed request (#29)", () => {
       qualityGraded: false,
       quality: null,
       preview: null,
-      unpriceable: "teste",
+      unpriceable: [] as Missing[],
       blockedBy: null,
     } as QueueEntry;
   }
