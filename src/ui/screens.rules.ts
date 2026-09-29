@@ -16,7 +16,7 @@ export type ScreenRules = {
   settlementText: (settlement: TimerSettlement) => string;
   canApprove: (
     entry: Pick<QueueEntry, "blockedBy" | "qualityGraded" | "quality"> &
-      Partial<Pick<QueueEntry, "durationMinutes" | "calcMode">>,
+      Partial<Pick<QueueEntry, "durationMinutes" | "calcMode" | "unpriceable">>,
     editing: boolean,
     minutes: string,
     grade?: number | null,
@@ -251,6 +251,63 @@ export const SCREEN_CASES: readonly ScreenCase[] = [
         false,
         "60",
         0.7,
+      ),
+    expected: true,
+  },
+  {
+    rule: "approving is one tap, when it is a tap that can be taken",
+    name: "an entry missing its duration is not approvable from the card (#37)",
+    run: (rules) =>
+      rules.canApprove(
+        {
+          blockedBy: null,
+          qualityGraded: false,
+          quality: null,
+          durationMinutes: null,
+          calcMode: "duration",
+          unpriceable: ["duration"],
+        },
+        false,
+        "",
+      ),
+    expected: false,
+  },
+  {
+    rule: "approving is one tap, when it is a tap that can be taken",
+    name: "nor from the correction without a final value (#37)",
+    run: (rules) =>
+      rules.canApprove(
+        {
+          blockedBy: null,
+          qualityGraded: false,
+          quality: null,
+          durationMinutes: null,
+          calcMode: "duration",
+          unpriceable: ["duration"],
+        },
+        true,
+        "",
+      ),
+    expected: false,
+  },
+  {
+    rule: "approving is one tap, when it is a tap that can be taken",
+    name: "a final value approves an entry missing its duration (D50)",
+    run: (rules) =>
+      rules.canApprove(
+        {
+          blockedBy: null,
+          qualityGraded: false,
+          quality: null,
+          durationMinutes: null,
+          calcMode: "duration",
+          unpriceable: ["duration"],
+        },
+        true,
+        "",
+        null,
+        "",
+        "1",
       ),
     expected: true,
   },

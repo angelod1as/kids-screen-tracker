@@ -123,7 +123,7 @@ export function QueueList({ initial }: { initial: QueueData }) {
 /** A rule, not layout: an entry blocked by one above cannot be frozen (D32), and a correction needs a valid duration. */
 export function canApprove(
   entry: Pick<QueueEntry, "blockedBy" | "qualityGraded" | "quality"> &
-    Partial<Pick<QueueEntry, "durationMinutes" | "calcMode">>,
+    Partial<Pick<QueueEntry, "durationMinutes" | "calcMode" | "unpriceable">>,
   editing: boolean,
   minutes: string,
   grade: number | null = null,
@@ -141,10 +141,11 @@ export function canApprove(
     !overridden && entry.qualityGraded && (grade ?? entry.quality) === null;
 
   // D49: a `free` activity a boy requested has no value until an adult types one.
+  // With no minutes to correct, only the final value prices it (D50).
   const priced =
     overridden ||
-    entry.calcMode !== "free" ||
-    Number(value.replace(",", ".")) >= 0.01;
+    (!entry.unpriceable?.includes("duration") &&
+      (entry.calcMode !== "free" || Number(value.replace(",", ".")) >= 0.01));
 
   if (!editing) return !graded && priced;
 
