@@ -53,7 +53,7 @@ Unauthenticated` do Coolify), sete no arquivo. Confira
 | tela | o que faz |
 |---|---|
 | `/menino` | Saldo. Maior elemento da tela. |
-| `/menino/historico` | Ganhos e gastos, inclusive a recusa com motivo. |
+| `/menino/historico` | Ganhos, horas tiradas e dadas, inclusive a recusa com motivo. |
 | `/menino/cronometro` | As duas escritas do menino, ambas viram entrada pendente: o cronômetro (abaixo da sessão mínima não vira registro, D44) e o pedido sem cronômetro (D49). |
 | `/menino/calculadora` | Quanto uma atividade vale hoje, conta linha a linha. |
 | `/admin` | Saldo dos dois. Tocar abre `/admin/historico/[userId]`. |
