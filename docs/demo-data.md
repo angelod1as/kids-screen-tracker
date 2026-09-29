@@ -70,7 +70,7 @@ contexto de quem a escreveu, então a remoção não pode depender de contexto.
 
 ## O que a semana contém
 
-- **Kid1** — sete dias de atividade e cinco movimentos de gasto e estorno,
+- **Kid1** — sete dias de atividade e cinco movimentos de horas tiradas e dadas,
   terminando com um sábado: duas horas de futebol que pagam cheio *e* levam o
   bônus de retorno (D7), uma hora de livro cheia e uma hora de HQ já degradada
   (D1–D3). Saldo positivo.

@@ -1116,7 +1116,7 @@ ajusta o script.
 **Decisão.** O app guarda o saldo e mais nada. Ele não mantém registro do que
 está ligado em cada aparelho, de quanto cada um permite por dia nem de desde
 quando. A tela "Ligado nos aparelhos" (`/admin/regimes`), o atalho que a tela de
-Liberar horas oferecia para ela, a lista na tela do menino e os server actions
+Tirar horas oferecia para ela, a lista na tela do menino e os server actions
 de regime saem. A tabela `regimes` **fica no schema, com as linhas intactas e
 sem migration de remoção**: ela dorme, nada lê e nada escreve nela, e voltar
 atrás é um revert e não uma migração.
@@ -1138,7 +1138,7 @@ campo que é verdade em dois aparelhos e ficção em dois outros não é dado.
 
 **Isto contradiz a `spec.md`, e a `spec.md` é anexo histórico.** A spec pede a
 tabela `regimes`, a tela **Regimes** na Fase 5, a lista de regimes ativos na tela
-do menino, o atalho depois da liberação e os três lugares de cor. Esta decisão
+do menino, o atalho depois de tirar horas e os três lugares de cor. Esta decisão
 revoga tudo isso. Pela regra da casa, **onde os dois discordarem, este documento
 vence** — a spec fica como está, registrando a intenção original.
 
@@ -1151,8 +1151,8 @@ precisar dela a gente retorna"*, e uma migration de remoção transforma o retor
 em escrever tudo de novo, com as linhas já perdidas. Uma tabela dormente custa
 zero em runtime.
 
-**Resíduo aceito.** A tela de Liberar horas continua lembrando o adulto de
-ajustar o aparelho à mão depois de liberar, e agora é só um lembrete: o app não
+**Resíduo aceito.** A tela de Tirar horas continua lembrando o adulto de
+ajustar o aparelho à mão depois de tirar, e agora é só um lembrete: o app não
 sabe se ele fez. Isso é o ponto — o aparelho é a fonte de verdade sobre o
 aparelho, e o app é a fonte de verdade sobre o saldo.
 
@@ -1743,7 +1743,7 @@ próprios navegadores. Exatamente dois gatilhos:
 2. **O adulto decide uma pendência**, aprovando, com ou sem valor arbitrado
    (D50), ou recusando → aviso **só para o menino dono da entrada**.
 
-Nada mais dispara push: nem o lançamento do adulto (D18), nem liberar, estornar,
+Nada mais dispara push: nem o lançamento do adulto (D18), nem tirar, dar,
 editar ou configurar.
 
 - **O texto é curto e fala só da entrada.** "Para aprovar" / "Kid1: Ler livro"
@@ -1830,19 +1830,19 @@ iguais e as sete tabelas antigas idênticas por hash, `integrity_check` ok e
 
 ### D52 — Entrada lançada por engano se anula, não se apaga
 
-O dono lançou 3 h para o menino errado, tentou desfazer com um estorno e
-estornou do outro. Desfazer era compensar com lançamento novo, e cada erro
+O dono lançou 3 h para o menino errado, tentou desfazer dando horas e
+deu ao outro. Desfazer era compensar com lançamento novo, e cada erro
 virava duas linhas no histórico de dois meninos.
 
 **Decisão.** O adulto **anula** uma entrada. Ela deixa de contar e continua no
 banco e no histórico, com quem anulou e quando. Nada é apagado (D14).
 
 - **O que se anula.** Registro aprovado — lançamento do adulto (D18), entrada
-  da fila, zero aprovado (D10) — e liberação e estorno. Pendência se decide na
+  da fila, zero aprovado (D10) — e horas tiradas e dadas. Pendência se decide na
   fila; recusa não moveu nada (D19). Anular de novo é recusado com a frase.
 - **Onde mora.** `voided_at` e `voided_by`, nulos, em `activity_logs` e em
-  `ledger`. A atividade se anula **no registro**, que é o que o motor lê; a
-  liberação e o estorno, que não têm registro, na própria linha do ledger. Uma
+  `ledger`. A atividade se anula **no registro**, que é o que o motor lê; as
+  horas tiradas e dadas, que não têm registro, na própria linha do ledger. Uma
   linha de ledger que credita registro, quando pedida, anula o registro. Cada
   fato fica num lugar só.
 - **O saldo** soma só o ledger que não está anulado nem credita registro
@@ -1872,7 +1872,7 @@ banco e no histórico, com quem anulou e quando. Nada é apagado (D14).
 | o engano continuando no balde | 2,25 h | 0,38 h | — | 0,19 h |
 
 A hora congelada com o engano dentro perde 1,12 h e não é recalculada. Se o
-adulto quiser devolver, é um estorno, com motivo.
+adulto quiser devolver, dá horas, com motivo.
 
 **Considerado e descartado.**
 
@@ -1911,15 +1911,13 @@ e `foreign_key_check` vazio.
 
 ## A decisão que veio da #32
 
-### D53 — Liberar e estornar pedem confirmação, com o saldo antes e depois
+### D53 — Tirar e dar horas pedem confirmação, com o saldo antes e depois
 
-Liberar e estornar gravavam no primeiro toque. O dono estornou horas do menino
-errado, e desfazer custou três lançamentos: o estorno errado, a compensação e o
-estorno certo.
+Tirar e dar gravavam no primeiro toque. O dono deu horas ao menino errado, e
+desfazer custou três lançamentos: o dar errado, a compensação e o dar certo.
 
-**Decisão.** *Liberar* e *Estornar* não gravam mais: abrem um painel que cobre a
-tela e diz o que vai acontecer, e só *Confirmar liberação* ou *Confirmar
-estorno* grava.
+**Decisão.** *Tirar* e *Dar* não gravam mais: abrem um painel que cobre a tela
+e diz o que vai acontecer, e só *Confirmar e tirar* ou *Confirmar e dar* grava.
 
 - **O painel mostra menino, ação, horas e saldo antes → depois.** O nome do
   menino é o maior elemento, porque é ele que se erra.
@@ -1939,12 +1937,12 @@ estorno* grava.
 - **Desenho.** O painel aparece, sem deslizar nem desvanecer. Os dois botões
   têm 48 px. *Confirmar* fica logo abaixo do resumo, no alto; *Cancelar* fica
   no pé da tela. O botão do formulário mora embaixo, então o polegar que tocou
-  *Liberar* duas vezes cai em *Cancelar*, não em *Confirmar*. Só cores e pares
+  *Tirar* duas vezes cai em *Cancelar*, não em *Confirmar*. Só cores e pares
   que já estão medidos em [`design.md`](design.md).
 
 **Por quê, contra a regra dos dois toques.** O `CLAUDE.md` diz que operação
 comum com mais de dois toques é desenho errado. A regra protege o que é
-barato de errar. Liberar e estornar mexem no saldo direto, sem fila e sem
+barato de errar. Tirar e dar mexem no saldo direto, sem fila e sem
 revisão de ninguém — a fila existe para o cronômetro e o pedido do menino, e o
 lançamento do adulto pelo menos mostra quanto vale antes (D18). Aqui não havia
 nada entre o toque e o saldo, e um toque errado custou três lançamentos para
@@ -1953,7 +1951,7 @@ A anulação (D52) conserta o engano depois; esta decisão o evita antes.
 
 **Considerado e descartado.** Calcular o depois na tela, a partir do saldo que
 ela já tem. O saldo na tela pode estar velho — outro adulto aprovou, o outro
-celular liberou —, e a confirmação existe justamente para não mostrar número
+celular tirou horas —, e a confirmação existe justamente para não mostrar número
 que ninguém conferiu.
 
 **Resíduos aceitos.**
@@ -1963,3 +1961,28 @@ que ninguém conferiu.
   mostra o saldo que ficou, lido de novo.
 - O painel não repete dia, motivo nem destino: são do formulário que o adulto
   acabou de preencher, e o erro que originou a issue foi de menino.
+
+**Emenda — os nomes são Tirar e Dar.** As duas ações se chamavam
+*Liberar* e *Estornar*, e o menino lia *Gasto* e *Estorno* no histórico. Agora
+são **Tirar horas** e **Dar horas**, em `/admin/tirar` e `/admin/dar`, e o
+histórico diz **Tirado** e **Dado**.
+
+**Por quê.** Os nomes antigos descreviam o mecanismo contábil, não a ação, e
+nenhum dizia a direção. *Liberar* soa como dar tela e tira saldo; *Estornar*
+cabia nos dois sentidos. O dono: *"LIBERAR = dar horas? tirar horas? ESTORNAR
+cai no mesmo lugar."* Tirar e Dar respondem sozinhos se o saldo sobe ou
+desce.
+
+- **O dado não muda.** `kind` continua `spend` e `refund` no banco; só o texto
+  de tela troca. O rótulo do histórico é calculado ao desenhar, então as linhas
+  antigas passam a falar o nome novo. Nenhum saldo muda.
+- **Sem redirect** das rotas antigas: o app é usado pelo navegador, sem atalho
+  salvo nelas.
+
+**Considerado e descartado.** Um botão só, com a direção escolhida no
+formulário: acrescenta um toque e um eixo novo de erro, a direção, na mesma
+família do engano que originou a D53. *Descontar / Devolver* e *Usar /
+Devolver*: carregam o porquê, mas *devolver* supõe que houve tirada antes.
+
+**Resíduo aceito.** *Dar horas* e *Lançar atividade* somam os dois. Dar não
+passa pelo motor: não conta no balde do dia (D3) nem no desgaste.
