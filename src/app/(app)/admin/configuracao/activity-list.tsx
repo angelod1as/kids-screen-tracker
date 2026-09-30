@@ -47,6 +47,8 @@ const GRADED = [
 
 export type ActivityDraft = {
   name: string;
+  /** #40: optional; empty is no description. */
+  description?: string;
   calcMode: ActivityRow["calcMode"];
   /** D11: prefilled from the category's rate, and the adult's from then on. */
   value: string;
@@ -68,6 +70,7 @@ export function suggestedValue(baseRate: number | null): string {
 export function emptyActivity(baseRate: number | null): ActivityDraft {
   return {
     name: "",
+    description: "",
     calcMode: "duration",
     value: suggestedValue(baseRate),
     maxSessionMinutes: "",
@@ -140,6 +143,7 @@ export function activityInputOf(
   return {
     categoryId,
     name,
+    description: (draft.description ?? "").trim() || null,
     calcMode: draft.calcMode,
     value,
     maxSessionMinutes,
@@ -172,6 +176,7 @@ export function minSessionWarning(draft: ActivityDraft): string | null {
 function draftOf(activity: ActivityRow): ActivityDraft {
   return {
     name: activity.name,
+    description: activity.description ?? "",
     calcMode: activity.calcMode,
     value:
       activity.value === null ? "" : String(activity.value).replace(".", ","),
@@ -465,6 +470,18 @@ function ActivityFields({
         onChange={(event) => onChange({ ...draft, name: event.target.value })}
         type="text"
         value={draft.name}
+      />
+
+      <Field
+        id={`${prefix}-descricao`}
+        label="Descrição: o que cabe aqui (opcional)"
+        // `MAX_DESCRIPTION_LENGTH`, which a client file cannot import from `db/`.
+        maxLength={200}
+        onChange={(event) =>
+          onChange({ ...draft, description: event.target.value })
+        }
+        type="text"
+        value={draft.description ?? ""}
       />
 
       {onChangeCategory === undefined ? null : (

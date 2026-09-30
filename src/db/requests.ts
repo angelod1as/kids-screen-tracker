@@ -18,6 +18,8 @@ export type RequestableActivity = {
   categoryId: number;
   categoryName: string;
   name: string;
+  /** #40. */
+  description: string | null;
   calcMode: "duration" | "fixed" | "delivery" | "free";
   /** #18: what the minutes field starts from, for a `duration` activity. */
   presumedMinutes: number | null;
@@ -48,6 +50,7 @@ export function listRequestableActivities(
       categoryId: activities.categoryId,
       categoryName: categories.name,
       name: activities.name,
+      description: activities.description,
       calcMode: activities.calcMode,
       presumedMinutes: activities.presumedMinutes,
     })

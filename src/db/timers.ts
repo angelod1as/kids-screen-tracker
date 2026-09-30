@@ -564,6 +564,8 @@ function mutateOpenTimer(
 export type TimedActivity = {
   id: number;
   name: string;
+  /** #40. */
+  description?: string | null;
   categoryId: number;
   categoryName: string;
   maxSessionMinutes: number | null;
@@ -578,6 +580,7 @@ export function listTimedActivities(connection: Connection): TimedActivity[] {
     .select({
       id: activities.id,
       name: activities.name,
+      description: activities.description,
       categoryId: categories.id,
       categoryName: categories.name,
       maxSessionMinutes: activities.maxSessionMinutes,
