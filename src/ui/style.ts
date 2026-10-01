@@ -86,6 +86,9 @@ export const NAV_BAR_PX = 76;
 /** On the bar, not the links, so the 48 px target is not shortened. */
 export const NAV_SAFE_BOTTOM_CLASS = "pb-[env(safe-area-inset-bottom)]";
 
+/** Keeps the top of the column out from under the status bar. */
+export const CONTENT_TOP_CLASS = "pt-[env(safe-area-inset-top)]";
+
 /**
  * `NAV_BAR_PX` plus the inset, as a literal: Tailwind reads source as text and
  * never sees a class built by a template string. Underscores escape `calc` spaces.

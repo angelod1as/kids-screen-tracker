@@ -24,6 +24,8 @@ export const viewport: Viewport = {
   initialScale: 1,
   // Or a dark-mode phone paints native controls grey on this white page.
   colorScheme: "light",
+  // Without it every safe-area inset reads 0, and the APK draws under the bars (D54).
+  viewportFit: "cover",
 };
 
 export default function RootLayout({

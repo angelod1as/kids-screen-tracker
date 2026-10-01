@@ -6,6 +6,7 @@ import {
   APP_SHELL_CLASS,
   BORDER_CLASS,
   CONTENT_BOTTOM_CLASS,
+  CONTENT_TOP_CLASS,
   SHELL_CLASS,
   SURFACE_BG_CLASS,
 } from "./style";
@@ -24,7 +25,7 @@ export function AppShell({
 }) {
   return (
     <div
-      className={`${APP_SHELL_CLASS} ${BORDER_CLASS} ${SURFACE_BG_CLASS} ${CONTENT_BOTTOM_CLASS} flex min-h-dvh flex-col border-b-0 border-t-0 text-black lg:pb-0`}
+      className={`${APP_SHELL_CLASS} ${BORDER_CLASS} ${SURFACE_BG_CLASS} ${CONTENT_BOTTOM_CLASS} ${CONTENT_TOP_CLASS} flex min-h-dvh flex-col border-b-0 border-t-0 text-black lg:pb-0`}
     >
       <div className="flex flex-1 flex-col lg:flex-row-reverse lg:items-stretch">
         <main className="flex flex-1 flex-col gap-4 p-3 lg:gap-6 lg:p-6">

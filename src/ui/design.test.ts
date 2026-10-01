@@ -9,6 +9,7 @@ import {
   APP_SHELL_CLASS,
   BORDER_PX,
   CONTENT_BOTTOM_CLASS,
+  CONTENT_TOP_CLASS,
   CONTROL_RADIUS_CLASS,
   DESTRUCTIVE_BG_CLASS,
   NAV_BAR_PX,
@@ -463,6 +464,16 @@ describe("the bar is pinned, and covers nothing (#70)", () => {
     expect(shell).toContain("bottom-0");
     expect(shell).toContain("CONTENT_BOTTOM_CLASS");
     expect(nav).toContain("NAV_SAFE_BOTTOM_CLASS");
+  });
+
+  it("clears the status bar, with insets the viewport actually reports (D54)", () => {
+    const shell = readFileSync(join(SRC, "ui", "app-shell.tsx"), "utf8");
+
+    expect(CONTENT_TOP_CLASS).toBe("pt-[env(safe-area-inset-top)]");
+    expect(shell).toContain("CONTENT_TOP_CLASS");
+    expect(readFileSync(join(SRC, "app", "layout.tsx"), "utf8")).toContain(
+      'viewportFit: "cover"',
+    );
   });
 
   it("has no bar above the page any more", () => {
