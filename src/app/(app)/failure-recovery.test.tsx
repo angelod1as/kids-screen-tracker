@@ -363,7 +363,7 @@ describe("the queue after a failed request (#29)", () => {
     await render(<QueueList initial={BOTH} />);
 
     await clickIn("Desenhar", "Corrigir");
-    await type("#duracao-2", "45");
+    await type("#duracao-2-minutos", "45");
     await type("#nota-2", "foram 45");
 
     queue.approveLogAction.mockRejectedValueOnce(NETWORK);
@@ -371,7 +371,7 @@ describe("the queue after a failed request (#29)", () => {
     await clickIn("Ler livro", "Aprovar");
 
     expect(container.textContent).toContain(RESYNCED_TEXT);
-    expect(inputValue("#duracao-2")).toBe("45");
+    expect(inputValue("#duracao-2-minutos")).toBe("45");
     expect(inputValue("#nota-2")).toBe("foram 45");
     expect(
       container.querySelector<HTMLSelectElement>("#atividade-2")?.value,

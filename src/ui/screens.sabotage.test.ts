@@ -4,7 +4,7 @@ import { dirname, join, relative, resolve } from "node:path";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
 import { signedHours } from "./entries";
-import { parseTypedHours } from "./hours";
+import { parseTypedHours, parseTypedTime } from "./hours";
 import type { ScreenRules } from "./screens.rules";
 import { failingScreenCases, SCREEN_CASES } from "./screens.rules";
 
@@ -150,31 +150,32 @@ const MUTATIONS: readonly Mutation[] = [
   {
     name: "a correction with no usable duration is offered anyway",
     file: QUEUE_LIST,
-    find: "    !graded && Number.isInteger(typed) && typed >= 1 && typed <= MAX_MINUTES",
-    replace: "    true",
+    find: "  return !graded && typed !== null && typed >= 1 && typed <= MAX_MINUTES;",
+    replace: "  return true;",
   },
   {
     name: "a correction of zero minutes is offered",
     file: QUEUE_LIST,
-    find: "    !graded && Number.isInteger(typed) && typed >= 1 && typed <= MAX_MINUTES",
-    replace: "    !graded && Number.isInteger(typed) && typed >= 0",
+    find: "  return !graded && typed !== null && typed >= 1 && typed <= MAX_MINUTES;",
+    replace: "  return !graded && typed !== null && typed >= 0;",
   },
   {
-    name: "a fraction of a minute is offered",
+    name: "a duration that is not a time is offered",
     file: QUEUE_LIST,
-    find: "    !graded && Number.isInteger(typed) && typed >= 1 && typed <= MAX_MINUTES",
-    replace: "    !graded && typed >= 1",
+    find: "  return !graded && typed !== null && typed >= 1 && typed <= MAX_MINUTES;",
+    replace:
+      "  return !graded && (typed ?? 1) >= 1 && (typed ?? 1) <= MAX_MINUTES;",
   },
   {
     name: "a correction of any length at all is offered",
     file: QUEUE_LIST,
-    find: "    !graded && Number.isInteger(typed) && typed >= 1 && typed <= MAX_MINUTES",
-    replace: "    !graded && Number.isInteger(typed) && typed >= 1",
+    find: "  return !graded && typed !== null && typed >= 1 && typed <= MAX_MINUTES;",
+    replace: "  return !graded && typed !== null && typed >= 1;",
   },
   {
     name: "a final value that is not a number is offered (D50)",
     file: QUEUE_LIST,
-    find: "  if (overridden && parseTypedHours(override) === null) return false;",
+    find: "  if (overridden && parseTypedTime(override) === null) return false;",
     replace: "",
   },
   {
@@ -186,15 +187,14 @@ const MUTATIONS: readonly Mutation[] = [
   {
     name: "a final value counts while the correction is closed (D50)",
     file: QUEUE_LIST,
-    find: '  const overridden = editing && override.trim() !== "";',
-    replace: '  const overridden = override.trim() !== "";',
+    find: "  const overridden = editing && !isBlankTime(override);",
+    replace: "  const overridden = !isBlankTime(override);",
   },
   {
     name: "an entry that needs a grade is offered without one",
     file: QUEUE_LIST,
-    find: "    !graded && Number.isInteger(typed) && typed >= 1 && typed <= MAX_MINUTES",
-    replace:
-      "    Number.isInteger(typed) && typed >= 1 && typed <= MAX_MINUTES",
+    find: "  return !graded && typed !== null && typed >= 1 && typed <= MAX_MINUTES;",
+    replace: "  return typed !== null && typed >= 1 && typed <= MAX_MINUTES;",
   },
 
   {
@@ -214,6 +214,32 @@ const MUTATIONS: readonly Mutation[] = [
     file: "hours.ts",
     find: "  if (!/^\\d+(\\.\\d+)?$/.test(typed)) return null;",
     replace: "  if (!/\\d/.test(typed)) return null;",
+  },
+
+  {
+    name: "sixty minutes are carried into an hour (#48)",
+    file: "hours.ts",
+    find: "  if (hours === null || minutes === null || minutes >= MINUTES_PER_HOUR) {",
+    replace: "  if (hours === null || minutes === null) {",
+  },
+  {
+    name: "a blank minutes field makes the time unreadable (#48)",
+    file: "hours.ts",
+    find: '    time.minutes.trim() === "" ? 0 : parseTypedCount(time.minutes);',
+    replace: "    parseTypedCount(time.minutes);",
+  },
+  {
+    name: "a fraction is read as hours (#48)",
+    file: "hours.ts",
+    find: '  const hours = time.hours.trim() === "" ? 0 : parseTypedCount(time.hours);',
+    replace:
+      '  const hours = time.hours.trim() === "" ? 0 : parseTypedHours(time.hours);',
+  },
+  {
+    name: "two blank fields are a typed zero (#48)",
+    file: "hours.ts",
+    find: "  if (isBlankTime(time)) return null;",
+    replace: "",
   },
 
   {
@@ -256,13 +282,13 @@ const MUTATIONS: readonly Mutation[] = [
   {
     name: "a refund with no reason is offered",
     file: REFUND_FORM,
-    find: '  return parseTypedHours(hours) !== null && reason.trim() !== "";',
-    replace: "  return parseTypedHours(hours) !== null;",
+    find: '  return parseTypedTime(time) !== null && reason.trim() !== "";',
+    replace: "  return parseTypedTime(time) !== null;",
   },
   {
     name: "a refund with no amount is offered",
     file: REFUND_FORM,
-    find: '  return parseTypedHours(hours) !== null && reason.trim() !== "";',
+    find: '  return parseTypedTime(time) !== null && reason.trim() !== "";',
     replace: '  return reason.trim() !== "";',
   },
 ];
@@ -316,6 +342,7 @@ const REAL: ScreenRules = {
   settlementText,
   canApprove,
   parseTypedHours,
+  parseTypedTime,
   entryOf,
   canConfirm,
   canRefund,

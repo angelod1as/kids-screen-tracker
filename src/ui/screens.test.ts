@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import type { LedgerEntry } from "../app/actions/history";
 import { EntryList, signedHours } from "./entries";
-import { parseTypedHours } from "./hours";
+import { parseTypedHours, parseTypedTime } from "./hours";
 import { failingScreenCases } from "./screens.rules";
 
 /** A `"use server"` module reaches `varlock/env` and the database on import. */
@@ -114,6 +114,7 @@ describe("the rules the two screens decide (#15, #16)", () => {
         settlementText,
         canApprove,
         parseTypedHours,
+        parseTypedTime,
         entryOf,
         canConfirm,
         canRefund,

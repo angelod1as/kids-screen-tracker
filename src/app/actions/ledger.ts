@@ -2,7 +2,8 @@
 
 import { requireAccess } from "../../auth/guard";
 import { getConnection, getDb } from "../../db";
-import { requireHours } from "../../db/input";
+import type { HoursMinutes } from "../../db/input";
+import { hoursFromTime, requireHours } from "../../db/input";
 import type { Refund, Release } from "../../db/ledger";
 import { refundHours, releaseHours } from "../../db/ledger";
 import { requireActiveKid } from "../../db/people";
@@ -16,6 +17,11 @@ export type Movement = {
   balance: number;
 };
 
+/** #48: typed as hours and minutes; converted here, at the edge. */
+export type ReleaseRequest = Omit<Release, "hours"> & { time: HoursMinutes };
+
+export type RefundRequest = Omit<Refund, "hours"> & { time: HoursMinutes };
+
 /** What the confirmation shows (D53). */
 export type MovementPreview = {
   displayName: string;
@@ -24,7 +30,10 @@ export type MovementPreview = {
   after: number;
 };
 
-export async function releaseHoursAction(release: Release): Promise<Movement> {
+export async function releaseHoursAction({
+  time,
+  ...release
+}: ReleaseRequest): Promise<Movement> {
   const session = await requireAccess({
     kind: "write",
     targetUserId: release.userId,
@@ -32,7 +41,7 @@ export async function releaseHoursAction(release: Release): Promise<Movement> {
 
   const { hours } = releaseHours(
     getConnection(),
-    release,
+    { ...release, hours: hoursFromTime(time, "what is released") },
     session.userId,
     new Date(),
   );
@@ -40,7 +49,10 @@ export async function releaseHoursAction(release: Release): Promise<Movement> {
   return { hours, balance: await fetchBalanceAction(release.userId) };
 }
 
-export async function refundHoursAction(refund: Refund): Promise<Movement> {
+export async function refundHoursAction({
+  time,
+  ...refund
+}: RefundRequest): Promise<Movement> {
   const session = await requireAccess({
     kind: "write",
     targetUserId: refund.userId,
@@ -48,7 +60,7 @@ export async function refundHoursAction(refund: Refund): Promise<Movement> {
 
   const { hours } = refundHours(
     getConnection(),
-    refund,
+    { ...refund, hours: hoursFromTime(time, "what is refunded") },
     session.userId,
     new Date(),
   );
@@ -76,23 +88,29 @@ async function previewMovement(
 }
 
 export async function previewReleaseAction(
-  release: Release,
+  release: ReleaseRequest,
 ): Promise<MovementPreview> {
   await requireAccess({ kind: "write", targetUserId: release.userId });
 
   return previewMovement(
     release.userId,
-    -requireHours(release.hours, "what is released"),
+    -requireHours(
+      hoursFromTime(release.time, "what is released"),
+      "what is released",
+    ),
   );
 }
 
 export async function previewRefundAction(
-  refund: Refund,
+  refund: RefundRequest,
 ): Promise<MovementPreview> {
   await requireAccess({ kind: "write", targetUserId: refund.userId });
 
   return previewMovement(
     refund.userId,
-    requireHours(refund.hours, "what is refunded"),
+    requireHours(
+      hoursFromTime(refund.time, "what is refunded"),
+      "what is refunded",
+    ),
   );
 }

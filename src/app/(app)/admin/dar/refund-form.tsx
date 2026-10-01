@@ -1,15 +1,19 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import type { Refund } from "../../../../db/ledger";
 import { Button } from "../../../../ui/button";
 import { ConfirmMovement } from "../../../../ui/confirm-movement";
 import { failureText, previewFailureText } from "../../../../ui/failure";
-import { Field } from "../../../../ui/field";
-import { formatHours, parseTypedHours } from "../../../../ui/hours";
+import { Field, TimeFields } from "../../../../ui/field";
+import type { TypedTime } from "../../../../ui/hours";
+import { EMPTY_TIME, formatHours, parseTypedTime } from "../../../../ui/hours";
 import { KidSelect } from "../../../../ui/kid-select";
 import { BORDER_CLASS, balanceToneClass } from "../../../../ui/style";
-import type { Movement, MovementPreview } from "../../../actions/ledger";
+import type {
+  Movement,
+  MovementPreview,
+  RefundRequest,
+} from "../../../actions/ledger";
 import {
   previewRefundAction,
   refundHoursAction,
@@ -26,19 +30,19 @@ import type { Kid } from "../../../actions/people";
 export const DEFAULT_REFUND_REASON = "Não usou";
 
 /** A rule, not layout; the endpoint refuses both anyway. */
-export function canRefund(hours: string, reason: string): boolean {
-  return parseTypedHours(hours) !== null && reason.trim() !== "";
+export function canRefund(time: TypedTime, reason: string): boolean {
+  return parseTypedTime(time) !== null && reason.trim() !== "";
 }
 
 export function RefundForm({ kids, today }: { kids: Kid[]; today: string }) {
   const [userId, setUserId] = useState(kids[0]?.id ?? 0);
-  const [hours, setHours] = useState("");
+  const [time, setTime] = useState(EMPTY_TIME);
   const [occurredOn, setOccurredOn] = useState(today);
   const [reason, setReason] = useState(DEFAULT_REFUND_REASON);
 
   /** D53: confirming writes the request that was previewed, never the form as it is now. */
   const [asked, setAsked] = useState<{
-    request: Refund;
+    request: RefundRequest;
     preview: MovementPreview;
   } | null>(null);
   const [done, setDone] = useState<Movement | null>(null);
@@ -55,13 +59,13 @@ export function RefundForm({ kids, today }: { kids: Kid[]; today: string }) {
   }
 
   function ask() {
-    const typed = parseTypedHours(hours);
+    const typed = parseTypedTime(time);
 
     if (typed === null || reason.trim() === "") return;
 
-    const request: Refund = {
+    const request: RefundRequest = {
       userId,
-      hours: typed,
+      time: typed,
       occurredOn,
       reason: reason.trim(),
     };
@@ -144,13 +148,11 @@ export function RefundForm({ kids, today }: { kids: Kid[]; today: string }) {
           value={userId}
         />
 
-        <Field
-          id="horas"
-          inputMode="decimal"
-          label="Horas"
-          onChange={(event) => change(() => setHours(event.target.value))}
-          type="text"
-          value={hours}
+        <TimeFields
+          id="tempo"
+          legend="Quanto"
+          onChange={(typed) => change(() => setTime(typed))}
+          value={time}
         />
 
         <Field
@@ -172,7 +174,7 @@ export function RefundForm({ kids, today }: { kids: Kid[]; today: string }) {
         />
 
         <Button
-          disabled={busy || !canRefund(hours, reason)}
+          disabled={busy || !canRefund(time, reason)}
           onClick={ask}
           type="button"
         >

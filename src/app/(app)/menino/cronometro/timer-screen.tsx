@@ -2,23 +2,29 @@
 
 import { useEffect, useState, useTransition } from "react";
 
-import type { NewRequest } from "../../../../db/requests";
 import type { TimerSettlement } from "../../../../db/timers";
 import { reachesMinimum } from "../../../../engine/timer";
 import { Button } from "../../../../ui/button";
 import { formatDay } from "../../../../ui/dates";
 import { RESYNCED_TEXT, timerFailureText } from "../../../../ui/failure";
-import { Field } from "../../../../ui/field";
+import { Field, TimeFields } from "../../../../ui/field";
 import {
   formatClock,
   formatDuration,
   formatRecordedDuration,
+  parseTypedTime,
+  timeFromMinutes,
+  typedMinutes,
 } from "../../../../ui/hours";
 import { Panel, PanelText } from "../../../../ui/panel";
 import { PendingMark } from "../../../../ui/pending";
 import { Select } from "../../../../ui/select";
 import { BALANCE_CLASS, META_CLASS, ROW_CLASS } from "../../../../ui/style";
-import type { OpenSessionView, TimerScreenData } from "../../../actions/timer";
+import type {
+  OpenSessionView,
+  RequestEntry,
+  TimerScreenData,
+} from "../../../actions/timer";
 import {
   fetchTimerScreenAction,
   pauseTimerAction,
@@ -436,23 +442,23 @@ function RequestPanel({
 }: {
   busy: boolean;
   data: TimerScreenData;
-  onRequest: (request: NewRequest, done: () => void) => void;
+  onRequest: (request: RequestEntry, done: () => void) => void;
 }) {
   const [chosen, setChosen] = useState(data.requestable[0]?.id ?? 0);
   const [occurredOn, setOccurredOn] = useState(data.today);
-  const [minutes, setMinutes] = useState(
-    String(data.requestable[0]?.presumedMinutes ?? ""),
+  const [duration, setDuration] = useState(
+    timeFromMinutes(data.requestable[0]?.presumedMinutes ?? null),
   );
   const [note, setNote] = useState("");
 
   const activity = data.requestable.find((item) => item.id === chosen);
   const timed = activity?.calcMode === "duration";
-  const typed = Number(minutes);
+  const typed = parseTypedTime(duration);
   const missingNote = activity?.noteRequired === true && note.trim() === "";
   const ready =
     activity !== undefined &&
     occurredOn !== "" &&
-    (!timed || (Number.isInteger(typed) && typed >= 1)) &&
+    (!timed || (typedMinutes(duration) ?? 0) >= 1) &&
     !missingNote;
   const categories = [
     ...new Map(
@@ -479,10 +485,10 @@ function RequestPanel({
             onChange={(value) => {
               const next = Number(value);
               setChosen(next);
-              setMinutes(
-                String(
+              setDuration(
+                timeFromMinutes(
                   data.requestable.find((item) => item.id === next)
-                    ?.presumedMinutes ?? "",
+                    ?.presumedMinutes ?? null,
                 ),
               );
             }}
@@ -512,13 +518,11 @@ function RequestPanel({
           />
 
           {timed ? (
-            <Field
+            <TimeFields
               id="pedido-duracao"
-              inputMode="numeric"
-              label="Quantos minutos"
-              onChange={(event) => setMinutes(event.target.value)}
-              type="text"
-              value={minutes}
+              legend="Por quanto tempo"
+              onChange={setDuration}
+              value={duration}
             />
           ) : null}
 
@@ -544,7 +548,7 @@ function RequestPanel({
                 {
                   activityId: chosen,
                   occurredOn,
-                  durationMinutes: timed ? typed : null,
+                  duration: timed ? typed : null,
                   note: note.trim() === "" ? null : note.trim(),
                 },
                 () => setNote(""),

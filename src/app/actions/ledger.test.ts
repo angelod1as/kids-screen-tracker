@@ -16,6 +16,8 @@ import { migrateDatabase } from "../../db/migrate";
 import { THAT_DAY } from "../../db/queue.rules";
 import { users } from "../../db/schema";
 import { seedWithTestUsers } from "../../db/test-users";
+import { formatSignedHours } from "../../ui/dates";
+import { signedHours } from "../../ui/entries";
 import { fetchLedgerEntriesAction } from "./history";
 import {
   previewRefundAction,
@@ -115,7 +117,10 @@ describe("who may release and refund (#13)", () => {
     mocked.username = "kid1";
 
     await expect(
-      releaseHoursAction({ userId: world.kidId, hours: 1 }),
+      releaseHoursAction({
+        userId: world.kidId,
+        time: { hours: 1, minutes: 0 },
+      }),
     ).rejects.toMatchObject({ name: "AccessDeniedError", reason: "forbidden" });
   });
 
@@ -125,7 +130,7 @@ describe("who may release and refund (#13)", () => {
     await expect(
       refundHoursAction({
         userId: world.kidId,
-        hours: 1,
+        time: { hours: 1, minutes: 0 },
         occurredOn: THAT_DAY,
         reason: "eu mereço",
       }),
@@ -136,7 +141,10 @@ describe("who may release and refund (#13)", () => {
     mocked.username = "kid2";
 
     await expect(
-      releaseHoursAction({ userId: world.kidId, hours: 1 }),
+      releaseHoursAction({
+        userId: world.kidId,
+        time: { hours: 1, minutes: 0 },
+      }),
     ).rejects.toMatchObject({ reason: "forbidden" });
   });
 
@@ -144,7 +152,10 @@ describe("who may release and refund (#13)", () => {
     mocked.username = null;
 
     await expect(
-      releaseHoursAction({ userId: world.kidId, hours: 1 }),
+      releaseHoursAction({
+        userId: world.kidId,
+        time: { hours: 1, minutes: 0 },
+      }),
     ).rejects.toMatchObject({ reason: "unauthenticated" });
   });
 
@@ -152,7 +163,10 @@ describe("who may release and refund (#13)", () => {
     mocked.username = "admin2";
 
     await expect(
-      releaseHoursAction({ userId: world.kidId, hours: 1 }),
+      releaseHoursAction({
+        userId: world.kidId,
+        time: { hours: 1, minutes: 0 },
+      }),
     ).resolves.toMatchObject({ hours: 1, balance: -1 });
   });
 });
@@ -162,19 +176,22 @@ describe("what comes back (#23, #24)", () => {
     await expect(
       releaseHoursAction({
         userId: world.kidId,
-        hours: 2.5,
+        time: { hours: 2, minutes: 30 },
         destination: "Xbox",
       }),
     ).resolves.toEqual({ hours: 2.5, balance: -2.5 });
   });
 
   it("says the balance the refund left", async () => {
-    await releaseHoursAction({ userId: world.kidId, hours: 2 });
+    await releaseHoursAction({
+      userId: world.kidId,
+      time: { hours: 2, minutes: 0 },
+    });
 
     await expect(
       refundHoursAction({
         userId: world.kidId,
-        hours: 2,
+        time: { hours: 2, minutes: 0 },
         occurredOn: THAT_DAY,
         reason: "ficou fora do ar",
       }),
@@ -184,7 +201,10 @@ describe("what comes back (#23, #24)", () => {
   it("writes the adult who sent the request as the one who did it", async () => {
     mocked.username = "admin2";
 
-    await releaseHoursAction({ userId: world.kidId, hours: 1 });
+    await releaseHoursAction({
+      userId: world.kidId,
+      time: { hours: 1, minutes: 0 },
+    });
 
     expect(world.ledgerText()).toContain("by 2 to 3");
   });
@@ -194,7 +214,7 @@ describe("what the boy sees afterwards (#23, #24)", () => {
   it("shows a refund as a refund, named by the reason it was given", async () => {
     await refundHoursAction({
       userId: world.kidId,
-      hours: 2,
+      time: { hours: 2, minutes: 0 },
       occurredOn: THAT_DAY,
       reason: "O Xbox ficou fora do ar",
     });
@@ -216,7 +236,7 @@ describe("what the boy sees afterwards (#23, #24)", () => {
   it("shows a release as a spend, named by where the hours went", async () => {
     await releaseHoursAction({
       userId: world.kidId,
-      hours: 1,
+      time: { hours: 1, minutes: 0 },
       destination: "PlayStation",
     });
 
@@ -228,7 +248,10 @@ describe("what the boy sees afterwards (#23, #24)", () => {
   });
 
   it("says a release with no destination has none, rather than showing nothing", async () => {
-    await releaseHoursAction({ userId: world.kidId, hours: 1 });
+    await releaseHoursAction({
+      userId: world.kidId,
+      time: { hours: 1, minutes: 0 },
+    });
 
     mocked.username = "kid1";
 
@@ -238,7 +261,10 @@ describe("what the boy sees afterwards (#23, #24)", () => {
   });
 
   it("never puts one boy's movement on the other one's extract", async () => {
-    await releaseHoursAction({ userId: world.otherKidId, hours: 1 });
+    await releaseHoursAction({
+      userId: world.otherKidId,
+      time: { hours: 1, minutes: 0 },
+    });
 
     mocked.username = "kid1";
 
@@ -247,14 +273,25 @@ describe("what the boy sees afterwards (#23, #24)", () => {
 });
 
 describe("the confirmation's numbers (D53)", () => {
-  const REFUND = { hours: 1, occurredOn: THAT_DAY, reason: "Não usou" };
+  const REFUND = {
+    time: { hours: 1, minutes: 0 },
+    occurredOn: THAT_DAY,
+    reason: "Não usou",
+  };
 
   it("reads a release's balance before and after, and writes nothing", async () => {
-    await refundHoursAction({ userId: world.kidId, ...REFUND, hours: 0.58 });
+    await refundHoursAction({
+      userId: world.kidId,
+      ...REFUND,
+      time: { hours: 0, minutes: 35 },
+    });
     const written = world.ledgerText();
 
     await expect(
-      previewReleaseAction({ userId: world.kidId, hours: 1 }),
+      previewReleaseAction({
+        userId: world.kidId,
+        time: { hours: 1, minutes: 0 },
+      }),
     ).resolves.toEqual({
       displayName: "Kid1",
       hours: 1,
@@ -265,7 +302,10 @@ describe("the confirmation's numbers (D53)", () => {
   });
 
   it("reads a refund's balance before and after, and writes nothing", async () => {
-    await releaseHoursAction({ userId: world.kidId, hours: 0.42 });
+    await releaseHoursAction({
+      userId: world.kidId,
+      time: { hours: 0, minutes: 25 },
+    });
     const written = world.ledgerText();
 
     await expect(
@@ -286,15 +326,19 @@ describe("the confirmation's numbers (D53)", () => {
   });
 
   it("says after what the write then leaves", async () => {
-    await refundHoursAction({ userId: world.kidId, ...REFUND, hours: 3 });
+    await refundHoursAction({
+      userId: world.kidId,
+      ...REFUND,
+      time: { hours: 3, minutes: 0 },
+    });
 
     const { after } = await previewReleaseAction({
       userId: world.kidId,
-      hours: 1.234,
+      time: { hours: 1, minutes: 14 },
     });
     const done = await releaseHoursAction({
       userId: world.kidId,
-      hours: 1.234,
+      time: { hours: 1, minutes: 14 },
     });
 
     expect(after).toBe(1.77);
@@ -308,13 +352,19 @@ describe("the confirmation's numbers (D53)", () => {
       previewRefundAction({ userId: world.kidId, ...REFUND }),
     ).rejects.toMatchObject({ reason: "forbidden" });
     await expect(
-      previewReleaseAction({ userId: world.otherKidId, hours: 1 }),
+      previewReleaseAction({
+        userId: world.otherKidId,
+        time: { hours: 1, minutes: 0 },
+      }),
     ).rejects.toMatchObject({ reason: "forbidden" });
   });
 
   it("refuses what the write would refuse: no hours, or an inactive boy", async () => {
     await expect(
-      previewReleaseAction({ userId: world.kidId, hours: 0 }),
+      previewReleaseAction({
+        userId: world.kidId,
+        time: { hours: 0, minutes: 0 },
+      }),
     ).rejects.toThrow("what is released");
 
     world.connection.db
@@ -326,5 +376,84 @@ describe("the confirmation's numbers (D53)", () => {
     await expect(
       previewRefundAction({ userId: world.kidId, ...REFUND }),
     ).rejects.toThrow("D14, D33");
+  });
+});
+
+describe("hours and minutes, as typed (#48)", () => {
+  it.each([
+    [0, 25, "+25 min", 0.42],
+    [1, 0, "+1h", 1],
+    [1, 25, "+1h25", 1.42],
+    [2, 59, "+2h59", 2.98],
+  ])(
+    "gives %ih%i and the extract says it back",
+    async (hours, minutes, shown, stored) => {
+      await refundHoursAction({
+        userId: world.kidId,
+        time: { hours, minutes },
+        occurredOn: THAT_DAY,
+        reason: "Não usou",
+      });
+
+      mocked.username = "kid1";
+      const entries = await fetchLedgerEntriesAction(world.kidId, 5);
+
+      expect(entries.map((entry) => entry.hours)).toEqual([stored]);
+      expect(
+        entries.map((entry) => formatSignedHours(signedHours(entry))),
+      ).toEqual([shown]);
+    },
+  );
+
+  it("takes 1h25 back the same way", async () => {
+    await releaseHoursAction({
+      userId: world.kidId,
+      time: { hours: 1, minutes: 25 },
+    });
+
+    mocked.username = "kid1";
+    const entries = await fetchLedgerEntriesAction(world.kidId, 5);
+
+    expect(
+      entries.map((entry) => formatSignedHours(signedHours(entry))),
+    ).toEqual(["−1h25"]);
+  });
+
+  it.each([
+    [{ hours: 1, minutes: 60 }, "between 0 and 59"],
+    [{ hours: 0, minutes: -5 }, "the minutes of what is released"],
+    [{ hours: 1.5, minutes: 0 }, "the hours of what is released"],
+    [{ hours: 1, minutes: 2.5 }, "the minutes of what is released"],
+    [{ hours: "1", minutes: 0 }, "the hours of what is released"],
+  ])(
+    "refuses %o on the server, not just on the screen (D33)",
+    async (time, message) => {
+      const written = world.ledgerText();
+
+      await expect(
+        releaseHoursAction({
+          userId: world.kidId,
+          time: time as { hours: number; minutes: number },
+        }),
+      ).rejects.toThrow(message);
+      await expect(
+        previewReleaseAction({
+          userId: world.kidId,
+          time: time as { hours: number; minutes: number },
+        }),
+      ).rejects.toThrow(message);
+      expect(world.ledgerText()).toBe(written);
+    },
+  );
+
+  it("refuses a decimal number of hours sent the old way", async () => {
+    await expect(
+      refundHoursAction({
+        userId: world.kidId,
+        hours: 1.5,
+        occurredOn: THAT_DAY,
+        reason: "Não usou",
+      } as never),
+    ).rejects.toThrow("hours and minutes");
   });
 });

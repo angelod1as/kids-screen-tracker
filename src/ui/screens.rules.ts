@@ -1,9 +1,11 @@
-import type { LaunchActivity } from "../app/actions/admin";
+import type { EntryRequest, LaunchActivity } from "../app/actions/admin";
 import type { LedgerEntry } from "../app/actions/history";
 import type { OpenSessionView } from "../app/actions/timer";
-import type { EntryPreview, NewEntry } from "../db/admin";
+import type { EntryPreview } from "../db/admin";
+import type { HoursMinutes } from "../db/input";
 import type { QueueEntry } from "../db/queue";
 import type { TimerSettlement } from "../db/timers";
+import type { TypedTime } from "./hours";
 
 /**
  * The screens' pure decisions, one case at a time, run by `screens.test.ts` and
@@ -18,12 +20,13 @@ export type ScreenRules = {
     entry: Pick<QueueEntry, "blockedBy" | "qualityGraded" | "quality"> &
       Partial<Pick<QueueEntry, "durationMinutes" | "calcMode" | "unpriceable">>,
     editing: boolean,
-    minutes: string,
+    duration: TypedTime,
     grade?: number | null,
-    value?: string,
-    override?: string,
+    value?: TypedTime,
+    override?: TypedTime,
   ) => boolean;
   parseTypedHours: (text: string) => number | null;
+  parseTypedTime: (time: TypedTime) => HoursMinutes | null;
   entryOf: (
     form: {
       userId: number;
@@ -31,13 +34,13 @@ export type ScreenRules = {
       occurredOn: string;
       durationMinutes: number;
       quality: number;
-      freeValue: string;
+      freeValue: TypedTime;
       note: string;
     },
     activity: Pick<LaunchActivity, "calcMode" | "qualityGraded"> | undefined,
-  ) => NewEntry | null;
+  ) => EntryRequest | null;
   canConfirm: (preview: EntryPreview | null) => boolean;
-  canRefund: (hours: string, reason: string) => boolean;
+  canRefund: (time: TypedTime, reason: string) => boolean;
 };
 
 export type ScreenCase = {
@@ -67,7 +70,7 @@ const FORM = {
   occurredOn: "2026-09-10",
   durationMinutes: 60,
   quality: 1,
-  freeValue: "",
+  freeValue: time(""),
   note: "",
 };
 
@@ -83,10 +86,20 @@ const PREVIEW: EntryPreview = {
   blockedBy: null,
 };
 
-function entryText(entry: NewEntry | null): string {
+function entryText(entry: EntryRequest | null): string {
   if (entry === null) return "nothing";
 
-  return `${entry.userId}/${entry.activityId} on ${entry.occurredOn} · ${entry.durationMinutes} min · nota ${entry.quality} · avulso ${entry.freeValue} · ${entry.note ?? "no note"}`;
+  return `${entry.userId}/${entry.activityId} on ${entry.occurredOn} · ${entry.durationMinutes} min · nota ${entry.quality} · avulso ${timeText(entry.freeValue ?? null)} · ${entry.note ?? "no note"}`;
+}
+
+/** What the two fields hold, hours first. */
+function time(hours: string, minutes = ""): TypedTime {
+  return { hours, minutes };
+}
+
+/** A string, since the table compares with `!==`. */
+function timeText(parsed: HoursMinutes | null): string {
+  return parsed === null ? "null" : `${parsed.hours}h${parsed.minutes}`;
 }
 
 export const SCREEN_CASES: readonly ScreenCase[] = [
@@ -98,7 +111,7 @@ export const SCREEN_CASES: readonly ScreenCase[] = [
       rules.canApprove(
         { blockedBy: null, qualityGraded: false, quality: null },
         true,
-        "1000001",
+        time("16666", "41"),
       ),
     expected: false,
   },
@@ -109,7 +122,7 @@ export const SCREEN_CASES: readonly ScreenCase[] = [
       rules.canApprove(
         { blockedBy: null, qualityGraded: false, quality: null },
         true,
-        "1000000",
+        time("16666", "40"),
       ),
     expected: true,
   },
@@ -121,7 +134,7 @@ export const SCREEN_CASES: readonly ScreenCase[] = [
       rules.canApprove(
         { blockedBy: null, qualityGraded: true, quality: null },
         false,
-        "60",
+        time("1"),
       ),
     expected: false,
   },
@@ -133,7 +146,7 @@ export const SCREEN_CASES: readonly ScreenCase[] = [
       rules.canApprove(
         { blockedBy: null, qualityGraded: true, quality: null },
         true,
-        "60",
+        time("1"),
       ),
     expected: false,
   },
@@ -144,7 +157,7 @@ export const SCREEN_CASES: readonly ScreenCase[] = [
       rules.canApprove(
         { blockedBy: null, qualityGraded: true, quality: null },
         true,
-        "60",
+        time("1"),
         0.7,
       ),
     expected: true,
@@ -156,7 +169,7 @@ export const SCREEN_CASES: readonly ScreenCase[] = [
       rules.canApprove(
         { blockedBy: null, qualityGraded: true, quality: null },
         true,
-        "60",
+        time("1"),
         0,
       ),
     expected: true,
@@ -168,10 +181,10 @@ export const SCREEN_CASES: readonly ScreenCase[] = [
       rules.canApprove(
         { blockedBy: null, qualityGraded: true, quality: null },
         true,
-        "60",
+        time("1"),
         null,
-        "",
-        "0,5",
+        time(""),
+        time("0", "30"),
       ),
     expected: true,
   },
@@ -188,10 +201,10 @@ export const SCREEN_CASES: readonly ScreenCase[] = [
           calcMode: "free",
         },
         true,
-        "",
+        time(""),
         null,
-        "",
-        "0",
+        time(""),
+        time("0"),
       ),
     expected: true,
   },
@@ -202,10 +215,10 @@ export const SCREEN_CASES: readonly ScreenCase[] = [
       rules.canApprove(
         { blockedBy: null, qualityGraded: false, quality: null },
         true,
-        "60",
+        time("1"),
         null,
-        "",
-        "meia",
+        time(""),
+        time("meia"),
       ),
     expected: false,
   },
@@ -216,10 +229,10 @@ export const SCREEN_CASES: readonly ScreenCase[] = [
       rules.canApprove(
         { blockedBy: null, qualityGraded: false, quality: null },
         true,
-        "0",
+        time("0"),
         null,
-        "",
-        "1",
+        time(""),
+        time("1"),
       ),
     expected: false,
   },
@@ -236,9 +249,9 @@ export const SCREEN_CASES: readonly ScreenCase[] = [
           calcMode: "free",
         },
         false,
-        "",
+        time(""),
         null,
-        "2,5",
+        time("2", "30"),
       ),
     expected: true,
   },
@@ -249,7 +262,7 @@ export const SCREEN_CASES: readonly ScreenCase[] = [
       rules.canApprove(
         { blockedBy: null, qualityGraded: true, quality: null },
         false,
-        "60",
+        time("1"),
         0.7,
       ),
     expected: true,
@@ -268,7 +281,7 @@ export const SCREEN_CASES: readonly ScreenCase[] = [
           unpriceable: ["duration"],
         },
         false,
-        "",
+        time(""),
       ),
     expected: false,
   },
@@ -286,7 +299,7 @@ export const SCREEN_CASES: readonly ScreenCase[] = [
           unpriceable: ["duration"],
         },
         true,
-        "",
+        time(""),
       ),
     expected: false,
   },
@@ -304,10 +317,10 @@ export const SCREEN_CASES: readonly ScreenCase[] = [
           unpriceable: ["duration"],
         },
         true,
-        "",
+        time(""),
         null,
-        "",
-        "1",
+        time(""),
+        time("1"),
       ),
     expected: true,
   },
@@ -318,10 +331,10 @@ export const SCREEN_CASES: readonly ScreenCase[] = [
       rules.canApprove(
         { blockedBy: null, qualityGraded: true, quality: null },
         false,
-        "60",
+        time("1"),
         null,
-        "",
-        "1",
+        time(""),
+        time("1"),
       ),
     expected: false,
   },
@@ -436,7 +449,7 @@ export const SCREEN_CASES: readonly ScreenCase[] = [
       rules.canApprove(
         { blockedBy: null, qualityGraded: false, quality: null },
         false,
-        "",
+        time(""),
       ),
     expected: true,
   },
@@ -455,7 +468,7 @@ export const SCREEN_CASES: readonly ScreenCase[] = [
           quality: null,
         },
         false,
-        "",
+        time(""),
       ),
     expected: false,
   },
@@ -466,7 +479,7 @@ export const SCREEN_CASES: readonly ScreenCase[] = [
       rules.canApprove(
         { blockedBy: null, qualityGraded: false, quality: null },
         true,
-        "60",
+        time("1"),
       ),
     expected: true,
   },
@@ -477,7 +490,7 @@ export const SCREEN_CASES: readonly ScreenCase[] = [
       rules.canApprove(
         { blockedBy: null, qualityGraded: false, quality: null },
         true,
-        "",
+        time(""),
       ),
     expected: false,
   },
@@ -488,7 +501,7 @@ export const SCREEN_CASES: readonly ScreenCase[] = [
       rules.canApprove(
         { blockedBy: null, qualityGraded: false, quality: null },
         true,
-        "1.5",
+        time("0", "1.5"),
       ),
     expected: false,
   },
@@ -499,7 +512,7 @@ export const SCREEN_CASES: readonly ScreenCase[] = [
       rules.canApprove(
         { blockedBy: null, qualityGraded: false, quality: null },
         true,
-        "uma hora",
+        time("uma hora"),
       ),
     expected: false,
   },
@@ -510,7 +523,7 @@ export const SCREEN_CASES: readonly ScreenCase[] = [
       rules.canApprove(
         { blockedBy: null, qualityGraded: false, quality: null },
         true,
-        "0",
+        time("0"),
       ),
     expected: false,
   },
@@ -598,8 +611,11 @@ export const SCREEN_CASES: readonly ScreenCase[] = [
     rule: "the form describes an entry before it is sent",
     name: "a free activity carries the value the adult typed",
     run: (rules) =>
-      entryText(rules.entryOf({ ...FORM, freeValue: "2,5" }, FREE_ACTIVITY)),
-    expected: "3/5 on 2026-09-10 · null min · nota null · avulso 2.5 · no note",
+      entryText(
+        rules.entryOf({ ...FORM, freeValue: time("2", "30") }, FREE_ACTIVITY),
+      ),
+    expected:
+      "3/5 on 2026-09-10 · null min · nota null · avulso 2h30 · no note",
   },
   {
     rule: "the form describes an entry before it is sent",
@@ -659,27 +675,125 @@ export const SCREEN_CASES: readonly ScreenCase[] = [
   },
 
   {
+    rule: "a typed time is hours and minutes, never a fraction (#48)",
+    name: "0h25",
+    run: (rules) => timeText(rules.parseTypedTime(time("0", "25"))),
+    expected: "0h25",
+  },
+  {
+    rule: "a typed time is hours and minutes, never a fraction (#48)",
+    name: "1h00, with the minutes left blank",
+    run: (rules) => timeText(rules.parseTypedTime(time("1"))),
+    expected: "1h0",
+  },
+  {
+    rule: "a typed time is hours and minutes, never a fraction (#48)",
+    name: "1h25",
+    run: (rules) => timeText(rules.parseTypedTime(time("1", "25"))),
+    expected: "1h25",
+  },
+  {
+    rule: "a typed time is hours and minutes, never a fraction (#48)",
+    name: "2h59",
+    run: (rules) => timeText(rules.parseTypedTime(time("2", "59"))),
+    expected: "2h59",
+  },
+  {
+    rule: "a typed time is hours and minutes, never a fraction (#48)",
+    name: "minutes alone, with the hours left blank",
+    run: (rules) => timeText(rules.parseTypedTime(time("", "25"))),
+    expected: "0h25",
+  },
+  {
+    rule: "a typed time is hours and minutes, never a fraction (#48)",
+    name: "sixty minutes are refused, not carried into an hour",
+    run: (rules) => timeText(rules.parseTypedTime(time("1", "60"))),
+    expected: "null",
+  },
+  {
+    rule: "a typed time is hours and minutes, never a fraction (#48)",
+    name: "a fraction of an hour is not hours",
+    run: (rules) => timeText(rules.parseTypedTime(time("1,5"))),
+    expected: "null",
+  },
+  {
+    rule: "a typed time is hours and minutes, never a fraction (#48)",
+    name: "a fraction of a minute is not minutes",
+    run: (rules) => timeText(rules.parseTypedTime(time("1", "2.5"))),
+    expected: "null",
+  },
+  {
+    rule: "a typed time is hours and minutes, never a fraction (#48)",
+    name: "negative minutes are not minutes",
+    run: (rules) => timeText(rules.parseTypedTime(time("1", "-5"))),
+    expected: "null",
+  },
+  {
+    rule: "a typed time is hours and minutes, never a fraction (#48)",
+    name: "both fields blank is nothing, and not zero",
+    run: (rules) => timeText(rules.parseTypedTime(time(" ", ""))),
+    expected: "null",
+  },
+  {
+    rule: "a typed time is hours and minutes, never a fraction (#48)",
+    name: "zero typed is zero",
+    run: (rules) => timeText(rules.parseTypedTime(time("0"))),
+    expected: "0h0",
+  },
+  {
+    rule: "approving is one tap, when it is a tap that can be taken",
+    name: "a correction of sixty minutes in the minutes field is not offered (#48)",
+    run: (rules) =>
+      rules.canApprove(
+        { blockedBy: null, qualityGraded: false, quality: null },
+        true,
+        time("0", "60"),
+      ),
+    expected: false,
+  },
+  {
+    rule: "approving is one tap, when it is a tap that can be taken",
+    name: "a final value of sixty minutes is not offered (#48)",
+    run: (rules) =>
+      rules.canApprove(
+        { blockedBy: null, qualityGraded: false, quality: null },
+        true,
+        time("1"),
+        null,
+        time(""),
+        time("0", "60"),
+      ),
+    expected: false,
+  },
+  {
+    rule: "a refund says how much and why",
+    name: "an amount with sixty minutes (#48)",
+    run: (rules) => rules.canRefund(time("1", "60"), "motivo"),
+    expected: false,
+  },
+
+  {
     rule: "a refund says how much and why",
     name: "both filled in",
-    run: (rules) => rules.canRefund("2", "o Xbox ficou fora do ar"),
+    run: (rules) => rules.canRefund(time("2"), "o Xbox ficou fora do ar"),
     expected: true,
   },
   {
     rule: "a refund says how much and why",
     name: "no amount",
-    run: (rules) => rules.canRefund("", "o Xbox ficou fora do ar"),
+    run: (rules) => rules.canRefund(time(""), "o Xbox ficou fora do ar"),
     expected: false,
   },
   {
     rule: "a refund says how much and why",
     name: "no reason",
-    run: (rules) => rules.canRefund("2", "   "),
+    run: (rules) => rules.canRefund(time("2"), "   "),
     expected: false,
   },
   {
     rule: "a refund says how much and why",
     name: "an amount that is not a number",
-    run: (rules) => rules.canRefund("duas", "motivo"),
+    run: (rules) => rules.canRefund(time("duas"), "motivo"),
     expected: false,
   },
 ];

@@ -382,3 +382,52 @@ describe("counting what is waiting (#21)", () => {
     });
   });
 });
+
+describe("a correction typed as hours and minutes (#48)", () => {
+  it("corrects the duration to 1h25 as whole minutes", async () => {
+    const id = world.addPending({ activity: BOOK });
+
+    await approveLogAction(id, { duration: { hours: 1, minutes: 25 } });
+
+    expect(world.logRow(id)).toMatchObject({
+      durationMinutes: 85,
+      durationSeconds: 85 * 60,
+    });
+  });
+
+  it("decides a final value of 1h25 in D9's two decimals (D50)", async () => {
+    const id = world.addPending({ activity: BOOK });
+
+    await approveLogAction(id, { override: { hours: 1, minutes: 25 } });
+
+    expect(world.logRow(id)).toMatchObject({
+      computedHours: 1.42,
+      overridden: true,
+    });
+  });
+
+  it("decides a final value of 0h00 as zero (D50)", async () => {
+    const id = world.addPending({ activity: BOOK });
+
+    await approveLogAction(id, { override: { hours: 0, minutes: 0 } });
+
+    expect(world.logRow(id).computedHours).toBe(0);
+  });
+
+  it.each([
+    ["duration", { duration: { hours: 0, minutes: 60 } }],
+    ["final value", { override: { hours: 1, minutes: 60 } }],
+    ["final value", { override: { hours: 0, minutes: -1 } }],
+    ["final value", { override: { hours: 0.5, minutes: 0 } }],
+  ])(
+    "refuses a %s that is not hours and minutes, and leaves the entry waiting (D33)",
+    async (_what, edits) => {
+      const id = world.addPending({ activity: BOOK });
+
+      await expect(approveLogAction(id, edits)).rejects.toThrow(
+        /hours of|minutes of/,
+      );
+      expect(world.logRow(id).status).toBe("pending");
+    },
+  );
+});

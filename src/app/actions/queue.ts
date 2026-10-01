@@ -2,6 +2,8 @@
 
 import { requireAdmin } from "../../auth/guard";
 import { getConnection } from "../../db";
+import type { HoursMinutes } from "../../db/input";
+import { hoursFromTime, requireHoursMinutes } from "../../db/input";
 import type { LogEdits, QueueEntry } from "../../db/queue";
 import {
   approveLog,
@@ -42,15 +44,45 @@ export async function countPendingLogsAction(): Promise<number> {
   return countPendingLogs(getConnection());
 }
 
+/** #48: every time typed as hours and minutes; converted here, at the edge. */
+export type ApprovalEdits = Omit<
+  LogEdits,
+  "durationMinutes" | "freeValue" | "overrideHours"
+> & {
+  duration?: HoursMinutes;
+  freeValue?: HoursMinutes;
+  /** D50. */
+  override?: HoursMinutes;
+};
+
 /** D32's refusal is returned: thrown, production shows the browser only a digest. */
 export async function approveLogAction(
   logId: number,
-  edits: LogEdits = {},
+  { duration, freeValue, override, ...edits }: ApprovalEdits = {},
 ): Promise<QueueData | Refused> {
   const session = await requireAdmin();
 
   return refusedOr(() => {
-    approveLog(getConnection(), logId, session.userId, edits, new Date());
+    approveLog(
+      getConnection(),
+      logId,
+      session.userId,
+      {
+        ...edits,
+        ...(duration === undefined
+          ? {}
+          : { durationMinutes: requireHoursMinutes(duration, "a duration") }),
+        ...(freeValue === undefined
+          ? {}
+          : {
+              freeValue: hoursFromTime(freeValue, "a free activity's value"),
+            }),
+        ...(override === undefined
+          ? {}
+          : { overrideHours: hoursFromTime(override, "an overridden value") }),
+      },
+      new Date(),
+    );
     // D51: not awaited, and it never rejects; the push is a reminder, not the record.
     void notifyReviewed(getConnection(), logId);
 

@@ -196,9 +196,16 @@ describe("a boy's request (D49)", () => {
       requestLogAction(KID1, {
         activityId: READING,
         occurredOn: TODAY,
-        durationMinutes: 1.5,
+        duration: { hours: 0, minutes: 1.5 },
       }),
-    ).rejects.toThrow(/whole number of minutes/);
+    ).rejects.toThrow(/the minutes of a duration is a whole number/);
+    await expect(
+      requestLogAction(KID1, {
+        activityId: READING,
+        occurredOn: TODAY,
+        duration: { hours: 1, minutes: 60 },
+      }),
+    ).rejects.toThrow(/between 0 and 59/);
     await expect(
       requestLogAction(KID1, { activityId: READING, occurredOn: TODAY }),
     ).rejects.toThrow(/whole number of minutes/);
@@ -418,6 +425,8 @@ describe("the presumed duration (#18)", () => {
 });
 
 describe("approving a request on the queue screen (D49)", () => {
+  const EMPTY = { hours: "", minutes: "" };
+
   const untimed = {
     blockedBy: null,
     qualityGraded: false,
@@ -428,16 +437,22 @@ describe("approving a request on the queue screen (D49)", () => {
   it("approves an untimed fixed request with no minutes typed", async () => {
     const { canApprove } = await import("../(app)/admin/fila/queue-list");
 
-    expect(canApprove({ ...untimed, calcMode: "fixed" }, false, "")).toBe(true);
-    expect(canApprove({ ...untimed, calcMode: "fixed" }, true, "")).toBe(true);
+    expect(canApprove({ ...untimed, calcMode: "fixed" }, false, EMPTY)).toBe(
+      true,
+    );
+    expect(canApprove({ ...untimed, calcMode: "fixed" }, true, EMPTY)).toBe(
+      true,
+    );
   });
 
   it("waits for the adult's value on a free request", async () => {
     const { canApprove } = await import("../(app)/admin/fila/queue-list");
     const free = { ...untimed, calcMode: "free" as const };
 
-    expect(canApprove(free, false, "")).toBe(false);
-    expect(canApprove(free, true, "", null, "")).toBe(false);
-    expect(canApprove(free, true, "", null, "2,5")).toBe(true);
+    expect(canApprove(free, false, EMPTY)).toBe(false);
+    expect(canApprove(free, true, EMPTY, null, EMPTY)).toBe(false);
+    expect(
+      canApprove(free, true, EMPTY, null, { hours: "2", minutes: "30" }),
+    ).toBe(true);
   });
 });

@@ -4,7 +4,7 @@ import { join } from "node:path";
 
 import { eq } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { LaunchResult, NewEntry } from "../../db/admin";
+import type { LaunchResult } from "../../db/admin";
 import { launchEntry, previewEntry } from "../../db/admin";
 import type { AdminModule, AdminWorld } from "../../db/admin.rules";
 import {
@@ -21,7 +21,7 @@ import { listPendingLogs } from "../../db/queue";
 import { BOOK, THAT_DAY } from "../../db/queue.rules";
 import { activities, activityLogs } from "../../db/schema";
 import { seedWithTestUsers } from "../../db/test-users";
-import type { Movement } from "./admin";
+import type { EntryRequest, Movement } from "./admin";
 import {
   fetchLaunchDataAction,
   launchEntryAction,
@@ -50,7 +50,9 @@ vi.mock("../../db", () => ({
 const REAL: AdminModule = { previewEntry, launchEntry };
 
 /** A launch the case expects to go through; a refusal fails it with its text. */
-async function launched(newEntry: NewEntry): Promise<LaunchResult & Movement> {
+async function launched(
+  newEntry: EntryRequest,
+): Promise<LaunchResult & Movement> {
   const result = await launchEntryAction(newEntry);
 
   if ("refused" in result) throw new Error(result.refused);
@@ -325,5 +327,30 @@ describe("the preview is not the write", () => {
 
     expect(queued?.id).toBe(first);
     expect(launched.blockedBy?.id).toBe(first);
+  });
+});
+
+describe("a free activity's value, typed as hours and minutes (#48)", () => {
+  function free(minutes: number) {
+    return {
+      userId: world.kidId,
+      activityId: world.activityId(FREE),
+      occurredOn: THAT_DAY,
+      freeValue: { hours: 1, minutes },
+    };
+  }
+
+  it("is worth 1h25 in D9's two decimals", async () => {
+    await expect(launched(free(25))).resolves.toMatchObject({ hours: 1.42 });
+  });
+
+  it("refuses sixty minutes in the preview and in the write (D33)", async () => {
+    await expect(previewEntryAction(free(60))).rejects.toThrow(
+      /between 0 and 59/,
+    );
+    await expect(launchEntryAction(free(60))).rejects.toThrow(
+      /between 0 and 59/,
+    );
+    expect(world.ledgerText()).toBe("no ledger");
   });
 });

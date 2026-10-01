@@ -79,7 +79,7 @@ const DRAFT = {
   ...EMPTY_CATEGORY,
   name: "Mente",
   baseRate: "2",
-  decayStepHours: "1",
+  decayStep: { hours: "1", minutes: "" },
   returnBonusPct: "50",
   returnBonusAfterDays: "3",
 };
@@ -92,15 +92,15 @@ describe("the asymptote, while the category is being edited (#26)", () => {
   });
 
   it("follows the step as it is typed, without a round trip", () => {
-    expect(asymptoteText({ ...DRAFT, decayStepHours: "2" })).toBe(
-      "Rende no máximo 8,00 h por dia (taxa × passo × 2).",
-    );
+    expect(
+      asymptoteText({ ...DRAFT, decayStep: { hours: "2", minutes: "" } }),
+    ).toBe("Rende no máximo 8,00 h por dia (taxa × passo × 2).");
   });
 
   it("says there is no asymptote when there is no decay (D2)", () => {
-    expect(asymptoteText({ ...DRAFT, decayStepHours: "" })).toBe(
-      "Sem desgaste: cada hora vale o mesmo o dia inteiro.",
-    );
+    expect(
+      asymptoteText({ ...DRAFT, decayStep: { hours: "", minutes: "" } }),
+    ).toBe("Sem desgaste: cada hora vale o mesmo o dia inteiro.");
   });
 
   it("asks for the rate rather than guessing one (D11)", () => {
@@ -112,7 +112,11 @@ describe("the asymptote, while the category is being edited (#26)", () => {
   it("shows the absurdity of a step under the floor in the same breath", () => {
     // The configuration #26 names: the whole category would pay 36 minutes a day.
     expect(
-      asymptoteText({ ...DRAFT, baseRate: "3", decayStepHours: "0,1" }),
+      asymptoteText({
+        ...DRAFT,
+        baseRate: "3",
+        decayStep: { hours: "0", minutes: "6" },
+      }),
     ).toBe("Rende no máximo 0,60 h por dia (taxa × passo × 2).");
   });
 });
@@ -120,17 +124,24 @@ describe("the asymptote, while the category is being edited (#26)", () => {
 describe("the two floors, explained before they are hit (#26)", () => {
   it("says nothing while the step is fine", () => {
     expect(decayStepWarning(DRAFT)).toBeNull();
-    expect(decayStepWarning({ ...DRAFT, decayStepHours: "0,25" })).toBeNull();
+    expect(
+      decayStepWarning({ ...DRAFT, decayStep: { hours: "0", minutes: "15" } }),
+    ).toBeNull();
   });
 
   it("says nothing about a category that has no decay at all", () => {
-    expect(decayStepWarning({ ...DRAFT, decayStepHours: "" })).toBeNull();
+    expect(
+      decayStepWarning({ ...DRAFT, decayStep: { hours: "", minutes: "" } }),
+    ).toBeNull();
   });
 
   it("does not call an unreadable step a category without decay", () => {
-    expect(asymptoteText({ ...DRAFT, decayStepHours: "abc" })).toBe(
-      "Passo do desgaste ainda não é um número.",
-    );
+    expect(
+      asymptoteText({ ...DRAFT, decayStep: { hours: "abc", minutes: "" } }),
+    ).toBe("Passo do desgaste ainda não é um tempo.");
+    expect(
+      asymptoteText({ ...DRAFT, decayStep: { hours: "1", minutes: "60" } }),
+    ).toBe("Passo do desgaste ainda não é um tempo.");
   });
 
   it("says something when the bonus fields are unreadable, as the step does", () => {
@@ -143,9 +154,12 @@ describe("the two floors, explained before they are hit (#26)", () => {
   });
 
   it("names the floor and what to do instead", () => {
-    const warning = decayStepWarning({ ...DRAFT, decayStepHours: "0,1" });
+    const warning = decayStepWarning({
+      ...DRAFT,
+      decayStep: { hours: "0", minutes: "14" },
+    });
 
-    expect(warning).toContain("0,25 h");
+    expect(warning).toContain("15 min");
     // Not "a conta perde precisão": false since D39. The floor is D35's.
     expect(warning).toContain("menos da metade da taxa dela por dia");
     expect(warning).not.toContain("precisão");
@@ -216,7 +230,7 @@ describe("the form the endpoint is handed (#26)", () => {
     expect(categoryInputOf(DRAFT)).toEqual({
       name: "Mente",
       baseRate: 2,
-      decayStepHours: 1,
+      decayStep: { hours: 1, minutes: 0 },
       returnBonusPct: 0.5,
       returnBonusAfterDays: 3,
       sortOrder: 0,
@@ -225,7 +239,8 @@ describe("the form the endpoint is handed (#26)", () => {
 
   it("reads an empty decay field as no decay, and not as zero (D2)", () => {
     expect(
-      categoryInputOf({ ...DRAFT, decayStepHours: "" })?.decayStepHours,
+      categoryInputOf({ ...DRAFT, decayStep: { hours: "", minutes: "" } })
+        ?.decayStep,
     ).toBeNull();
   });
 
@@ -233,15 +248,24 @@ describe("the form the endpoint is handed (#26)", () => {
     expect(categoryInputOf({ ...DRAFT, baseRate: "" })?.baseRate).toBeNull();
   });
 
-  it("takes the comma a Brazilian keyboard produces", () => {
+  it("takes the step as hours and minutes, never a fraction (#48)", () => {
     expect(
-      categoryInputOf({ ...DRAFT, decayStepHours: "1,5" })?.decayStepHours,
-    ).toBe(1.5);
+      categoryInputOf({ ...DRAFT, decayStep: { hours: "1", minutes: "30" } })
+        ?.decayStep,
+    ).toEqual({ hours: 1, minutes: 30 });
+    expect(
+      categoryInputOf({ ...DRAFT, decayStep: { hours: "1,5", minutes: "" } }),
+    ).toBeNull();
+    expect(
+      categoryInputOf({ ...DRAFT, decayStep: { hours: "1", minutes: "60" } }),
+    ).toBeNull();
   });
 
   it("answers nothing for a form that is not a category yet", () => {
     expect(categoryInputOf({ ...DRAFT, name: "   " })).toBeNull();
-    expect(categoryInputOf({ ...DRAFT, decayStepHours: "abc" })).toBeNull();
+    expect(
+      categoryInputOf({ ...DRAFT, decayStep: { hours: "abc", minutes: "" } }),
+    ).toBeNull();
     expect(categoryInputOf({ ...DRAFT, returnBonusPct: "" })).toBeNull();
     expect(categoryInputOf({ ...DRAFT, returnBonusAfterDays: "" })).toBeNull();
     expect(categoryInputOf({ ...DRAFT, sortOrder: "" })).toBeNull();
@@ -255,7 +279,9 @@ describe("the form the endpoint is handed (#26)", () => {
   });
 
   it("answers nothing for a draft the endpoint would refuse", () => {
-    expect(categoryInputOf({ ...DRAFT, decayStepHours: "0,1" })).toBeNull();
+    expect(
+      categoryInputOf({ ...DRAFT, decayStep: { hours: "0", minutes: "14" } }),
+    ).toBeNull();
     expect(categoryInputOf({ ...DRAFT, returnBonusAfterDays: "0" })).toBeNull();
   });
 });
@@ -273,7 +299,7 @@ describe("what a category says about itself in the list (#26)", () => {
 
   it("says the step alone when there is no rate to build an asymptote from", () => {
     expect(categorySummary({ ...CASA, decayStepHours: 2 })).toBe(
-      "passo de 2,00 h · sem bônus",
+      "passo de 2h · sem bônus",
     );
   });
 
@@ -459,7 +485,7 @@ describe("the activity form the endpoint is handed (#27)", () => {
   const DRAFT = {
     ...emptyActivity(1.5),
     name: "Podcast",
-    maxSessionMinutes: "90",
+    maxSession: { hours: "1", minutes: "30" },
     repeatCooldownDays: "4",
     sortOrder: "6",
   };
@@ -471,10 +497,11 @@ describe("the activity form the endpoint is handed (#27)", () => {
       description: null,
       noteRequired: false,
       calcMode: "duration",
-      value: 1.5,
-      maxSessionMinutes: 90,
-      minSessionMinutes: 5,
-      presumedMinutes: null,
+      rate: 1.5,
+      amount: null,
+      maxSession: { hours: 1, minutes: 30 },
+      minSession: { hours: 0, minutes: 5 },
+      presumed: null,
       qualityGraded: false,
       repeatCooldownDays: 4,
       sortOrder: 6,
@@ -483,14 +510,14 @@ describe("the activity form the endpoint is handed (#27)", () => {
 
   it("sends no value at all for a free activity", () => {
     expect(
-      activityInputOf({ ...DRAFT, calcMode: "free", value: "" }, 2)?.value,
-    ).toBeNull();
+      activityInputOf({ ...DRAFT, calcMode: "free", value: "" }, 2),
+    ).toMatchObject({ rate: null, amount: null });
   });
 
   it("reads an empty session limit as no limit", () => {
     expect(
-      activityInputOf({ ...DRAFT, maxSessionMinutes: "" }, 2)
-        ?.maxSessionMinutes,
+      activityInputOf({ ...DRAFT, maxSession: { hours: "", minutes: "" } }, 2)
+        ?.maxSession,
     ).toBeNull();
   });
 
@@ -504,12 +531,15 @@ describe("the activity form the endpoint is handed (#27)", () => {
 
   it("refuses a session limit written as a decimal rather than rounding it", () => {
     expect(
-      activityInputOf({ ...DRAFT, maxSessionMinutes: "90,5" }, 2),
+      activityInputOf(
+        { ...DRAFT, maxSession: { hours: "1", minutes: "30,5" } },
+        2,
+      ),
     ).toBeNull();
   });
 
   it("keeps a value priced away from the category's rate", () => {
-    expect(activityInputOf({ ...DRAFT, value: "1,5" }, 2)?.value).toBe(1.5);
+    expect(activityInputOf({ ...DRAFT, value: "1,5" }, 2)?.rate).toBe(1.5);
   });
 });
 
@@ -528,7 +558,7 @@ describe("what an activity says about itself in the list (#27)", () => {
         value: 3,
         maxSessionMinutes: null,
       }),
-    ).toBe("3,00 h fixas");
+    ).toBe("3h fixas");
   });
 
   it("says a delivery is multiplied by the grade", () => {
@@ -541,7 +571,7 @@ describe("what an activity says about itself in the list (#27)", () => {
         qualityGraded: true,
         repeatCooldownDays: 7,
       }),
-    ).toBe("3,00 h × nota · repete a cada 7 dias");
+    ).toBe("3h × nota · repete a cada 7 dias");
   });
 
   it("says a free activity has its value typed at launch (D11, D12)", () => {
@@ -594,25 +624,28 @@ describe("the floor an adult types (D44)", () => {
   const TIMED = {
     ...emptyActivity(2),
     name: "Ler livro",
-    maxSessionMinutes: "120",
+    maxSession: { hours: "2", minutes: "" },
   };
 
   it("keeps Save dead, and says why, when the floor passes the limit", () => {
-    const draft = { ...TIMED, minSessionMinutes: "150" };
+    const draft = { ...TIMED, minSession: { hours: "2", minutes: "30" } };
 
     expect(activityInputOf(draft, 3)).toBeNull();
     expect(minSessionWarning(draft)).toContain("não pode passar do limite");
   });
 
   it("keeps Save dead on a floor of zero", () => {
-    const draft = { ...TIMED, minSessionMinutes: "0" };
+    const draft = { ...TIMED, minSession: { hours: "0", minutes: "" } };
 
     expect(activityInputOf(draft, 3)).toBeNull();
-    expect(minSessionWarning(draft)).toContain("de 1 para cima");
+    expect(minSessionWarning(draft)).toContain("de 1 minuto para cima");
   });
 
   it("starts a new activity at five minutes, with nothing to warn about", () => {
-    expect(activityInputOf(TIMED, 3)?.minSessionMinutes).toBe(5);
+    expect(activityInputOf(TIMED, 3)?.minSession).toEqual({
+      hours: 0,
+      minutes: 5,
+    });
     expect(minSessionWarning(TIMED)).toBeNull();
   });
 });

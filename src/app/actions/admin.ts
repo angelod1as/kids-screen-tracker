@@ -6,6 +6,8 @@ import { requireAccess, requireAdmin } from "../../auth/guard";
 import { getConnection, getDb } from "../../db";
 import type { EntryPreview, LaunchResult, NewEntry } from "../../db/admin";
 import { launchEntry, previewEntry } from "../../db/admin";
+import type { HoursMinutes } from "../../db/input";
+import { hoursFromTime } from "../../db/input";
 import type { Refused } from "../../db/refusal";
 import { refusedOr } from "../../db/refusal";
 import { activities, categories } from "../../db/schema";
@@ -33,6 +35,21 @@ export type Movement = {
   /** The boy's balance with the entry in it. */
   balance: number;
 };
+
+/** #48: a `free` value is typed as hours and minutes; converted here, at the edge. */
+export type EntryRequest = Omit<NewEntry, "freeValue"> & {
+  freeValue?: HoursMinutes | null;
+};
+
+function toNewEntry({ freeValue, ...entry }: EntryRequest): NewEntry {
+  return {
+    ...entry,
+    freeValue:
+      freeValue === undefined || freeValue === null
+        ? freeValue
+        : hoursFromTime(freeValue, "a free activity's value"),
+  };
+}
 
 /** `free` is in: this is the only screen that can type its value (D12). Inactive is out here and at the endpoint (D14, D33). */
 export async function fetchLaunchDataAction(): Promise<LaunchData> {
@@ -65,16 +82,16 @@ export async function fetchLaunchDataAction(): Promise<LaunchData> {
 
 /** The number before the tap, never the one written: `launchEntryAction` recomputes in its transaction. */
 export async function previewEntryAction(
-  entry: NewEntry,
+  entry: EntryRequest,
 ): Promise<EntryPreview> {
   await requireAccess({ kind: "write", targetUserId: entry.userId });
 
-  return previewEntry(getConnection(), entry, new Date());
+  return previewEntry(getConnection(), toNewEntry(entry), new Date());
 }
 
 /** D18: born approved, with its ledger row. D32's refusal is returned, not thrown. */
 export async function launchEntryAction(
-  entry: NewEntry,
+  entry: EntryRequest,
 ): Promise<(LaunchResult & Movement) | Refused> {
   const session = await requireAccess({
     kind: "write",
@@ -82,7 +99,7 @@ export async function launchEntryAction(
   });
 
   const result = refusedOr(() =>
-    launchEntry(getConnection(), entry, session.userId, new Date()),
+    launchEntry(getConnection(), toNewEntry(entry), session.userId, new Date()),
   );
 
   if ("refused" in result) {

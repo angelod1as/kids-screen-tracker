@@ -1,4 +1,5 @@
 import { shiftDate } from "../engine/day";
+import { minutesToHours } from "../engine/timer";
 
 /**
  * What an adult typed, checked before it reaches a column. Each rule is also
@@ -127,6 +128,37 @@ export function requireBonusFraction(pct: number, what: string): number {
   }
 
   return rounded;
+}
+
+/** A time typed as hours and minutes, never a fraction (#48). */
+export type HoursMinutes = { hours: number; minutes: number };
+
+const MINUTES_PER_HOUR = 60;
+
+/**
+ * Whole minutes, refused rather than carried when 60 or more (D33): the screen
+ * stopping `1h75` is not the endpoint stopping it.
+ */
+export function requireHoursMinutes(time: HoursMinutes, what: string): number {
+  if (typeof time !== "object" || time === null) {
+    throw new Error(`${what} is hours and minutes, received ${String(time)}`);
+  }
+
+  const hours = requireCount(time.hours, `the hours of ${what}`);
+  const minutes = requireCount(time.minutes, `the minutes of ${what}`);
+
+  if (minutes >= MINUTES_PER_HOUR) {
+    throw new Error(
+      `the minutes of ${what} are between 0 and 59, received ${minutes}`,
+    );
+  }
+
+  return hours * MINUTES_PER_HOUR + minutes;
+}
+
+/** The hours a column of hours stores, from what was typed (#48). */
+export function hoursFromTime(time: HoursMinutes, what: string): number {
+  return minutesToHours(requireHoursMinutes(time, what));
 }
 
 /** Whole, because each column is an `integer` CHECK; `isInteger` refuses NaN too. */

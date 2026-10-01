@@ -16,6 +16,8 @@ import {
   setCategoryActive,
   updateCategory,
 } from "../../db/categories";
+import type { HoursMinutes } from "../../db/input";
+import { hoursFromTime, requireHoursMinutes } from "../../db/input";
 import type { Locks } from "../../db/pending";
 import { currentLocks } from "../../db/pending";
 import type { Refused } from "../../db/refusal";
@@ -26,6 +28,66 @@ import { refusedOr } from "../../db/refusal";
  * no `targetUserId` to guard. Mutations answer with the whole list, so the
  * asymptote is never stale, or with D37's refusal, word for word (#7).
  */
+
+/**
+ * #48: every time is typed as hours and minutes and converted here, at the
+ * edge. The rate stays a decimal: hours of screen per hour of activity, not a time.
+ */
+export type CategoryRequest = Omit<CategoryInput, "decayStepHours"> & {
+  /** D2: null is no decay. */
+  decayStep: HoursMinutes | null;
+};
+
+export type ActivityRequest = Omit<
+  ActivityInput,
+  "value" | "maxSessionMinutes" | "minSessionMinutes" | "presumedMinutes"
+> & {
+  /** D11: a `duration` activity's rate; read for no other mode. */
+  rate: number | null;
+  /** A `fixed` or `delivery` activity's hours; read for no other mode. */
+  amount: HoursMinutes | null;
+  maxSession: HoursMinutes | null;
+  minSession: HoursMinutes;
+  presumed?: HoursMinutes | null;
+};
+
+function categoryInputOf({
+  decayStep,
+  ...request
+}: CategoryRequest): CategoryInput {
+  return {
+    ...request,
+    decayStepHours:
+      decayStep === null ? null : hoursFromTime(decayStep, "a decay step"),
+  };
+}
+
+function activityInputOf({
+  rate,
+  amount,
+  maxSession,
+  minSession,
+  presumed,
+  ...request
+}: ActivityRequest): ActivityInput {
+  const minutesOf = (time: HoursMinutes | null | undefined, what: string) =>
+    time === undefined || time === null
+      ? null
+      : requireHoursMinutes(time, what);
+
+  return {
+    ...request,
+    value:
+      request.calcMode === "duration"
+        ? rate
+        : request.calcMode === "free" || amount === null
+          ? null
+          : hoursFromTime(amount, "an activity value"),
+    maxSessionMinutes: minutesOf(maxSession, "a session limit"),
+    minSessionMinutes: requireHoursMinutes(minSession, "a minimum session"),
+    presumedMinutes: minutesOf(presumed, "a presumed duration"),
+  };
+}
 
 export async function fetchCategoriesAction(): Promise<CategoryRow[]> {
   await requireAdmin();
@@ -41,11 +103,11 @@ export async function fetchLocksAction(): Promise<Locks> {
 }
 
 export async function createCategoryAction(
-  input: CategoryInput,
+  input: CategoryRequest,
 ): Promise<CategoryRow[]> {
   await requireAdmin();
 
-  createCategory(getConnection(), input);
+  createCategory(getConnection(), categoryInputOf(input));
 
   return listCategories(getConnection());
 }
@@ -53,12 +115,12 @@ export async function createCategoryAction(
 /** Nothing already credited moves (D15). */
 export async function updateCategoryAction(
   categoryId: number,
-  input: CategoryInput,
+  input: CategoryRequest,
 ): Promise<CategoryRow[] | Refused> {
   await requireAdmin();
 
   return refusedOr(() => {
-    updateCategory(getConnection(), categoryId, input);
+    updateCategory(getConnection(), categoryId, categoryInputOf(input));
 
     return listCategories(getConnection());
   });
@@ -88,11 +150,11 @@ export async function fetchActivitiesAction(
 
 /** The value stored is the value that arrives, whatever `base_rate` suggests (D11). */
 export async function createActivityAction(
-  input: ActivityInput,
+  input: ActivityRequest,
 ): Promise<ActivityRow[]> {
   await requireAdmin();
 
-  createActivity(getConnection(), input);
+  createActivity(getConnection(), activityInputOf(input));
 
   return listActivities(getConnection(), input.categoryId);
 }
@@ -104,12 +166,12 @@ export async function createActivityAction(
 export async function updateActivityAction(
   categoryId: number,
   activityId: number,
-  input: ActivityInput,
+  input: ActivityRequest,
 ): Promise<ActivityRow[] | Refused> {
   await requireAdmin();
 
   return refusedOr(() => {
-    updateActivity(getConnection(), activityId, input);
+    updateActivity(getConnection(), activityId, activityInputOf(input));
 
     return listActivities(getConnection(), categoryId);
   });

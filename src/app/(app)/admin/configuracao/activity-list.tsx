@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 
-import type { ActivityInput, ActivityRow } from "../../../../db/activities";
+import type { ActivityRow } from "../../../../db/activities";
 import type { CategoryRow } from "../../../../db/categories";
 import type { Locks } from "../../../../db/pending";
 import type { Refused } from "../../../../db/refusal";
@@ -11,17 +11,26 @@ import { DEFAULT_MIN_SESSION_MINUTES } from "../../../../engine/timer";
 import { Button } from "../../../../ui/button";
 import { ChoiceGroup } from "../../../../ui/choice";
 import { failureText } from "../../../../ui/failure";
-import { Field } from "../../../../ui/field";
+import { Field, TimeFields } from "../../../../ui/field";
+import type { TypedTime } from "../../../../ui/hours";
 import {
+  EMPTY_TIME,
   formatDecimalHours,
   formatDuration,
+  formatHours,
+  isBlankTime,
   parseTypedCount,
   parseTypedHours,
+  parseTypedTime,
+  timeFromHours,
+  timeFromMinutes,
+  typedMinutes,
 } from "../../../../ui/hours";
 import { CardLink } from "../../../../ui/link-button";
 import { Panel, PanelText } from "../../../../ui/panel";
 import { Select } from "../../../../ui/select";
 import { BORDER_CLASS } from "../../../../ui/style";
+import type { ActivityRequest } from "../../../actions/config";
 import {
   createActivityAction,
   setActivityActiveAction,
@@ -60,12 +69,14 @@ export type ActivityDraft = {
   /** #44. */
   noteRequired?: boolean;
   calcMode: ActivityRow["calcMode"];
-  /** D11: prefilled from the category's rate, and the adult's from then on. */
+  /** D11: the `duration` rate, prefilled from the category's, and the adult's from then on. */
   value: string;
-  maxSessionMinutes: string;
-  minSessionMinutes: string;
-  /** #18: empty means the boy types the minutes of a request himself. */
-  presumedMinutes?: string;
+  /** A `fixed` or `delivery` activity's hours (#48). */
+  amount?: TypedTime;
+  maxSession: TypedTime;
+  minSession: TypedTime;
+  /** #18: empty means the boy types the time of a request himself. */
+  presumed?: TypedTime;
   qualityGraded: boolean;
   repeatCooldownDays: string;
   sortOrder: string;
@@ -83,8 +94,9 @@ export function emptyActivity(baseRate: number | null): ActivityDraft {
     description: "",
     calcMode: "duration",
     value: suggestedValue(baseRate),
-    maxSessionMinutes: "",
-    minSessionMinutes: String(DEFAULT_MIN_SESSION_MINUTES),
+    amount: EMPTY_TIME,
+    maxSession: EMPTY_TIME,
+    minSession: timeFromMinutes(DEFAULT_MIN_SESSION_MINUTES),
     qualityGraded: false,
     repeatCooldownDays: "0",
     sortOrder: "0",
@@ -100,7 +112,9 @@ export function withCalcMode(
   calcMode: ActivityRow["calcMode"],
   baseRate: number | null,
 ): ActivityDraft {
-  if (calcMode === "free") return { ...draft, calcMode, value: "" };
+  if (calcMode === "free") {
+    return { ...draft, calcMode, value: "", amount: EMPTY_TIME };
+  }
 
   if (calcMode === "duration" && draft.value.trim() === "") {
     return { ...draft, calcMode, value: suggestedValue(baseRate) };
@@ -113,37 +127,45 @@ export function withCalcMode(
 export function activityInputOf(
   draft: ActivityDraft,
   categoryId: number,
-): ActivityInput | null {
+): ActivityRequest | null {
   const name = draft.name.trim();
-  const value = draft.calcMode === "free" ? null : parseTypedHours(draft.value);
   // Scoped to `duration` as `requireActivity` scopes it, or a limit left behind
   // by a mode switch kills Save over a field no longer on screen.
   const timed = draft.calcMode === "duration";
-  const maxSessionMinutes =
-    !timed || draft.maxSessionMinutes.trim() === ""
+  const priced = draft.calcMode === "fixed" || draft.calcMode === "delivery";
+  const rate = timed ? parseTypedHours(draft.value) : null;
+  const amount = priced ? parseTypedTime(draft.amount ?? EMPTY_TIME) : null;
+  const maxSession =
+    !timed || isBlankTime(draft.maxSession)
       ? null
-      : parseTypedCount(draft.maxSessionMinutes);
-  const minSessionMinutes = timed
-    ? parseTypedCount(draft.minSessionMinutes)
-    : DEFAULT_MIN_SESSION_MINUTES;
-  const presumedTyped = (draft.presumedMinutes ?? "").trim();
-  const presumedMinutes =
-    !timed || presumedTyped === "" ? null : parseTypedCount(presumedTyped);
+      : parseTypedTime(draft.maxSession);
+  const maxSessionMinutes = maxSession === null ? null : minutesOf(maxSession);
+  // Not read by the server outside `duration`; sent so the shape is one.
+  const minSession = timed
+    ? parseTypedTime(draft.minSession)
+    : { hours: 0, minutes: DEFAULT_MIN_SESSION_MINUTES };
+  const minSessionMinutes = typedMinutes(draft.minSession);
+  const presumedTyped = draft.presumed ?? EMPTY_TIME;
+  const presumed =
+    !timed || isBlankTime(presumedTyped) ? null : parseTypedTime(presumedTyped);
   const repeatCooldownDays = parseTypedCount(draft.repeatCooldownDays);
   const sortOrder = parseTypedCount(draft.sortOrder);
 
   if (
     name === "" ||
-    (draft.calcMode !== "free" && value === null) ||
+    (timed && rate === null) ||
+    (priced && amount === null) ||
+    (timed && !isBlankTime(draft.maxSession) && maxSession === null) ||
+    minSession === null ||
     (timed &&
-      draft.maxSessionMinutes.trim() !== "" &&
-      maxSessionMinutes === null) ||
-    minSessionMinutes === null ||
-    minSessionMinutes < 1 ||
-    (maxSessionMinutes !== null && minSessionMinutes > maxSessionMinutes) ||
+      (minSessionMinutes === null ||
+        minSessionMinutes < 1 ||
+        (maxSessionMinutes !== null &&
+          minSessionMinutes > maxSessionMinutes))) ||
+    (maxSessionMinutes !== null && maxSessionMinutes < 1) ||
     (timed &&
-      presumedTyped !== "" &&
-      (presumedMinutes === null || presumedMinutes < 1)) ||
+      !isBlankTime(presumedTyped) &&
+      (presumed === null || minutesOf(presumed) < 1)) ||
     repeatCooldownDays === null ||
     sortOrder === null
   ) {
@@ -156,25 +178,30 @@ export function activityInputOf(
     description: (draft.description ?? "").trim() || null,
     noteRequired: draft.noteRequired === true,
     calcMode: draft.calcMode,
-    value,
-    maxSessionMinutes,
-    minSessionMinutes,
-    presumedMinutes,
+    rate,
+    amount,
+    maxSession,
+    minSession,
+    presumed,
     qualityGraded: draft.qualityGraded,
     repeatCooldownDays,
     sortOrder,
   };
 }
 
+function minutesOf(time: { hours: number; minutes: number }): number {
+  return time.hours * 60 + time.minutes;
+}
+
 /** Why Save is dead over the floor, said beside it (D44). */
 export function minSessionWarning(draft: ActivityDraft): string | null {
   if (draft.calcMode !== "duration") return null;
 
-  const floor = parseTypedCount(draft.minSessionMinutes);
-  const limit = parseTypedCount(draft.maxSessionMinutes);
+  const floor = typedMinutes(draft.minSession);
+  const limit = typedMinutes(draft.maxSession);
 
   if (floor === null || floor < 1) {
-    return "Digite a sessão mínima em minutos inteiros, de 1 para cima. Ex.: 5";
+    return "Digite a sessão mínima em horas e minutos inteiros, de 1 minuto para cima. Ex.: 0 h e 5 min";
   }
 
   if (limit !== null && floor > limit) {
@@ -191,14 +218,16 @@ function draftOf(activity: ActivityRow): ActivityDraft {
     noteRequired: activity.noteRequired === true,
     calcMode: activity.calcMode,
     value:
-      activity.value === null ? "" : String(activity.value).replace(".", ","),
-    maxSessionMinutes:
-      activity.maxSessionMinutes === null
+      activity.calcMode !== "duration" || activity.value === null
         ? ""
-        : String(activity.maxSessionMinutes),
-    minSessionMinutes: String(activity.minSessionMinutes),
-    presumedMinutes:
-      activity.presumedMinutes === null ? "" : String(activity.presumedMinutes),
+        : String(activity.value).replace(".", ","),
+    amount:
+      activity.calcMode === "duration"
+        ? EMPTY_TIME
+        : timeFromHours(activity.value),
+    maxSession: timeFromMinutes(activity.maxSessionMinutes),
+    minSession: timeFromMinutes(activity.minSessionMinutes),
+    presumed: timeFromMinutes(activity.presumedMinutes ?? null),
     qualityGraded: activity.qualityGraded,
     repeatCooldownDays: String(activity.repeatCooldownDays),
     sortOrder: String(activity.sortOrder),
@@ -213,10 +242,10 @@ export function activitySummary(activity: ActivityRow): string {
       parts.push(`${formatDecimalHours(activity.value ?? 0)} por hora`);
       break;
     case "fixed":
-      parts.push(`${formatDecimalHours(activity.value ?? 0)} fixas`);
+      parts.push(`${formatHours(activity.value ?? 0)} fixas`);
       break;
     case "delivery":
-      parts.push(`${formatDecimalHours(activity.value ?? 0)} × nota`);
+      parts.push(`${formatHours(activity.value ?? 0)} × nota`);
       break;
     case "free":
       parts.push("valor digitado no lançamento");
@@ -573,59 +602,52 @@ function ActivityFields({
       )}
 
       <div className={`${FIELD_PAIR_CLASS} lg:grid-cols-4`}>
-        {draft.calcMode === "free" ? null : (
+        {draft.calcMode === "duration" ? (
           <Field
             id={`${prefix}-valor`}
             inputMode="decimal"
-            label={
-              draft.calcMode === "duration"
-                ? "Taxa por hora (sugerida pela categoria, dá para mudar)"
-                : "Valor em horas"
-            }
+            label="Taxa por hora (sugerida pela categoria, dá para mudar)"
             onChange={(event) =>
               onChange({ ...draft, value: event.target.value })
             }
             type="text"
             value={draft.value}
           />
-        )}
+        ) : null}
+
+        {draft.calcMode === "fixed" || draft.calcMode === "delivery" ? (
+          <TimeFields
+            id={`${prefix}-valor`}
+            legend="Valor"
+            onChange={(amount) => onChange({ ...draft, amount })}
+            value={draft.amount ?? EMPTY_TIME}
+          />
+        ) : null}
 
         {draft.calcMode === "duration" ? (
-          <Field
+          <TimeFields
             id={`${prefix}-limite`}
-            inputMode="numeric"
-            label="Limite da sessão, em minutos (vazio: sem limite)"
-            onChange={(event) =>
-              onChange({ ...draft, maxSessionMinutes: event.target.value })
-            }
-            type="text"
-            value={draft.maxSessionMinutes}
+            legend="Limite da sessão (vazio: sem limite)"
+            onChange={(maxSession) => onChange({ ...draft, maxSession })}
+            value={draft.maxSession}
           />
         ) : null}
 
         {draft.calcMode === "duration" ? (
-          <Field
+          <TimeFields
             id={`${prefix}-minimo`}
-            inputMode="numeric"
-            label="Sessão mínima, em minutos (abaixo disso não é enviada)"
-            onChange={(event) =>
-              onChange({ ...draft, minSessionMinutes: event.target.value })
-            }
-            type="text"
-            value={draft.minSessionMinutes}
+            legend="Sessão mínima (abaixo disso não é enviada)"
+            onChange={(minSession) => onChange({ ...draft, minSession })}
+            value={draft.minSession}
           />
         ) : null}
 
         {draft.calcMode === "duration" ? (
-          <Field
+          <TimeFields
             id={`${prefix}-presumida`}
-            inputMode="numeric"
-            label="Duração presumida do pedido, em minutos (vazio: o menino digita)"
-            onChange={(event) =>
-              onChange({ ...draft, presumedMinutes: event.target.value })
-            }
-            type="text"
-            value={draft.presumedMinutes ?? ""}
+            legend="Duração presumida do pedido (vazio: o menino digita)"
+            onChange={(presumed) => onChange({ ...draft, presumed })}
+            value={draft.presumed ?? EMPTY_TIME}
           />
         ) : null}
       </div>
