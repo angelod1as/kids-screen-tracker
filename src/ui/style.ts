@@ -10,6 +10,9 @@ export const TOUCH_TARGET_CLASS = "min-h-[48px] min-w-[48px]";
 /** One phone-wide column that opens to one panel from `lg` (docs/design.md, Desktop). */
 export const SHELL_CLASS = "mx-auto w-full max-w-md lg:max-w-4xl";
 
+/** The app's own shell runs the window's full width from `lg` (D42, amended by #41). */
+export const APP_SHELL_CLASS = "mx-auto w-full max-w-md lg:max-w-none";
+
 export const BORDER_CLASS = "border-2 border-black";
 export const BORDER_PX = 2;
 

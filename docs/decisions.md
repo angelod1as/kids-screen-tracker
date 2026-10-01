@@ -1182,7 +1182,11 @@ aparelho, e o app é a fonte de verdade sobre o saldo.
 - **Canto arredondado em dois raios**: 12 px num painel, 8 px num controle.
 - **Desktop é a mesma base**, não uma segunda tela: a partir de `lg` a barra
   vira uma trilha à esquerda e as telas abrem em duas colunas onde a divisão
-  significa alguma coisa. A casca para em `max-w-4xl`.
+  significa alguma coisa. A casca para em `max-w-4xl`. *Emenda (#41): a casca
+  do app ocupa a largura inteira da janela a partir de `lg`, a pedido do dono —
+  os cards da Configuração ficavam apertados em 896 px. Entrar, as páginas de
+  erro e a confirmação continuam em `max-w-4xl`; cada tela segue com o teto
+  próprio, onde tem um.*
 - **Ícone só na barra de navegação**, desenhado em `src/ui/icons.tsx`, em
   `currentColor` e `aria-hidden`. Nunca emoji, nunca pacote de ícones.
 - **Continua valendo**, sem mudança: alvo de toque de 48 px, nenhuma animação

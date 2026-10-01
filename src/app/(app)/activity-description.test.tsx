@@ -19,6 +19,10 @@ vi.mock("../actions/timer", () => ({
   requestLogAction: vi.fn(),
 }));
 
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push: vi.fn() }),
+}));
+
 vi.mock("../actions/config", () => ({
   fetchCategoriesAction: vi.fn(),
   createCategoryAction: vi.fn(),
@@ -32,7 +36,7 @@ vi.mock("../actions/config", () => ({
 }));
 
 const { TimerScreen } = await import("./menino/cronometro/timer-screen");
-const { ActivityList, activityInputOf, emptyActivity } = await import(
+const { ActivityEditor, activityInputOf, emptyActivity } = await import(
   "./admin/configuracao/activity-list"
 );
 
@@ -219,19 +223,13 @@ describe("Configuration (#40)", () => {
 
   async function editing(activity: ActivityRow) {
     await render(
-      <ActivityList
+      <ActivityEditor
+        activity={activity}
         categories={[CONVIVIO]}
         category={CONVIVIO}
-        initial={[activity]}
         locks={LOCKS}
-        onChanged={vi.fn()}
       />,
     );
-
-    const edit = [...container.querySelectorAll("button")].find(
-      (button) => button.textContent?.trim() === "Editar",
-    );
-    await act(async () => edit?.click());
 
     return container.querySelector<HTMLInputElement>(
       `#atividade-${activity.id}-descricao`,
