@@ -4,7 +4,7 @@ import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import type { ActivityRow } from "../../db/activities";
+import { type ActivityRow, MAX_DESCRIPTION_LENGTH } from "../../db/activities";
 import type { CategoryRow } from "../../db/categories";
 import type { TimerScreenData } from "../actions/timer";
 
@@ -242,7 +242,7 @@ describe("Configuration (#40)", () => {
     const field = await editing(row(17, FRIEND));
 
     expect(field?.value).toBe(FRIEND);
-    expect(field?.maxLength).toBe(200);
+    expect(field?.maxLength).toBe(MAX_DESCRIPTION_LENGTH);
   });
 
   it("opens it empty for one without a description, and leaves no hole", async () => {
