@@ -3,7 +3,7 @@ import { and, asc, eq } from "drizzle-orm";
 import { shiftDate } from "../engine/day";
 import type { Connection } from "./client";
 import { writeTransaction } from "./client";
-import { requireText } from "./input";
+import { requireNoteWhenRequired, requireText } from "./input";
 import { requireActiveKid } from "./people";
 import { activities, activityLogs, categories } from "./schema";
 
@@ -20,6 +20,8 @@ export type RequestableActivity = {
   name: string;
   /** #40. */
   description: string | null;
+  /** #44. */
+  noteRequired?: boolean;
   calcMode: "duration" | "fixed" | "delivery" | "free";
   /** #18: what the minutes field starts from, for a `duration` activity. */
   presumedMinutes: number | null;
@@ -51,6 +53,7 @@ export function listRequestableActivities(
       categoryName: categories.name,
       name: activities.name,
       description: activities.description,
+      noteRequired: activities.noteRequired,
       calcMode: activities.calcMode,
       presumedMinutes: activities.presumedMinutes,
     })
@@ -98,6 +101,7 @@ export function requestLog(
         name: activities.name,
         calcMode: activities.calcMode,
         presumedMinutes: activities.presumedMinutes,
+        noteRequired: activities.noteRequired,
         active: activities.active,
         categoryActive: categories.active,
       })
@@ -115,6 +119,8 @@ export function requestLog(
         `activity ${request.activityId} is not active and cannot be chosen (D14)`,
       );
     }
+
+    requireNoteWhenRequired(note, found.noteRequired, found.name);
 
     let minutes: number | null = null;
 

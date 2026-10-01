@@ -2,7 +2,7 @@
 
 Vinte e cinco ambiguidades da spec, resolvidas e justificadas antes da primeira
 linha de código, mais as que cada fase mediu depois. Hoje são cinquenta e
-três, D1–D53, mais onze emendas e as duas declarações da Fase 4, uma delas
+cinco, D1–D55, mais onze emendas e as duas declarações da Fase 4, uma delas
 revogada.
 
 **Onde este documento e `spec.md` discordarem, este documento vence.**
@@ -2056,3 +2056,61 @@ não é neste APK: abre-se issue para o wrapper com WebView.
   têm binário Linux ARM. Mais lenta, e só roda uma vez.
 - A senha da chave fica num arquivo ao lado dela, em `~/qtv-apk`. Proteger
   a pasta protege as duas; a cópia de segurança é da pasta inteira.
+
+---
+
+## A decisão que veio da #44
+
+### D55 — A atividade pode exigir a observação do menino
+
+Em Convívio, o nome da atividade não conta o que aconteceu: "Sair com os
+amigos" sem observação deixa o adulto aprovando no escuro. A descrição (#40)
+diz ao menino o que cabe ali; ela não faz ele contar o que foi.
+
+**Decisão.** Cada atividade tem `note_required`, falso por padrão, numa chave
+"Observação do menino: Opcional / Obrigatória" na página da atividade, na
+Configuração. Ligada, as duas escritas do menino exigem uma observação que não
+seja vazia nem só espaço: o *Enviar* do cronômetro e o pedido (D49).
+
+- **A recusa é do servidor (D33).** `stopTimer` e `requestLog` leem a chave na
+  transação e recusam sem gravar; a sessão continua aberta para a nova
+  tentativa. A tela só avisa antes do toque: o rótulo do campo vira "O que
+  aconteceu? (obrigatório nesta atividade)", o botão fica desativado enquanto o
+  campo está vazio, e uma frase acima dele diz por quê. No cronômetro, o aviso
+  aparece também ao escolher a atividade, antes de *Começar*.
+- **Não é campo que precifica (D37).** Observação não muda valor nenhum, então
+  ligar ou desligar a chave com entrada pendente ou sessão aberta é permitido, e
+  a chave não é carimbo: a sessão aberta lê a de agora.
+- **O que já espera na fila fica como está.** A chave vale para a entrada que
+  nasce depois dela. A pendência sem observação é decidida como sempre (D19,
+  D32); recusar a mudança na Configuração travaria a tela por algo que não move
+  hora nenhuma.
+- **O adulto não é preso à chave (D18).** Nem o lançamento nem a correção na
+  fila exigem observação. Ela existe para quem aprova não decidir no escuro, e
+  quem lança é a própria testemunha. É a mesma linha da D44: o piso protege a
+  fila contra o toque do menino, não o adulto.
+- **Abaixo da sessão mínima, nada se pede (D44).** A sessão é encerrada sem
+  virar registro, então não há o que contar.
+- **O seed não liga nenhuma.** Decisão do dono, no plano da #44: ele liga na
+  Configuração, atividade por atividade.
+
+**A migration não move saldo.** `0011` só adiciona a coluna com
+`ALTER TABLE ... ADD note_required integer DEFAULT false NOT NULL`: não
+reconstrói tabela e não toca em `activity_logs`, `ledger` nem `timers`. Medido
+num banco construído com o código anterior (seed, dado de demonstração, uma
+sessão pendente, um pedido pendente e um cronômetro aberto): saldos iguais
+(id 3: 10,83 h; id 4: −6,25 h), contagens iguais nas oito tabelas, as colunas
+antigas idênticas por hash, prévia das pendências idêntica, `integrity_check`
+ok, `foreign_key_check` vazio, e nenhuma atividade com a chave ligada. O
+cronômetro aberto, parado depois da migration, virou registro como antes.
+
+**Resíduos aceitos.**
+
+- A sessão que para sozinha, pelo limite ou pela virada do dia (D16, D31), vira
+  registro sem observação. Ninguém estava lá para escrever, e descartar a tarde
+  do menino seria o castigo errado. O adulto vê a entrada marcada "parou
+  sozinha" e decide com o menino do lado.
+- "Obrigatória" quer dizer não vazia: uma letra passa. O que a chave garante é
+  que o menino leu que precisa contar, não o que ele conta.
+- Nenhum `CHECK` amarra a coluna a 0 ou 1: só `updateActivity` e
+  `createActivity` a escrevem, e o Drizzle grava booleano.

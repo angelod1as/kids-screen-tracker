@@ -37,6 +37,16 @@ import {
 
 const SECONDS_PER_MINUTE = 60;
 
+/** #44: said before the tap, next to the button it holds back. */
+export const NOTE_REQUIRED_TEXT =
+  "Esta atividade pede uma observação. Escreva o que aconteceu para poder enviar.";
+
+export function noteLabel(required: boolean): string {
+  return required
+    ? "O que aconteceu? (obrigatório nesta atividade)"
+    : "Quer contar alguma coisa? (opcional)";
+}
+
 export function TimerScreen({ initial }: { initial: TimerScreenData }) {
   const [data, setData] = useState(initial);
   const [confirming, setConfirming] = useState(false);
@@ -277,6 +287,9 @@ function Confirm({
 }) {
   // #86: the server refuses under the floor (D44); the screen says so before the tap.
   const short = !reachesMinimum(open.activeSeconds, open.minSessionMinutes);
+  // Under the floor nothing is filed (D44), so there is nothing to explain.
+  const missingNote =
+    !short && open.noteRequired === true && note.trim() === "";
 
   return (
     <section className="flex flex-col gap-4">
@@ -297,14 +310,16 @@ function Confirm({
 
       <Field
         id="nota"
-        label="Quer contar alguma coisa? (opcional)"
+        label={noteLabel(open.noteRequired === true)}
         maxLength={500}
         onChange={(event) => onNote(event.target.value)}
         type="text"
         value={note}
       />
 
-      <Button disabled={busy} onClick={onConfirm} type="button">
+      {missingNote ? <Box>{NOTE_REQUIRED_TEXT}</Box> : null}
+
+      <Button disabled={busy || missingNote} onClick={onConfirm} type="button">
         {short ? "Encerrar sem enviar" : "Enviar para aprovação"}
       </Button>
 
@@ -386,6 +401,13 @@ function Idle({
               }
             />
 
+            {data.activities.find((activity) => activity.id === chosen)
+              ?.noteRequired ? (
+              <p className="break-words text-base text-black">
+                Ao enviar, esta atividade pede uma observação.
+              </p>
+            ) : null}
+
             <Button disabled={busy} onClick={onStart} type="button">
               Começar
             </Button>
@@ -426,10 +448,12 @@ function RequestPanel({
   const activity = data.requestable.find((item) => item.id === chosen);
   const timed = activity?.calcMode === "duration";
   const typed = Number(minutes);
+  const missingNote = activity?.noteRequired === true && note.trim() === "";
   const ready =
     activity !== undefined &&
     occurredOn !== "" &&
-    (!timed || (Number.isInteger(typed) && typed >= 1));
+    (!timed || (Number.isInteger(typed) && typed >= 1)) &&
+    !missingNote;
   const categories = [
     ...new Map(
       data.requestable.map((item) => [item.categoryId, item.categoryName]),
@@ -500,12 +524,18 @@ function RequestPanel({
 
           <Field
             id="pedido-nota"
-            label="Quer contar alguma coisa? (opcional)"
+            label={noteLabel(activity?.noteRequired === true)}
             maxLength={500}
             onChange={(event) => setNote(event.target.value)}
             type="text"
             value={note}
           />
+
+          {missingNote ? (
+            <p className="break-words text-base text-black">
+              {NOTE_REQUIRED_TEXT}
+            </p>
+          ) : null}
 
           <Button
             disabled={busy || !ready}

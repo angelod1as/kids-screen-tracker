@@ -10,6 +10,7 @@ import {
 } from "../engine/timer";
 import type { Connection, Transaction } from "./client";
 import { writeTransaction } from "./client";
+import { requireNoteWhenRequired } from "./input";
 import type { Timer } from "./schema";
 import { activities, activityLogs, categories, timers } from "./schema";
 
@@ -29,6 +30,8 @@ export type TimerActivity = {
   maxSessionMinutes: number | null;
   /** D44, stamped when the session opened. */
   minSessionMinutes: number;
+  /** #44, read live: a note prices nothing (D37), so it needs no stamp. */
+  noteRequired: boolean;
 };
 
 export type OpenTimer = {
@@ -70,6 +73,7 @@ type TimerRow = {
   categoryName: string;
   maxSessionMinutes: number | null;
   minSessionMinutes: number;
+  noteRequired: boolean;
 };
 
 /** The open timer of one user. The limit is the row's own stamp (D38). */
@@ -91,6 +95,7 @@ function selectOpenTimer(
         // D38.
         maxSessionMinutes: timers.maxSessionMinutes,
         minSessionMinutes: timers.minSessionMinutes,
+        noteRequired: activities.noteRequired,
       })
       .from(timers)
       .innerJoin(activities, eq(timers.activityId, activities.id))
@@ -124,6 +129,7 @@ function activityOf(row: TimerRow): TimerActivity {
     categoryName: row.categoryName,
     maxSessionMinutes: row.maxSessionMinutes,
     minSessionMinutes: row.minSessionMinutes,
+    noteRequired: row.noteRequired,
   };
 }
 
@@ -505,6 +511,9 @@ export function stopTimer(
       };
     }
 
+    // Rolls the stop back too, so the session stays open for the retry.
+    requireNoteWhenRequired(note, row.noteRequired, row.activityName);
+
     const written = insertProposedLog(tx, {
       userId,
       activityId: row.activityId,
@@ -566,6 +575,8 @@ export type TimedActivity = {
   name: string;
   /** #40. */
   description?: string | null;
+  /** #44. */
+  noteRequired?: boolean;
   categoryId: number;
   categoryName: string;
   maxSessionMinutes: number | null;
@@ -581,6 +592,7 @@ export function listTimedActivities(connection: Connection): TimedActivity[] {
       id: activities.id,
       name: activities.name,
       description: activities.description,
+      noteRequired: activities.noteRequired,
       categoryId: categories.id,
       categoryName: categories.name,
       maxSessionMinutes: activities.maxSessionMinutes,

@@ -42,6 +42,19 @@ export function requireText(text: string | null, what: string): void {
   }
 }
 
+/** #44: the screen holds the tap back; this refuses the forged one (D33). */
+export function requireNoteWhenRequired(
+  note: string | null,
+  required: boolean,
+  activityName: string,
+): void {
+  if (required && (note === null || note.trim() === "")) {
+    throw new Error(
+      `${activityName} needs a note: the name alone does not tell the adult what happened (#44)`,
+    );
+  }
+}
+
 /**
  * Two decimals, an extension of D9 to what an adult types. Refused, not
  * clamped, when it rounds to zero (`ledger_hours_check` is `> 0`) or is infinite.

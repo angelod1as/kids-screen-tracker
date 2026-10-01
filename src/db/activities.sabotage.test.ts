@@ -87,16 +87,16 @@ const MUTATIONS: readonly Mutation[] = [
     name: "an edit writes the name and leaves every number as it was",
     file: "activities.ts",
     // `.set({` in front: the same field list is also the insert's `.values({`.
-    find: "    tx.update(activities)\n      .set({\n        categoryId: checked.categoryId,\n        name: checked.name,\n        description: checked.description,\n        calcMode: checked.calcMode,\n        value: checked.value,\n        maxSessionMinutes: checked.maxSessionMinutes,\n        minSessionMinutes: checked.minSessionMinutes,\n        presumedMinutes: checked.presumedMinutes,\n        qualityGraded: checked.qualityGraded,\n        repeatCooldownDays: checked.repeatCooldownDays,\n        sortOrder: checked.sortOrder,",
+    find: "    tx.update(activities)\n      .set({\n        categoryId: checked.categoryId,\n        name: checked.name,\n        description: checked.description,\n        noteRequired: checked.noteRequired,\n        calcMode: checked.calcMode,\n        value: checked.value,\n        maxSessionMinutes: checked.maxSessionMinutes,\n        minSessionMinutes: checked.minSessionMinutes,\n        presumedMinutes: checked.presumedMinutes,\n        qualityGraded: checked.qualityGraded,\n        repeatCooldownDays: checked.repeatCooldownDays,\n        sortOrder: checked.sortOrder,",
     replace:
       "    tx.update(activities)\n      .set({\n        name: checked.name,\n        description: checked.description,",
   },
   {
     name: "an edit cannot move an activity to another category",
     file: "activities.ts",
-    find: "    tx.update(activities)\n      .set({\n        categoryId: checked.categoryId,\n        name: checked.name,\n        description: checked.description,\n        calcMode: checked.calcMode,",
+    find: "    tx.update(activities)\n      .set({\n        categoryId: checked.categoryId,\n        name: checked.name,\n        description: checked.description,\n        noteRequired: checked.noteRequired,\n        calcMode: checked.calcMode,",
     replace:
-      "    tx.update(activities)\n      .set({\n        name: checked.name,\n        description: checked.description,\n        calcMode: checked.calcMode,",
+      "    tx.update(activities)\n      .set({\n        name: checked.name,\n        description: checked.description,\n        noteRequired: checked.noteRequired,\n        calcMode: checked.calcMode,",
   },
   {
     name: "the grade flag is dropped on the way in",

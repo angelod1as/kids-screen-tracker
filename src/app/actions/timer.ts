@@ -49,6 +49,8 @@ export type OpenSessionView = {
   maxSessionMinutes: number | null;
   /** D44: under this the session is not filed, and the screen says so first. */
   minSessionMinutes: number;
+  /** #44: *Enviar* waits for a note, and the screen says so first. */
+  noteRequired?: boolean;
 };
 
 export type PendingProposal = {
@@ -251,6 +253,7 @@ function viewOf(read: TimerRead): OpenSessionView | null {
     activeSeconds: open.activeSeconds,
     maxSessionMinutes: open.activity.maxSessionMinutes,
     minSessionMinutes: open.activity.minSessionMinutes,
+    noteRequired: open.activity.noteRequired,
   };
 }
 

@@ -402,6 +402,19 @@ describe("every activity of the spec", () => {
     }
   });
 
+  /** #44: the owner switches it on in Configuração, activity by activity. */
+  it("requires a note on no activity", () => {
+    seedDatabase(connection);
+
+    expect(
+      connection.db
+        .select({ noteRequired: activities.noteRequired })
+        .from(activities)
+        .all()
+        .filter((row) => row.noteRequired),
+    ).toEqual([]);
+  });
+
   /** D16: only a timed mode runs a session. */
   it("sets a session limit exactly on the timed activities", () => {
     seedDatabase(connection);
