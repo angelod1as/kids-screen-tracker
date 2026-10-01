@@ -126,6 +126,10 @@ não manda aviso; também ficam com "Available at Buildtime" desmarcado.
 Trocar a chave privada invalida os avisos de todo mundo: cada aparelho precisa
 tocar em "Ativar avisos" de novo.
 
+Mais duas, **opcionais e públicas**, para o APK de side-load (D54):
+`TWA_PACKAGE_ID` e `TWA_SHA256_FINGERPRINTS`, servidas em
+`/.well-known/assetlinks.json`. Como obter, em [`twa/README.md`](../twa/README.md).
+
 ## Volume
 
 O arquivo do SQLite mora em `/data`, declarado como `VOLUME` no `Dockerfile`. O
