@@ -1998,12 +1998,14 @@ telefone dos meninos, sem Play Store. É um TWA (Trusted Web Activity) gerado
 pelo Bubblewrap: o APK abre o site publicado, então deploy novo não pede APK
 novo. Instala uma vez.
 
-- **A build roda na máquina do dono**, com `twa/build.sh` e o passo a passo em
-  [`twa/README.md`](../twa/README.md). Não há workflow nem segredo de assinatura
-  no GitHub, e a build não toca o caminho do deploy (D43).
+- **A build roda na máquina do dono, dentro do Docker**, com um comando só,
+  `twa/apk.sh`, que cria a chave na primeira vez, gera o APK e imprime o que
+  colar no Coolify ([`twa/README.md`](../twa/README.md)). Não há workflow nem
+  segredo de assinatura no GitHub, e a build não toca o caminho do deploy (D43).
 - **O repositório não carrega domínio, pacote nem chave.** O modelo
-  `twa/twa-manifest.template.json` tem nome, cores e ícones; o resto vem do
-  ambiente de quem roda o script. Os ícones são os de `public/` (D46).
+  `twa/twa-manifest.template.json` tem nome, cores e ícones; domínio, pacote,
+  chave e senha ficam em `~/qtv-apk`, fora do repositório. Os ícones são os de
+  `public/` (D46).
 - **`/.well-known/assetlinks.json` é servido pelo app**, a partir de
   `TWA_PACKAGE_ID` e `TWA_SHA256_FINGERPRINTS` no Coolify. São `@sensitive=false`
   porque a rota as publica (o varlock recusa servir valor sensível) e
@@ -2018,7 +2020,8 @@ o Chrome, e não quer gerar APK a cada mudança. O TWA é o caminho do próprio
 Google, gratuito, e o aviso push (D51) funciona dentro dele porque quem roda o
 site é o Chrome. Build local porque é coisa que se faz uma vez: a chave nunca
 sai do computador do dono, e um workflow pediria cinco segredos no GitHub para
-um botão usado quase nunca.
+um botão usado quase nunca. Docker porque o dono não tem JDK nem Android SDK, e
+não precisa passar a ter.
 
 **Considerado e descartado.**
 
@@ -2039,6 +2042,10 @@ não é neste APK: abre-se issue para o wrapper com WebView.
 - Perder a chave é perder a atualização do app instalado: só desinstalando.
   Mitigado por guardar a chave fora do computador; o `assetlinks.json` aceita
   mais de uma impressão digital para a troca.
-- O `build.sh` não roda no CI. Uma atualização do Bubblewrap que quebre o
-  modelo só aparece quando o dono gerar o APK de novo; a versão está fixada no
-  script por isso.
+- O `apk.sh` não roda no CI. Uma atualização do Bubblewrap ou do SDK que
+  quebre a build só aparece quando o dono gerar o APK de novo; as versões estão
+  fixadas no `twa/Dockerfile` por isso.
+- A imagem é `linux/amd64`, emulada num Mac ARM: as ferramentas Android não
+  têm binário Linux ARM. Mais lenta, e só roda uma vez.
+- A senha da chave fica num arquivo ao lado dela, em `~/qtv-apk`. Proteger
+  a pasta protege as duas; a cópia de segurança é da pasta inteira.

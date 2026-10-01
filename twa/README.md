@@ -2,133 +2,90 @@
 
 O "Quanto Tempo Vale?" como aplicativo Android próprio, para o Family Link
 listar o app separado do Chrome. É um **TWA** (Trusted Web Activity) gerado
-com o [Bubblewrap](https://github.com/GoogleChromeLabs/bubblewrap), o CLI do
-Google, e instalado por side-load: nada passa pela Play Store. Decisão: D54.
+com o [Bubblewrap](https://github.com/GoogleChromeLabs/bubblewrap), do Google,
+e instalado por side-load: nada passa pela Play Store. Decisão: D54.
 
 **O APK é uma casca.** Ele abre o site publicado, então deploy novo não pede
 APK novo nem reinstalação. Instala uma vez.
 
-O repositório é público: domínio, nome do pacote, chave e senhas vêm do
-ambiente da sua máquina e do Coolify, nunca daqui.
+## Rodar
 
-| arquivo | papel |
+Precisa só do **Docker Desktop aberto**. Nada é instalado no computador.
+
+```sh
+./twa/apk.sh
+```
+
+Na primeira vez, ele pergunta o domínio do app e o nome do pacote (aceite o
+padrão), e baixa **uns 2–3 GB** para a imagem: JDK, Android SDK e Gradle. Use
+Wi-Fi. Da segunda vez em diante, reaproveita tudo.
+
+No fim, ele imprime o que fazer, passo a passo, com os valores prontos para
+colar no Coolify. Em resumo:
+
+1. guardar a pasta `~/qtv-apk` fora do computador;
+2. colar `TWA_PACKAGE_ID` e `TWA_SHA256_FINGERPRINTS` no Coolify e reiniciar;
+3. conferir `https://SEU-DOMINIO/.well-known/assetlinks.json`;
+4. instalar `~/qtv-apk/quanto-tempo-vale.apk` no telefone;
+5. abrir e ver se está em tela cheia, sem barra de endereço;
+6. fazer o teste do Family Link (abaixo).
+
+O site precisa estar no ar: o Bubblewrap baixa dele o ícone e o maskable, os
+mesmos de `public/` (D46).
+
+## O que fica onde
+
+| onde | o quê |
 |---|---|
-| `twa-manifest.template.json` | Nome, cores, ícones. Sem domínio, pacote nem chave. |
-| `build.sh` | Preenche o modelo e roda o Bubblewrap. Saída em `twa/build/`, ignorada pelo git. |
+| `~/qtv-apk/qtv.keystore` | A chave de assinatura. **Sem ela, o app instalado nunca mais atualiza.** |
+| `~/qtv-apk/password` | A senha da chave, gerada sozinha. |
+| `~/qtv-apk/config` | Domínio e pacote que você respondeu. Apague para perguntar de novo. |
+| `~/qtv-apk/quanto-tempo-vale.apk` | O arquivo para instalar. |
+| este diretório | Imagem, modelo e script. Nada de domínio, pacote ou chave: o repositório é público. |
+
+Outra pasta: `QTV_DIR=/outro/lugar ./twa/apk.sh`.
 
 ## Gerar de novo só quando
 
-- mudar o domínio, o nome do pacote, o nome visível ou o ícone;
-- trocar a chave;
-- o arquivo `.apk` se perder e outro telefone precisar dele.
+- mudar o domínio, o pacote, o nome visível ou o ícone;
+- o `.apk` se perder e outro telefone precisar dele.
 
-Para atualizar um app já instalado, use **a mesma chave** e um `TWA_VERSION`
-maior que o anterior. Com chave diferente, o Android recusa: desinstale e
-instale de novo.
+Para atualizar um app já instalado, use a mesma pasta `~/qtv-apk` (mesma chave)
+e uma versão maior: `TWA_VERSION=2 ./twa/apk.sh`. Com chave diferente, o
+Android recusa: desinstale e instale de novo. Ao trocar de chave, ponha as
+duas impressões digitais em `TWA_SHA256_FINGERPRINTS`, separadas por vírgula.
 
-## 1. Criar a chave (uma vez)
+## Instalar no telefone
 
-Precisa do `keytool`, que vem com qualquer JDK. Se ainda não tiver um, faça o
-passo 4 primeiro até o Bubblewrap instalar o JDK, e use o `keytool` de lá.
+Mande o `.apk` para o telefone (cabo, Drive, e-mail) e abra pelo app de
+arquivos. O Android pede para permitir "instalar apps desconhecidos" para
+aquele app: permita, instale e desligue a permissão de novo. Se a supervisão
+do Family Link impedir a instalação, anote o que apareceu: é medição para a
+D54.
 
-```sh
-mkdir -p ~/qtv-apk
-keytool -genkeypair -v \
-  -keystore ~/qtv-apk/qtv.keystore \
-  -alias qtv \
-  -keyalg RSA -keysize 2048 -validity 10000
-```
+Se o app abrir **com barra de endereço**, o `assetlinks.json` não bate com o
+pacote ou com a chave. Confira as duas variáveis no Coolify. O
+[verificador do Google](https://developers.google.com/digital-asset-links/tools/generator)
+lê o mesmo arquivo público e diz o que não bate.
 
-O `keytool` pede duas senhas (a do arquivo e a da chave) e um nome. **Guarde o
-arquivo e as duas senhas num gerenciador de senhas**, com cópia fora deste
-computador. Sem a chave, o app instalado não recebe atualização: só
-desinstalando.
-
-Nunca coloque a chave dentro do repositório. O `.gitignore` recusa `*.keystore`,
-`*.jks` e `*.apk` por segurança, mas a regra é não pôr.
-
-## 2. Escolher o nome do pacote
-
-Um identificador no formato `a.b.c`, que nunca mais muda, por exemplo
-`app.quantotempovale.twa`. Não use nome de pessoa nem o domínio.
-
-## 3. Avisar o servidor (Coolify)
-
-Tire a impressão digital da chave:
-
-```sh
-keytool -list -v -keystore ~/qtv-apk/qtv.keystore -alias qtv | grep SHA256:
-```
-
-No Coolify, nas variáveis da aplicação:
-
-| variável | valor |
-|---|---|
-| `TWA_PACKAGE_ID` | o nome do pacote do passo 2 |
-| `TWA_SHA256_FINGERPRINTS` | o `AA:BB:...` depois de `SHA256:`. Mais de uma, separe por vírgula. |
-
-Faça um redeploy, ou só reinicie a aplicação: as variáveis são lidas no start.
-Sem elas, o app funciona igual e `/.well-known/assetlinks.json` responde `[]`.
-
-Confira:
-
-```sh
-curl https://SEU-DOMINIO/.well-known/assetlinks.json
-```
-
-Depois, no [verificador do Google](https://developers.google.com/digital-asset-links/tools/generator),
-preencha domínio, pacote e impressão digital e toque em "Test statement". Ele
-só lê o arquivo público do servidor; nada é enviado.
-
-## 4. Gerar o APK
-
-Precisa de Node 22. Na primeira vez, o Bubblewrap pergunta se pode baixar o
-JDK 17 e o Android SDK (alguns GB): responda que sim. Depois ele aceita as
-licenças do SDK e segue.
-
-```sh
-TWA_HOST=seu-dominio.com \
-TWA_PACKAGE_ID=app.quantotempovale.twa \
-TWA_KEYSTORE=~/qtv-apk/qtv.keystore \
-./twa/build.sh
-```
-
-Opcionais: `TWA_KEY_ALIAS` (padrão `qtv`) e `TWA_VERSION` (padrão `1`).
-
-O Bubblewrap baixa o ícone de `https://SEU-DOMINIO/icon-512.png` e o maskable,
-os mesmos do app instalável (D46). Por isso o site precisa estar no ar. Ele
-pede as duas senhas da chave e termina com:
-
-- `twa/build/app-release-signed.apk`, o arquivo para instalar;
-- a impressão digital, que precisa ser a mesma do passo 3.
-
-## 5. Instalar no telefone
-
-1. Copie o `app-release-signed.apk` para o telefone (cabo, Drive ou e-mail para
-   você mesmo).
-2. Abra o arquivo pelo app de arquivos. O Android pede para permitir
-   "instalar apps desconhecidos" para aquele app: permita, instale e depois
-   desligue a permissão de novo.
-3. Se a supervisão do Family Link impedir a instalação, anote o que apareceu na
-   tela: é medição para a D54.
-
-## 6. Conferir
-
-- O app abre **em tela cheia, sem barra de endereço**. Se aparecer a barra,
-  o `assetlinks.json` não bate com o pacote ou com a chave: volte ao passo 3.
-- Login, saldo e "Ativar avisos" funcionam como no navegador. No Android 13 ou
-  mais novo, o sistema pede permissão de notificação para o app.
-
-## 7. O teste do Family Link
+## O teste do Family Link
 
 TWA usa o Chrome por baixo. **O risco é o app morrer junto se o Family Link
 bloquear o Chrome.**
 
 1. Com o app instalado e funcionando, bloqueie o Chrome no Family Link.
 2. Feche o app de vez e abra de novo.
-3. Anote o que aconteceu: abriu normal, abriu sem tela cheia, não abriu, ou
-   mostrou aviso do Family Link.
+3. Anote: abriu normal, abriu com barra, não abriu, ou mostrou aviso do
+   Family Link.
 
 O resultado vai na D54. Se o app morrer junto, o caminho é um wrapper com
 WebView, que não depende do app Chrome mas perde o aviso push (D51). Isso é
 issue nova, não ajuste neste APK.
+
+## Limpar depois
+
+```sh
+docker image rm qtv-twa && docker volume rm qtv-twa-gradle
+```
+
+Não apague `~/qtv-apk`.
