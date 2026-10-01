@@ -331,10 +331,13 @@ inline.
 | configuração, categoria | os números dela | as atividades | ler a regra à esquerda, escolher o que mexer à direita |
 | configuração, lista | cards em duas colunas | — | sete cards em uma coluna de 896 px seriam faixas largas dizendo uma linha cada |
 
-A largura máxima da casca sai de `max-w-md` para `max-w-4xl` (896 px). Não mais
-que isso: acima de ~900 px uma linha de texto fica mais difícil de ler, não mais
-fácil, e uma página ocupando um monitor de 27" inteiro colocaria o saldo e o
-botão que o aumenta a meio metro um do outro.
+A casca do app sai de `max-w-md` para a largura inteira da janela a partir de
+`lg` (`APP_SHELL_CLASS`, emenda #41 à D42). Era `max-w-4xl` (896 px), e os cards
+da Configuração ficavam apertados nela. O argumento contra a linha longa demais
+continua valendo, mas mora em cada tela: histórico, fila e conta mantêm o teto
+próprio da tabela acima. Entrar, as páginas de erro e a confirmação ficam em
+`max-w-4xl` (`SHELL_CLASS`): são uma coluna de formulário, e esticá-la não
+ajuda ninguém.
 
 Na fila, os três controles de cada entrada empilham no celular (três lado a lado
 ficariam abaixo de 48 px a 320 px) e viram uma linha a partir de `lg`, porque um

@@ -6,6 +6,7 @@ import { describe, expect, it } from "vitest";
 import {
   ACCENT_BG_CLASS,
   ACCENT_HEX,
+  APP_SHELL_CLASS,
   BORDER_PX,
   CONTENT_BOTTOM_CLASS,
   CONTROL_RADIUS_CLASS,
@@ -424,6 +425,14 @@ describe("desktop is the same base, opened wide (#74, D42)", () => {
     expect(SHELL_CLASS).toContain("mx-auto");
     expect(SHELL_CLASS).toContain("max-w-md");
     expect(SHELL_CLASS).toContain("lg:max-w-4xl");
+  });
+
+  it("lets the app itself run the full width of a desk (#41)", () => {
+    expect(APP_SHELL_CLASS).toContain("max-w-md");
+    expect(APP_SHELL_CLASS).toContain("lg:max-w-none");
+    expect(readFileSync(join(SRC, "ui/app-shell.tsx"), "utf8")).toContain(
+      "APP_SHELL_CLASS",
+    );
   });
 
   it("is what both shells use", () => {
