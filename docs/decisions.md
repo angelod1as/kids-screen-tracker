@@ -2010,7 +2010,10 @@ novo. Instala uma vez.
   `TWA_PACKAGE_ID` e `TWA_SHA256_FINGERPRINTS` no Coolify. São `@sensitive=false`
   porque a rota as publica (o varlock recusa servir valor sensível) e
   `@dynamic` para serem lidas no start, não embutidas no build (D40). Sem as
-  duas, a rota responde `[]` e nada muda.
+  duas, a rota responde `[]` e nada muda. São as primeiras variáveis não
+  sensíveis e dinâmicas do schema; o `docker-smoke.sh` prova, na imagem, que o
+  valor servido é o do start. Onde a D23, a D40, a D45 e a D51 dizem "duas
+  obrigatórias e duas opcionais", leia "duas obrigatórias e quatro opcionais".
 - **`fallbackType: webview`.** Se o telefone não tiver navegador capaz de TWA,
   o Bubblewrap abre o site num WebView em vez de falhar. Não foi medido se o
   bloqueio do Family Link conta como "não ter".

@@ -36,6 +36,7 @@ smoke_secret="smoke-not-a-real-secret-do-not-use-anywhere"
 # Fed to `next build` by the Dockerfile; found in the image, it means #60's
 # strip stopped working and a real build would ship its values.
 build_placeholder="docker-build-placeholder"
+smoke_twa_package="app.smoke.twa"
 
 total=14
 step=0
@@ -74,6 +75,8 @@ start_container() {
     --publish "127.0.0.1:${port}:3000" \
     --volume "${volume}:/data" \
     --env "SESSION_SECRET=${smoke_secret}" \
+    --env "TWA_PACKAGE_ID=${smoke_twa_package}" \
+    --env "TWA_SHA256_FINGERPRINTS=AA:BB" \
     "$image" >/dev/null
 }
 
@@ -201,6 +204,15 @@ login_code="$(curl --silent --show-error --output /dev/null \
   --write-out '%{http_code}' "http://127.0.0.1:${port}/entrar")"
 [ "$login_code" = 200 ] || fail "GET /entrar answered ${login_code}"
 ok "GET / answered 307 to ${location}, and GET /entrar answered 200"
+# D54: a value the build inlined instead of reading at start would be absent here.
+asset_links="$(curl --silent --show-error --fail \
+  "http://127.0.0.1:${port}/.well-known/assetlinks.json")" ||
+  fail "GET /.well-known/assetlinks.json failed"
+case "$asset_links" in
+  *"\"${smoke_twa_package}\""*) ;;
+  *) fail "assetlinks.json does not carry TWA_PACKAGE_ID from the container's start" ;;
+esac
+ok "assetlinks.json serves the package set at start"
 
 section "the volume is empty until a migration runs"
 # So the next step proves creating the schema from zero.

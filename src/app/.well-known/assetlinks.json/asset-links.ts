@@ -8,7 +8,8 @@ export function assetLinks(
     .map((fingerprint) => fingerprint.trim().toUpperCase())
     .filter(Boolean);
 
-  if (!packageId?.trim() || certs.length === 0) {
+  const name = packageId?.trim();
+  if (!name || certs.length === 0) {
     return [];
   }
 
@@ -17,7 +18,7 @@ export function assetLinks(
       relation: ["delegate_permission/common.handle_all_urls"],
       target: {
         namespace: "android_app",
-        package_name: packageId.trim(),
+        package_name: name,
         sha256_cert_fingerprints: certs,
       },
     },
