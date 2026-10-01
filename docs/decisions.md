@@ -2018,6 +2018,12 @@ novo. Instala uma vez.
   sensíveis e dinâmicas do schema; o `docker-smoke.sh` prova, na imagem, que o
   valor servido é o do start. Onde a D23, a D40, a D45 e a D51 dizem "duas
   obrigatórias e duas opcionais", leia "duas obrigatórias e quatro opcionais".
+- **O app desenha por baixo das barras do Android e se afasta delas.** Com
+  `targetSdk` 35 ou mais, o Android 15 põe o TWA de ponta a ponta. O viewport
+  declara `viewport-fit=cover`, sem o qual todo `env(safe-area-inset-*)` vale
+  0, e a coluna do app se afasta da barra de status por `CONTENT_TOP_CLASS`. O
+  `env(safe-area-inset-bottom)` que a barra fixa já pedia passa a valer também
+  no iPhone instalado.
 - **`fallbackType: webview`.** Se o telefone não tiver navegador capaz de TWA,
   o Bubblewrap abre o site num WebView em vez de falhar. Não foi medido se o
   bloqueio do Family Link conta como "não ter".
