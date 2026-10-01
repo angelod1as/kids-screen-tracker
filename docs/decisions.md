@@ -1986,3 +1986,59 @@ Devolver*: carregam o porquê, mas *devolver* supõe que houve tirada antes.
 
 **Resíduo aceito.** *Dar horas* e *Lançar atividade* somam os dois. Dar não
 passa pelo motor: não conta no balde do dia (D3) nem no desgaste.
+
+---
+
+## A decisão que veio da #43
+
+### D54 — APK para side-load é um TWA, gerado na máquina do dono
+
+**Decisão.** O app também existe como APK Android, instalado por side-load no
+telefone dos meninos, sem Play Store. É um TWA (Trusted Web Activity) gerado
+pelo Bubblewrap: o APK abre o site publicado, então deploy novo não pede APK
+novo. Instala uma vez.
+
+- **A build roda na máquina do dono**, com `twa/build.sh` e o passo a passo em
+  [`twa/README.md`](../twa/README.md). Não há workflow nem segredo de assinatura
+  no GitHub, e a build não toca o caminho do deploy (D43).
+- **O repositório não carrega domínio, pacote nem chave.** O modelo
+  `twa/twa-manifest.template.json` tem nome, cores e ícones; o resto vem do
+  ambiente de quem roda o script. Os ícones são os de `public/` (D46).
+- **`/.well-known/assetlinks.json` é servido pelo app**, a partir de
+  `TWA_PACKAGE_ID` e `TWA_SHA256_FINGERPRINTS` no Coolify. São `@sensitive=false`
+  porque a rota as publica (o varlock recusa servir valor sensível) e
+  `@dynamic` para serem lidas no start, não embutidas no build (D40). Sem as
+  duas, a rota responde `[]` e nada muda.
+- **`fallbackType: webview`.** Se o telefone não tiver navegador capaz de TWA,
+  o Bubblewrap abre o site num WebView em vez de falhar. Não foi medido se o
+  bloqueio do Family Link conta como "não ter".
+
+**Por quê.** O dono quer que o Family Link enxergue um aplicativo próprio, não
+o Chrome, e não quer gerar APK a cada mudança. O TWA é o caminho do próprio
+Google, gratuito, e o aviso push (D51) funciona dentro dele porque quem roda o
+site é o Chrome. Build local porque é coisa que se faz uma vez: a chave nunca
+sai do computador do dono, e um workflow pediria cinco segredos no GitHub para
+um botão usado quase nunca.
+
+**Considerado e descartado.**
+
+- *Workflow no GitHub Actions* (`workflow_dispatch` publicando o APK): era o
+  pedido da issue, e o dono trocou pela build local.
+- *Wrapper com WebView próprio:* não depende do app Chrome, mas perde o Web
+  Push e é código Android nosso para manter. Fica como saída se o risco abaixo
+  se confirmar.
+
+**Risco, a medir.** O TWA usa o Chrome por baixo. Se o Family Link bloquear o
+Chrome, o app pode morrer junto, que é exatamente o que o dono quer evitar. O
+teste: com o APK instalado, bloquear o Chrome no Family Link e abrir o app
+(`twa/README.md`, passo 7). Resultado: *pendente*. Se morrer junto, o conserto
+não é neste APK: abre-se issue para o wrapper com WebView.
+
+**Resíduos aceitos.**
+
+- Perder a chave é perder a atualização do app instalado: só desinstalando.
+  Mitigado por guardar a chave fora do computador; o `assetlinks.json` aceita
+  mais de uma impressão digital para a troca.
+- O `build.sh` não roda no CI. Uma atualização do Bubblewrap que quebre o
+  modelo só aparece quando o dono gerar o APK de novo; a versão está fixada no
+  script por isso.
