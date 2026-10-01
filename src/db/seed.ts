@@ -167,17 +167,34 @@ export const SEED_CATEGORIES: readonly SeedCategory[] = [
     returnBonusPct: 0,
     returnBonusAfterDays: 0,
     activities: [
-      { id: 15, name: "Sair com os amigos", calcMode: "fixed", value: 3 },
+      {
+        id: 15,
+        name: "Sair com os amigos",
+        description:
+          "Sair com amigos por algumas horas: praça, shopping, cinema, lanche.",
+        calcMode: "fixed",
+        value: 3,
+      },
       {
         id: 16,
         name: "Passar o dia inteiro fora",
+        description:
+          "Sair de casa desde a manhã até a noite, em grupo. Por exemplo, um rolê com a família.",
         calcMode: "fixed",
         value: 5,
       },
-      { id: 17, name: "Ir na casa de um amigo", calcMode: "fixed", value: 2 },
+      {
+        id: 17,
+        name: "Ir na casa de um amigo",
+        description:
+          "Algumas horas na casa de um amigo. Se foi o dia todo, é “Passar o dia inteiro fora”; se dormiu lá, é “Dormir na casa de amigo ou parente”.",
+        calcMode: "fixed",
+        value: 2,
+      },
       {
         id: 18,
         name: "Dormir na casa de amigo ou parente",
+        description: "Passar a noite fora. Conta uma vez por noite.",
         calcMode: "fixed",
         value: 3,
       },
@@ -187,6 +204,8 @@ export const SEED_CATEGORIES: readonly SeedCategory[] = [
       {
         id: 22,
         name: "Atividade extra na escola",
+        description:
+          "Evento da escola fora do horário de aula: feira, apresentação, gincana. Não vale esporte, como vôlei.",
         calcMode: "fixed",
         value: 2,
       },

@@ -379,6 +379,13 @@ function Idle({
               ))}
             </Select>
 
+            <Description
+              text={
+                data.activities.find((activity) => activity.id === chosen)
+                  ?.description ?? null
+              }
+            />
+
             <Button disabled={busy} onClick={onStart} type="button">
               Começar
             </Button>
@@ -386,6 +393,13 @@ function Idle({
         </Panel>
       )}
     </section>
+  );
+}
+
+/** #40: a native `<option>` shows only the name, so the chosen one's text goes under it. */
+function Description({ text }: { text: string | null }) {
+  return text === null ? null : (
+    <p className="break-words text-base text-black">{text}</p>
   );
 }
 
@@ -462,6 +476,8 @@ function RequestPanel({
               </optgroup>
             ))}
           </Select>
+
+          <Description text={activity?.description ?? null} />
 
           <Field
             id="pedido-dia"

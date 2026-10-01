@@ -439,6 +439,7 @@ describe("the activity form the endpoint is handed (#27)", () => {
     expect(activityInputOf(DRAFT, 3)).toEqual({
       categoryId: 3,
       name: "Podcast",
+      description: null,
       calcMode: "duration",
       value: 1.5,
       maxSessionMinutes: 90,

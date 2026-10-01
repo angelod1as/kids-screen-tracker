@@ -378,6 +378,30 @@ describe("every activity of the spec", () => {
     }
   });
 
+  /** #40: Convívio's names are the ones a boy mixes up; the church ones are not. */
+  it("describes exactly the ambiguous Convívio activities", () => {
+    seedDatabase(connection);
+
+    const described = connection.db
+      .select({ name: activities.name, description: activities.description })
+      .from(activities)
+      .all()
+      .filter((row) => row.description !== null);
+
+    expect(described.map((row) => row.name).sort()).toEqual(
+      [
+        "Atividade extra na escola",
+        "Dormir na casa de amigo ou parente",
+        "Ir na casa de um amigo",
+        "Passar o dia inteiro fora",
+        "Sair com os amigos",
+      ].sort(),
+    );
+    for (const row of described) {
+      expect(row.description?.length).toBeLessThanOrEqual(200);
+    }
+  });
+
   /** D16: only a timed mode runs a session. */
   it("sets a session limit exactly on the timed activities", () => {
     seedDatabase(connection);

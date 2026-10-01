@@ -18,6 +18,8 @@ export type ActivityRow = {
   id: number;
   categoryId: number;
   name: string;
+  /** #40: what fits under this name. */
+  description?: string | null;
   calcMode: "duration" | "fixed" | "delivery" | "free";
   /** Null only for `free`. */
   value: number | null;
@@ -37,6 +39,8 @@ export type ActivityRow = {
 export type ActivityInput = {
   categoryId: number;
   name: string;
+  /** #40: optional; blank is stored as null. */
+  description?: string | null;
   calcMode: ActivityRow["calcMode"];
   /** D11. */
   value: number | null;
@@ -49,6 +53,9 @@ export type ActivityInput = {
 };
 
 type Db = Connection["db"] | Transaction;
+
+/** #40: it sits under a picker on a phone, so shorter than `MAX_TEXT_LENGTH`. */
+export const MAX_DESCRIPTION_LENGTH = 200;
 
 /** So a raw POST cannot invent a fifth mode. */
 const CALC_MODES: readonly ActivityRow["calcMode"][] = [
@@ -68,6 +75,7 @@ export function listActivities(
       id: activities.id,
       categoryId: activities.categoryId,
       name: activities.name,
+      description: activities.description,
       calcMode: activities.calcMode,
       value: activities.value,
       maxSessionMinutes: activities.maxSessionMinutes,
@@ -99,6 +107,14 @@ function requireActivity(input: ActivityInput): ActivityInput {
 
   if (name === "") {
     throw new Error("an activity needs a name: it is what the pickers show");
+  }
+
+  const description = input.description?.trim() || null;
+
+  if (description !== null && description.length > MAX_DESCRIPTION_LENGTH) {
+    throw new Error(
+      `an activity description is at most ${MAX_DESCRIPTION_LENGTH} characters, received ${description.length}`,
+    );
   }
 
   if (!CALC_MODES.includes(input.calcMode)) {
@@ -146,6 +162,7 @@ function requireActivity(input: ActivityInput): ActivityInput {
   return {
     categoryId: input.categoryId,
     name,
+    description,
     calcMode: input.calcMode,
     value:
       input.value === null
@@ -219,6 +236,7 @@ export function createActivity(
       .values({
         categoryId: checked.categoryId,
         name: checked.name,
+        description: checked.description,
         calcMode: checked.calcMode,
         value: checked.value,
         maxSessionMinutes: checked.maxSessionMinutes,
@@ -268,6 +286,7 @@ export function updateActivity(
       .set({
         categoryId: checked.categoryId,
         name: checked.name,
+        description: checked.description,
         calcMode: checked.calcMode,
         value: checked.value,
         maxSessionMinutes: checked.maxSessionMinutes,

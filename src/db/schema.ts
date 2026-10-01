@@ -146,6 +146,8 @@ export const activities = sqliteTable(
       .notNull()
       .references(() => categories.id, { onDelete: "restrict" }),
     name: text("name").notNull(),
+    /** #40: what fits under this name, shown under the boy's picker. */
+    description: text("description"),
     calcMode: text("calc_mode", {
       enum: ["duration", "fixed", "delivery", "free"],
     }).notNull(),
