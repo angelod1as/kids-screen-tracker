@@ -328,6 +328,8 @@ inline.
 | histórico | uma coluna só, no máximo 672 px | — | duas colunas de lista cronológica obrigariam o leitor a descobrir se ela lê para baixo e depois para baixo, ou de lado |
 | fila | uma coluna só, no máximo 768 px | — | a ordem da fila é aritmética (D32), não arrumação |
 | conta | uma coluna só, no máximo 448 px | — | são poucos controles; esticar não os torna mais fáceis de achar |
+| configuração, categoria | os números dela | as atividades | ler a regra à esquerda, escolher o que mexer à direita |
+| configuração, lista | cards em duas colunas | — | sete cards em uma coluna de 896 px seriam faixas largas dizendo uma linha cada |
 
 A largura máxima da casca sai de `max-w-md` para `max-w-4xl` (896 px). Não mais
 que isso: acima de ~900 px uma linha de texto fica mais difícil de ler, não mais
@@ -337,6 +339,33 @@ botão que o aumenta a meio metro um do outro.
 Na fila, os três controles de cada entrada empilham no celular (três lado a lado
 ficariam abaixo de 48 px a 320 px) e viram uma linha a partir de `lg`, porque um
 *Aprovar* de 600 px de largura é um controle em que ninguém acredita.
+
+---
+
+## Página em níveis
+
+A Configuração (#41) é o único lugar com três níveis: lista de categorias,
+página da categoria, página da atividade. Dois padrões nasceram ali e valem
+para qualquer tela que precise do mesmo.
+
+- **Card que abre página:** `CardLink`, inteiro tocável, com nome em negrito,
+  a anotação embaixo e nenhuma seta ou chevron — ícone só mora na barra. Solto,
+  ele é a lista de categorias; com `flush`, é a linha de um painel, como as
+  atividades dentro da categoria.
+- **Voltar:** a primeira coisa da página é um `LinkButton` secundário que diz
+  para onde volta ("Voltar: Mente"), não só "Voltar". Em cima, porque é o que
+  se procura ao chegar errado; nomeado, porque três níveis iguais de cara
+  confundem.
+- **Leitura antes de formulário:** um nível intermediário mostra os números em
+  linhas de leitura e abre o formulário no lugar só quando se pede. O último
+  nível chega com o formulário aberto, para que o toque no card substitua o
+  *Editar*.
+- **Recusa ao lado do botão:** a frase do servidor (D37) aparece logo acima dos
+  botões que a provocaram, não no topo de uma página que pode estar rolada.
+- **Campo curto não ocupa linha:** número de um ou dois dígitos vai em par
+  (`FIELD_PAIR_CLASS`, duas colunas no celular, até quatro no `lg`), com
+  `items-end` para alinhar as caixas sob rótulos que quebram em alturas
+  diferentes. Texto livre e `<select>` continuam com a linha inteira.
 
 ---
 
@@ -407,7 +436,7 @@ Quem guarda: `src/ui/design.test.ts` sobre o código-fonte e
 `scripts/check-served-css.sh` (`pnpm check:css`) sobre a folha de estilo
 construída.
 
-As telas que a #74 não redesenhou — calculadora, lançar, tirar, dar,
-configuração — herdaram a direção pelos primitivos sem serem tocadas. Passar
+As telas que a #74 não redesenhou — calculadora, lançar, tirar, dar —
+herdaram a direção pelos primitivos sem serem tocadas. Passar
 por elas dando a cada bloco o painel que ele merece é trabalho de desenho que
 ainda não foi feito, não uma exceção à regra.

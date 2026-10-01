@@ -40,14 +40,17 @@ const config = vi.hoisted(() => ({
   setActivityActiveAction: vi.fn(),
 }));
 
+const router = vi.hoisted(() => ({ push: vi.fn() }));
+
+vi.mock("next/navigation", () => ({ useRouter: () => router }));
 vi.mock("../actions/queue", () => queue);
 vi.mock("../actions/admin", () => admin);
 vi.mock("../actions/config", () => config);
 
 const { QueueList } = await import("./admin/fila/queue-list");
 const { LaunchForm } = await import("./admin/lancar/launch-form");
-const { CategoryList } = await import("./admin/configuracao/category-list");
-const { ActivityList } = await import("./admin/configuracao/activity-list");
+const { CategoryDetail } = await import("./admin/configuracao/category-list");
+const { ActivityEditor } = await import("./admin/configuracao/activity-list");
 
 const D32 =
   "Não dá para aprovar a entrada 2 ainda: a entrada 1 (Ler livro, 2026-09-01) vem antes dela e está esperando na fila. Decida essa primeiro.";
@@ -194,7 +197,9 @@ describe("Configuration says D37's refusal as the server wrote it", () => {
   const LOCKS = { activityIds: [5], categoryIds: [2], queued: 1, running: 0 };
 
   it("shows the sentence when switching off a category is refused", async () => {
-    await render(<CategoryList initial={[MENTE]} initialLocks={LOCKS} />);
+    await render(
+      <CategoryDetail activities={[]} initial={MENTE} initialLocks={LOCKS} />,
+    );
 
     config.setCategoryActiveAction.mockResolvedValueOnce({ refused: D37 });
     config.fetchLocksAction.mockResolvedValueOnce(LOCKS);
@@ -219,16 +224,14 @@ describe("Configuration says D37's refusal as the server wrote it", () => {
       sortOrder: 1,
       active: true,
     };
-    const onChanged = vi.fn();
     const activityD37 = D37.replace("Mente:", "Ler livro:");
 
     await render(
-      <ActivityList
+      <ActivityEditor
+        activity={book}
         categories={[MENTE]}
         category={MENTE}
-        initial={[book]}
         locks={LOCKS}
-        onChanged={onChanged}
       />,
     );
 
@@ -238,6 +241,7 @@ describe("Configuration says D37's refusal as the server wrote it", () => {
     await click("Desativar");
 
     expectOnlyTheSentence(activityD37);
-    expect(onChanged).not.toHaveBeenCalled();
+    // Refused, the adult stays where the sentence is (D37).
+    expect(router.push).not.toHaveBeenCalled();
   });
 });

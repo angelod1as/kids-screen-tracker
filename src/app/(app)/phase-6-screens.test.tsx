@@ -20,6 +20,10 @@ const mocked = vi.hoisted(() => ({
   },
 }));
 
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push: () => undefined }),
+}));
+
 vi.mock("../actions/config", () => ({
   fetchCategoriesAction: async () => mocked.categories,
   createCategoryAction: async () => mocked.categories,
@@ -34,10 +38,12 @@ vi.mock("../actions/config", () => ({
 
 const {
   asymptoteText,
+  CategoryDetail,
   categoryInputOf,
   categorySummary,
   decayStepWarning,
   EMPTY_CATEGORY,
+  NewCategoryForm,
   returnBonusWarning,
 } = await import("./admin/configuracao/category-list");
 
@@ -317,9 +323,28 @@ describe("the screen itself (#26)", () => {
 
     const markup = renderToStaticMarkup(await ConfigurationPage());
 
-    expect(markup).toContain("desativada");
-    expect(markup).toContain("Ativar de novo");
-    expect(markup).toContain("Desativar");
+    expect(markup).toContain("Casa · desativada");
+    expect(markup).not.toContain("Mente · desativada");
+  });
+
+  it("offers to switch a category back on from its own page (D14)", () => {
+    const off = renderToStaticMarkup(
+      <CategoryDetail
+        activities={[]}
+        initial={{ ...CASA, active: false }}
+        initialLocks={mocked.locks}
+      />,
+    );
+    const on = renderToStaticMarkup(
+      <CategoryDetail
+        activities={[]}
+        initial={MENTE}
+        initialLocks={mocked.locks}
+      />,
+    );
+
+    expect(off).toContain("Ativar de novo");
+    expect(on).toContain("Desativar");
   });
 
   it("says one activity in the singular", async () => {
@@ -331,20 +356,24 @@ describe("the screen itself (#26)", () => {
     expect(markup).not.toContain("1 atividades");
   });
 
-  it("offers a form for a category that does not exist yet", async () => {
+  it("offers a page for a category that does not exist yet", async () => {
     mocked.categories = [MENTE];
 
     const markup = renderToStaticMarkup(await ConfigurationPage());
 
+    expect(markup).toContain('href="/admin/configuracao/nova"');
     expect(markup).toContain("Nova categoria");
+  });
+
+  it("asks for every number on that page", () => {
+    const markup = renderToStaticMarkup(<NewCategoryForm />);
+
     expect(markup).toContain("Passo do desgaste");
     expect(markup).toContain("Bônus de retorno");
   });
 
-  it("puts the asymptote on the page, under the fields it comes from", async () => {
-    mocked.categories = [MENTE];
-
-    const markup = renderToStaticMarkup(await ConfigurationPage());
+  it("puts the asymptote on the page, under the fields it comes from", () => {
+    const markup = renderToStaticMarkup(<NewCategoryForm />);
 
     // Empty step, so the readout is in its no-decay state; its states are asserted above.
     expect(markup).toContain(
@@ -536,14 +565,27 @@ describe("what an activity says about itself in the list (#27)", () => {
   });
 });
 
-describe("the activities are reachable from the category (#27)", () => {
-  it("offers a way into them from each category card", async () => {
+describe("the activities are reachable from the category (#27, #41)", () => {
+  it("opens each category's page from its card", async () => {
     mocked.categories = [MENTE, CASA];
-    mocked.activities = [BOOK];
 
     const markup = renderToStaticMarkup(await ConfigurationPage());
 
-    expect(markup).toContain("Atividades");
+    expect(markup).toContain('href="/admin/configuracao/2"');
+    expect(markup).toContain('href="/admin/configuracao/6"');
+  });
+
+  it("opens each activity's page from the category's", () => {
+    const markup = renderToStaticMarkup(
+      <CategoryDetail
+        activities={[BOOK]}
+        initial={MENTE}
+        initialLocks={mocked.locks}
+      />,
+    );
+
+    expect(markup).toContain('href="/admin/configuracao/2/5"');
+    expect(markup).toContain("Ler livro");
   });
 });
 

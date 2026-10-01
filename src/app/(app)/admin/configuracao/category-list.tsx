@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 
 import type { ActivityRow } from "../../../../db/activities";
@@ -21,12 +22,16 @@ import {
   parseTypedCount,
   parseTypedHours,
 } from "../../../../ui/hours";
-import { LinkButton } from "../../../../ui/link-button";
-import { BORDER_CLASS, HEADING_CLASS } from "../../../../ui/style";
+import { CardLink, LinkButton } from "../../../../ui/link-button";
+import { Panel } from "../../../../ui/panel";
+import {
+  BORDER_CLASS,
+  META_CLASS,
+  READOUT_CLASS,
+  ROW_CLASS,
+} from "../../../../ui/style";
 import {
   createCategoryAction,
-  fetchActivitiesAction,
-  fetchCategoriesAction,
   fetchLocksAction,
   setCategoryActiveAction,
   updateCategoryAction,
@@ -38,6 +43,9 @@ import { ActivityList } from "./activity-list";
  * live. Floors are explained here and enforced by the server (D33), from the one
  * predicate in `src/engine/limits.ts`. Deactivating never deletes (D14).
  */
+
+/** Two short numbers to a row (#41); `items-end` lines the boxes up under labels that wrap. */
+export const FIELD_PAIR_CLASS = "grid grid-cols-2 items-end gap-3";
 
 /**
  * Said before the tap, naming queue or open session (D37): a refusal alone came
@@ -292,6 +300,7 @@ export function categorySummary(category: CategoryRow): string {
   return `${decay} · ${bonus}`;
 }
 
+/** Level one of three (#41): a card per category, each opening its own page. */
 export function CategoryList({
   initial,
   initialLocks,
@@ -299,14 +308,94 @@ export function CategoryList({
   initial: CategoryRow[];
   initialLocks: Locks;
 }) {
-  const [rows, setRows] = useState(initial);
+  return (
+    <div className="flex flex-col gap-4 lg:gap-6">
+      {/* Before any tap: a D37 refusal alone never mentioned the queue. */}
+      <LockBanner locks={initialLocks} />
+
+      {initial.length === 0 ? (
+        <p className={`${BORDER_CLASS} bg-white p-4 text-lg text-black`}>
+          Nenhuma categoria ainda. Crie a primeira em Nova categoria, logo
+          abaixo.
+        </p>
+      ) : null}
+
+      <ul className="grid gap-4 lg:grid-cols-2 lg:gap-6">
+        {initial.map((category) => (
+          <li key={category.id}>
+            <CardLink href={`/admin/configuracao/${category.id}`}>
+              <span className="break-words text-lg font-bold text-black">
+                {category.name}
+                {category.active ? "" : " · desativada"}
+              </span>
+              <span className="text-base text-black">
+                {categorySummary(category)}
+              </span>
+              <span className={META_CLASS}>
+                {category.activityCount === 1
+                  ? "1 atividade"
+                  : `${category.activityCount} atividades`}
+              </span>
+            </CardLink>
+          </li>
+        ))}
+      </ul>
+
+      <LinkButton href="/admin/configuracao/nova">Nova categoria</LinkButton>
+    </div>
+  );
+}
+
+function LockBanner({ locks }: { locks: Locks }) {
+  if (locks.queued + locks.running === 0) return null;
+
+  return (
+    <div className={`${BORDER_CLASS} flex flex-col gap-3 bg-white p-4`}>
+      <p className="text-base font-bold text-black">
+        {locks.queued > 0
+          ? `${locks.queued === 1 ? "1 entrada" : `${locks.queued} entradas`} esperando na fila`
+          : ""}
+        {locks.queued > 0 && locks.running > 0 ? " e " : ""}
+        {locks.running > 0
+          ? `${locks.running === 1 ? "1 cronômetro" : `${locks.running} cronômetros`} aberto${locks.running === 1 ? "" : "s"}`
+          : ""}
+        . Taxa, modo, nota, cooldown e categoria das atividades envolvidas — e o
+        desgaste e o bônus das categorias delas — só mudam depois que isso for
+        decidido.
+      </p>
+
+      <LinkButton href="/admin/fila" variant="secondary">
+        Ir para a fila
+      </LinkButton>
+    </div>
+  );
+}
+
+function bonusText(category: CategoryRow): string {
+  return category.returnBonusPct <= 0
+    ? "sem bônus"
+    : `+${percentText(category.returnBonusPct)}% após ${category.returnBonusAfterDays} ${
+        category.returnBonusAfterDays === 1 ? "dia" : "dias"
+      }`;
+}
+
+/**
+ * Level two (#41): the numbers read, not open, so the common path (an
+ * activity's rate) passes through a short page. The refusal sits by the buttons.
+ */
+export function CategoryDetail({
+  activities,
+  initial,
+  initialLocks,
+}: {
+  activities: ActivityRow[];
+  initial: CategoryRow;
+  initialLocks: Locks;
+}) {
+  const [category, setCategory] = useState(initial);
   const [locks, setLocks] = useState(initialLocks);
-  const [editing, setEditing] = useState<number | null>(null);
+  const [editing, setEditing] = useState(false);
   const [edited, setEdited] = useState<CategoryDraft>(EMPTY_CATEGORY);
-  const [draft, setDraft] = useState<CategoryDraft>(EMPTY_CATEGORY);
-  /** Fetched on the tap: an adult opens one category's activities, not all thirty-two. */
-  const [openCategory, setOpenCategory] = useState<number | null>(null);
-  const [activities, setActivities] = useState<ActivityRow[]>([]);
   const [failed, setFailed] = useState<string | null>(null);
   const [busy, startAction] = useTransition();
 
@@ -326,7 +415,9 @@ export function CategoryList({
           return;
         }
 
-        setRows(result);
+        const next = result.find((one) => one.id === category.id);
+        if (next !== undefined) setCategory(next);
+        setEditing(false);
         // What is under way changes with the boy, so it is re-read every time.
         setLocks(await fetchLocksAction());
         setFailed(null);
@@ -334,96 +425,84 @@ export function CategoryList({
         try {
           setLocks(await fetchLocksAction());
         } catch {
-          // The list already says something went wrong.
+          // The page already says something went wrong.
         }
         setFailed(failureText(error));
       }
     });
   }
 
+  const note = lockNote(category, null, locks);
+  const shape = shapeNote(category.name);
+
   return (
-    <div className="flex flex-col gap-6">
-      {failed === null ? null : (
-        <p className={`${BORDER_CLASS} bg-white p-4 text-lg text-black`}>
-          {failed}
-        </p>
-      )}
+    <div className="flex flex-col gap-4 lg:grid lg:grid-cols-2 lg:items-start lg:gap-6">
+      <Panel
+        title={`${category.name}${category.active ? "" : " · desativada"}`}
+        top
+      >
+        <ul>
+          <li className={ROW_CLASS}>
+            <span className="text-base text-black">Taxa sugerida</span>
+            <span className={READOUT_CLASS}>
+              {category.baseRate === null
+                ? "nenhuma"
+                : formatDecimalHours(category.baseRate)}
+            </span>
+          </li>
+          <li className={ROW_CLASS}>
+            <span className="text-base text-black">Passo do desgaste</span>
+            <span className={READOUT_CLASS}>
+              {category.decayStepHours === null
+                ? "sem desgaste"
+                : formatDecimalHours(category.decayStepHours)}
+            </span>
+          </li>
+          <li className={ROW_CLASS}>
+            <span className="text-base text-black">Bônus de retorno</span>
+            <span className={READOUT_CLASS}>{bonusText(category)}</span>
+          </li>
+          <li className={ROW_CLASS}>
+            <span className="text-base text-black">Ordem na lista</span>
+            <span className={READOUT_CLASS}>{category.sortOrder}</span>
+          </li>
+        </ul>
 
-      {/* Before any tap: a D37 refusal alone never mentioned the queue. */}
-      {locks.queued + locks.running === 0 ? null : (
-        <div className={`${BORDER_CLASS} flex flex-col gap-3 bg-white p-4`}>
-          <p className="text-base font-bold text-black">
-            {locks.queued > 0
-              ? `${locks.queued === 1 ? "1 entrada" : `${locks.queued} entradas`} esperando na fila`
-              : ""}
-            {locks.queued > 0 && locks.running > 0 ? " e " : ""}
-            {locks.running > 0
-              ? `${locks.running === 1 ? "1 cronômetro" : `${locks.running} cronômetros`} aberto${locks.running === 1 ? "" : "s"}`
-              : ""}
-            . Taxa, modo, nota, cooldown e categoria das atividades envolvidas —
-            e o desgaste e o bônus das categorias delas — só mudam depois que
-            isso for decidido.
-          </p>
+        <div className="flex flex-col gap-3 border-t-2 border-black p-3">
+          {editing ? null : (
+            <p className="text-base text-black">
+              {asymptoteText(draftOf(category))}
+            </p>
+          )}
 
-          <LinkButton href="/admin/fila" variant="secondary">
-            Ir para a fila
-          </LinkButton>
-        </div>
-      )}
+          {editing && note !== null ? (
+            <p
+              className={`${BORDER_CLASS} bg-white p-3 text-base font-bold text-black`}
+            >
+              {note}
+            </p>
+          ) : null}
+          {editing && shape !== null ? (
+            <p className={`${BORDER_CLASS} bg-white p-3 text-base text-black`}>
+              {shape}
+            </p>
+          ) : null}
+          {editing ? (
+            <CategoryFields
+              draft={edited}
+              onChange={setEdited}
+              prefix={`categoria-${category.id}`}
+            />
+          ) : null}
 
-      {rows.length === 0 ? (
-        <p className={`${BORDER_CLASS} bg-white p-4 text-lg text-black`}>
-          Nenhuma categoria ainda. Crie a primeira em Nova categoria, logo
-          abaixo.
-        </p>
-      ) : null}
+          {failed === null ? null : (
+            <p className={`${BORDER_CLASS} bg-white p-3 text-base text-black`}>
+              {failed}
+            </p>
+          )}
 
-      <ul className="flex flex-col gap-4">
-        {rows.map((category) => (
-          <li
-            className={`${BORDER_CLASS} flex flex-col gap-3 bg-white p-4`}
-            key={category.id}
-          >
-            <div className="flex flex-col">
-              <span className="break-words text-lg font-bold text-black">
-                {category.name}
-                {category.active ? "" : " · desativada"}
-              </span>
-              <span className="text-base text-black">
-                {categorySummary(category)}
-              </span>
-              <span className="text-base text-black">
-                {category.activityCount === 1
-                  ? "1 atividade"
-                  : `${category.activityCount} atividades`}
-              </span>
-            </div>
-
-            {editing === category.id ? (
-              <>
-                {lockNote(category, null, locks) === null ? null : (
-                  <p
-                    className={`${BORDER_CLASS} bg-white p-3 text-base font-bold text-black`}
-                  >
-                    {lockNote(category, null, locks)}
-                  </p>
-                )}
-                {shapeNote(category.name) === null ? null : (
-                  <p
-                    className={`${BORDER_CLASS} bg-white p-3 text-base text-black`}
-                  >
-                    {shapeNote(category.name)}
-                  </p>
-                )}
-                <CategoryFields
-                  draft={edited}
-                  onChange={setEdited}
-                  prefix={`categoria-${category.id}`}
-                />
-              </>
-            ) : null}
-
-            {editing === category.id ? (
+          <div className="grid gap-3 lg:grid-cols-2">
+            {editing ? (
               <Button
                 disabled={busy || categoryInputOf(edited) === null}
                 onClick={() => {
@@ -431,12 +510,7 @@ export function CategoryList({
 
                   if (input === null) return;
 
-                  act(async () => {
-                    const next = await updateCategoryAction(category.id, input);
-                    if (!("refused" in next)) setEditing(null);
-
-                    return next;
-                  });
+                  act(() => updateCategoryAction(category.id, input));
                 }}
                 type="button"
               >
@@ -460,67 +534,47 @@ export function CategoryList({
             <Button
               onClick={() => {
                 setEdited(draftOf(category));
-                setEditing(editing === category.id ? null : category.id);
+                setEditing(!editing);
               }}
               type="button"
               variant="secondary"
             >
-              {editing === category.id ? "Cancelar" : "Editar"}
+              {editing ? "Cancelar" : "Editar números"}
             </Button>
+          </div>
+        </div>
+      </Panel>
 
-            <Button
-              disabled={busy}
-              onClick={() => {
-                if (openCategory === category.id) {
-                  setOpenCategory(null);
+      <div className="flex flex-col gap-4 lg:gap-6">
+        <ActivityList category={category} rows={activities} />
 
-                  return;
-                }
+        {category.active ? (
+          <LinkButton href={`/admin/configuracao/${category.id}/nova`}>
+            Nova atividade
+          </LinkButton>
+        ) : null}
+      </div>
+    </div>
+  );
+}
 
-                startAction(async () => {
-                  try {
-                    setActivities(await fetchActivitiesAction(category.id));
-                    setOpenCategory(category.id);
-                    setFailed(null);
-                  } catch (error) {
-                    setFailed(failureText(error));
-                  }
-                });
-              }}
-              type="button"
-              variant="secondary"
-            >
-              {openCategory === category.id
-                ? "Fechar atividades"
-                : "Atividades"}
-            </Button>
+/** Saved, the adult goes back to the list, where the new card is the confirmation. */
+export function NewCategoryForm() {
+  const router = useRouter();
+  const [draft, setDraft] = useState<CategoryDraft>(EMPTY_CATEGORY);
+  const [failed, setFailed] = useState<string | null>(null);
+  const [busy, startAction] = useTransition();
 
-            {openCategory === category.id ? (
-              <ActivityList
-                categories={rows.filter((one) => one.active)}
-                category={category}
-                initial={activities}
-                locks={locks}
-                key={category.id}
-                onChanged={() =>
-                  startAction(async () => {
-                    try {
-                      setRows(await fetchCategoriesAction());
-                    } catch (error) {
-                      setFailed(failureText(error));
-                    }
-                  })
-                }
-              />
-            ) : null}
-          </li>
-        ))}
-      </ul>
-
-      <section className="flex flex-col gap-3">
-        <h2 className={HEADING_CLASS}>Nova categoria</h2>
-
+  return (
+    <Panel title="Nova categoria" top>
+      <div className="flex flex-col gap-3 p-3">
         <CategoryFields draft={draft} onChange={setDraft} prefix="nova" />
+
+        {failed === null ? null : (
+          <p className={`${BORDER_CLASS} bg-white p-3 text-base text-black`}>
+            {failed}
+          </p>
+        )}
 
         <Button
           disabled={busy || categoryInputOf(draft) === null}
@@ -529,25 +583,27 @@ export function CategoryList({
 
             if (input === null) return;
 
-            act(async () => {
-              const next = await createCategoryAction(input);
-              setDraft(EMPTY_CATEGORY);
-
-              return next;
+            startAction(async () => {
+              try {
+                await createCategoryAction(input);
+                router.push("/admin/configuracao");
+              } catch (error) {
+                setFailed(failureText(error));
+              }
             });
           }}
           type="button"
         >
           Criar categoria
         </Button>
-      </section>
-    </div>
+      </div>
+    </Panel>
   );
 }
 
 /**
- * `prefix` keeps `<label for>` ids unique: this form appears once per card and
- * once at the bottom. The asymptote sits under the two fields it comes from.
+ * `prefix` keeps `<label for>` ids unique. Short numbers go two to a row (#41);
+ * the asymptote sits under the two fields it comes from.
  */
 function CategoryFields({
   draft,
@@ -573,16 +629,28 @@ function CategoryFields({
         value={draft.name}
       />
 
-      <Field
-        id={`${prefix}-taxa`}
-        inputMode="decimal"
-        label="Taxa sugerida (vazio: nenhuma)"
-        onChange={(event) =>
-          onChange({ ...draft, baseRate: event.target.value })
-        }
-        type="text"
-        value={draft.baseRate}
-      />
+      <div className={FIELD_PAIR_CLASS}>
+        <Field
+          id={`${prefix}-taxa`}
+          inputMode="decimal"
+          label="Taxa sugerida (vazio: nenhuma)"
+          onChange={(event) =>
+            onChange({ ...draft, baseRate: event.target.value })
+          }
+          type="text"
+          value={draft.baseRate}
+        />
+        <Field
+          id={`${prefix}-passo`}
+          inputMode="decimal"
+          label="Passo do desgaste, em horas (vazio: sem desgaste)"
+          onChange={(event) =>
+            onChange({ ...draft, decayStepHours: event.target.value })
+          }
+          type="text"
+          value={draft.decayStepHours}
+        />
+      </div>
 
       {rateWarning === null ? null : (
         <p
@@ -591,17 +659,6 @@ function CategoryFields({
           {rateWarning}
         </p>
       )}
-
-      <Field
-        id={`${prefix}-passo`}
-        inputMode="decimal"
-        label="Passo do desgaste, em horas (vazio: sem desgaste)"
-        onChange={(event) =>
-          onChange({ ...draft, decayStepHours: event.target.value })
-        }
-        type="text"
-        value={draft.decayStepHours}
-      />
 
       <p className={`${BORDER_CLASS} bg-white p-3 text-base text-black`}>
         {asymptoteText(draft)}
@@ -613,27 +670,29 @@ function CategoryFields({
         )}
       </p>
 
-      <Field
-        id={`${prefix}-bonus`}
-        inputMode="decimal"
-        label="Bônus de retorno (%)"
-        onChange={(event) =>
-          onChange({ ...draft, returnBonusPct: event.target.value })
-        }
-        type="text"
-        value={draft.returnBonusPct}
-      />
+      <div className={FIELD_PAIR_CLASS}>
+        <Field
+          id={`${prefix}-bonus`}
+          inputMode="decimal"
+          label="Bônus de retorno (%)"
+          onChange={(event) =>
+            onChange({ ...draft, returnBonusPct: event.target.value })
+          }
+          type="text"
+          value={draft.returnBonusPct}
+        />
 
-      <Field
-        id={`${prefix}-bonus-dias`}
-        inputMode="numeric"
-        label="Bônus a partir de quantos dias sem fazer"
-        onChange={(event) =>
-          onChange({ ...draft, returnBonusAfterDays: event.target.value })
-        }
-        type="text"
-        value={draft.returnBonusAfterDays}
-      />
+        <Field
+          id={`${prefix}-bonus-dias`}
+          inputMode="numeric"
+          label="Bônus a partir de quantos dias sem fazer"
+          onChange={(event) =>
+            onChange({ ...draft, returnBonusAfterDays: event.target.value })
+          }
+          type="text"
+          value={draft.returnBonusAfterDays}
+        />
+      </div>
 
       {bonusWarning === null ? null : (
         <p
@@ -643,16 +702,18 @@ function CategoryFields({
         </p>
       )}
 
-      <Field
-        id={`${prefix}-ordem`}
-        inputMode="numeric"
-        label="Ordem na lista"
-        onChange={(event) =>
-          onChange({ ...draft, sortOrder: event.target.value })
-        }
-        type="text"
-        value={draft.sortOrder}
-      />
+      <div className={FIELD_PAIR_CLASS}>
+        <Field
+          id={`${prefix}-ordem`}
+          inputMode="numeric"
+          label="Ordem na lista"
+          onChange={(event) =>
+            onChange({ ...draft, sortOrder: event.target.value })
+          }
+          type="text"
+          value={draft.sortOrder}
+        />
+      </div>
     </div>
   );
 }

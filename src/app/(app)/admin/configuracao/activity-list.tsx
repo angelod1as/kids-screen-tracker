@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 
 import type { ActivityInput, ActivityRow } from "../../../../db/activities";
@@ -17,14 +18,16 @@ import {
   parseTypedCount,
   parseTypedHours,
 } from "../../../../ui/hours";
+import { CardLink } from "../../../../ui/link-button";
+import { Panel, PanelText } from "../../../../ui/panel";
 import { Select } from "../../../../ui/select";
-import { BORDER_CLASS, HEADING_CLASS } from "../../../../ui/style";
+import { BORDER_CLASS } from "../../../../ui/style";
 import {
   createActivityAction,
   setActivityActiveAction,
   updateActivityAction,
 } from "../../../actions/config";
-import { lockNote } from "./category-list";
+import { FIELD_PAIR_CLASS, lockNote } from "./category-list";
 
 /**
  * `base_rate` only prefills the value field on the screen (D11); a server-side
@@ -234,33 +237,75 @@ export function activitySummary(activity: ActivityRow): string {
   return parts.join(" · ");
 }
 
+/** Level two's half (#41): each row opens the activity's own page. */
 export function ActivityList({
+  category,
+  rows,
+}: {
+  category: CategoryRow;
+  rows: ActivityRow[];
+}) {
+  return (
+    <Panel note={String(rows.length)} title="Atividades">
+      {category.active ? null : (
+        <PanelText>
+          Categoria desativada: as atividades continuam aqui, mas saíram das
+          listas. Para mexer nelas, ative a categoria de novo.
+        </PanelText>
+      )}
+
+      {rows.length === 0 ? (
+        <PanelText>Nenhuma atividade nesta categoria ainda.</PanelText>
+      ) : (
+        <ul>
+          {rows.map((activity) => (
+            <li
+              className="border-t border-black first:border-t-0"
+              key={activity.id}
+            >
+              <CardLink
+                flush
+                href={`/admin/configuracao/${category.id}/${activity.id}`}
+              >
+                <span className="break-words text-base font-bold text-black">
+                  {activity.name}
+                  {activity.active ? "" : " · desativada"}
+                </span>
+                <span className="text-base text-black">
+                  {activitySummary(activity)}
+                </span>
+              </CardLink>
+            </li>
+          ))}
+        </ul>
+      )}
+    </Panel>
+  );
+}
+
+/**
+ * Level three (#41): the form is open on arrival, so the tap on the card stands
+ * in for *Editar*. Done, the adult goes back to the category; refused, stays.
+ */
+export function ActivityEditor({
+  activity,
   categories,
   category,
-  initial,
   locks,
-  onChanged,
 }: {
+  activity: ActivityRow;
   /** The live categories, so an activity can be moved between them (D33). */
   categories: CategoryRow[];
   category: CategoryRow;
-  initial: ActivityRow[];
   /** D37: what is waiting or running, so a refusal is never a surprise. */
   locks: Locks;
-  /** A move changes two cards' counts, so the screen re-reads the categories. */
-  onChanged: () => void;
 }) {
-  const [rows, setRows] = useState(initial);
-  const [editing, setEditing] = useState<number | null>(null);
-  const [edited, setEdited] = useState<ActivityDraft>(
-    emptyActivity(category.baseRate),
-  );
-  const [editedCategoryId, setEditedCategoryId] = useState(category.id);
-  const [draft, setDraft] = useState<ActivityDraft>(
-    emptyActivity(category.baseRate),
-  );
+  const router = useRouter();
+  const [edited, setEdited] = useState<ActivityDraft>(draftOf(activity));
+  const [editedCategoryId, setEditedCategoryId] = useState(activity.categoryId);
   const [failed, setFailed] = useState<string | null>(null);
   const [busy, startAction] = useTransition();
+  const back = `/admin/configuracao/${category.id}`;
 
   function act(call: () => Promise<ActivityRow[] | Refused>) {
     startAction(async () => {
@@ -273,9 +318,7 @@ export function ActivityList({
           return;
         }
 
-        setRows(result);
-        setFailed(null);
-        onChanged();
+        router.push(back);
       } catch (error) {
         setFailed(failureText(error));
       }
@@ -283,166 +326,151 @@ export function ActivityList({
   }
 
   /**
-   * A switched-off category's activities stay listed (D14) but get no forms: the
+   * A switched-off category's activities stay listed (D14) but get no form: the
    * endpoint refuses every change under it (D33), so a Save button would lie.
    */
   const editable = category.active;
+  const note = lockNote(category, activity.id, locks);
 
   return (
-    <div className="flex flex-col gap-4">
-      {editable ? null : (
-        <p className={`${BORDER_CLASS} bg-white p-3 text-base text-black`}>
-          Categoria desativada: as atividades continuam aqui, mas saíram das
-          listas. Para mexer nelas, ative a categoria de novo.
-        </p>
-      )}
+    <Panel
+      title={`${activity.name}${activity.active ? "" : " · desativada"}`}
+      top
+    >
+      <div className="flex flex-col gap-3 p-3">
+        {editable ? null : (
+          <p className="text-base text-black">
+            {activitySummary(activity)}. Categoria desativada: para mexer nesta
+            atividade, ative a categoria de novo.
+          </p>
+        )}
 
-      {failed === null ? null : (
-        <p className={`${BORDER_CLASS} bg-white p-3 text-base text-black`}>
-          {failed}
-        </p>
-      )}
-
-      {rows.length === 0 ? (
-        <p className={`${BORDER_CLASS} bg-white p-3 text-base text-black`}>
-          Nenhuma atividade nesta categoria ainda.
-        </p>
-      ) : (
-        <ul className="flex flex-col gap-3">
-          {rows.map((activity) => (
-            <li
-              className={`${BORDER_CLASS} flex flex-col gap-2 bg-white p-3`}
-              key={activity.id}
-            >
-              <div className="flex flex-col">
-                <span className="break-words text-base font-bold text-black">
-                  {activity.name}
-                  {activity.active ? "" : " · desativada"}
-                </span>
-                <span className="text-base text-black">
-                  {activitySummary(activity)}
-                </span>
-              </div>
-
-              {editable && editing === activity.id ? (
-                <>
-                  {lockNote(category, activity.id, locks) === null ? null : (
-                    <p
-                      className={`${BORDER_CLASS} bg-white p-3 text-base font-bold text-black`}
-                    >
-                      {lockNote(category, activity.id, locks)}
-                    </p>
-                  )}
-                  <ActivityFields
-                    categories={categories}
-                    categoryId={editedCategoryId}
-                    draft={edited}
-                    onChange={setEdited}
-                    onChangeCategory={setEditedCategoryId}
-                    prefix={`atividade-${activity.id}`}
-                  />
-                </>
-              ) : null}
-
-              {!editable ? null : editing === activity.id ? (
-                <Button
-                  disabled={
-                    busy || activityInputOf(edited, editedCategoryId) === null
-                  }
-                  onClick={() => {
-                    const input = activityInputOf(edited, editedCategoryId);
-
-                    if (input === null) return;
-
-                    act(async () => {
-                      const next = await updateActivityAction(
-                        category.id,
-                        activity.id,
-                        input,
-                      );
-                      if (!("refused" in next)) setEditing(null);
-
-                      return next;
-                    });
-                  }}
-                  type="button"
-                >
-                  Salvar atividade
-                </Button>
-              ) : (
-                <Button
-                  disabled={busy}
-                  onClick={() =>
-                    act(() =>
-                      setActivityActiveAction(
-                        category.id,
-                        activity.id,
-                        !activity.active,
-                      ),
-                    )
-                  }
-                  type="button"
-                >
-                  {activity.active ? "Desativar" : "Ativar de novo"}
-                </Button>
-              )}
-
-              {editable ? (
-                <Button
-                  onClick={() => {
-                    setEdited(draftOf(activity));
-                    setEditedCategoryId(activity.categoryId);
-                    setEditing(editing === activity.id ? null : activity.id);
-                  }}
-                  type="button"
-                  variant="secondary"
-                >
-                  {editing === activity.id ? "Cancelar" : "Editar"}
-                </Button>
-              ) : null}
-            </li>
-          ))}
-        </ul>
-      )}
-
-      {editable ? (
-        <section className="flex flex-col gap-2">
-          <h3 className={HEADING_CLASS}>Nova atividade</h3>
-
-          <ActivityFields
-            baseRate={category.baseRate}
-            categories={categories}
-            categoryId={category.id}
-            draft={draft}
-            onChange={setDraft}
-            prefix={`nova-atividade-${category.id}`}
-          />
-
-          <Button
-            disabled={busy || activityInputOf(draft, category.id) === null}
-            onClick={() => {
-              const input = activityInputOf(draft, category.id);
-
-              if (input === null) return;
-
-              act(async () => {
-                const next = await createActivityAction(input);
-                setDraft(emptyActivity(category.baseRate));
-
-                return next;
-              });
-            }}
-            type="button"
+        {editable && note !== null ? (
+          <p
+            className={`${BORDER_CLASS} bg-white p-3 text-base font-bold text-black`}
           >
-            Criar atividade
-          </Button>
-        </section>
-      ) : null}
-    </div>
+            {note}
+          </p>
+        ) : null}
+
+        {editable ? (
+          <ActivityFields
+            categories={categories}
+            categoryId={editedCategoryId}
+            draft={edited}
+            onChange={setEdited}
+            onChangeCategory={setEditedCategoryId}
+            prefix={`atividade-${activity.id}`}
+          />
+        ) : null}
+
+        {failed === null ? null : (
+          <p className={`${BORDER_CLASS} bg-white p-3 text-base text-black`}>
+            {failed}
+          </p>
+        )}
+
+        {editable ? (
+          <div className="grid gap-3 lg:grid-cols-2">
+            <Button
+              disabled={
+                busy || activityInputOf(edited, editedCategoryId) === null
+              }
+              onClick={() => {
+                const input = activityInputOf(edited, editedCategoryId);
+
+                if (input === null) return;
+
+                act(() =>
+                  updateActivityAction(category.id, activity.id, input),
+                );
+              }}
+              type="button"
+            >
+              Salvar atividade
+            </Button>
+
+            <Button
+              disabled={busy}
+              onClick={() =>
+                act(() =>
+                  setActivityActiveAction(
+                    category.id,
+                    activity.id,
+                    !activity.active,
+                  ),
+                )
+              }
+              type="button"
+              variant="secondary"
+            >
+              {activity.active ? "Desativar" : "Ativar de novo"}
+            </Button>
+          </div>
+        ) : null}
+      </div>
+    </Panel>
   );
 }
 
-/** `onChangeCategory` only on the editing form: a new activity belongs to the card it is under. */
+export function NewActivityForm({
+  categories,
+  category,
+}: {
+  categories: CategoryRow[];
+  category: CategoryRow;
+}) {
+  const router = useRouter();
+  const [draft, setDraft] = useState<ActivityDraft>(
+    emptyActivity(category.baseRate),
+  );
+  const [failed, setFailed] = useState<string | null>(null);
+  const [busy, startAction] = useTransition();
+
+  return (
+    <Panel title={`Nova atividade em ${category.name}`} top>
+      <div className="flex flex-col gap-3 p-3">
+        <ActivityFields
+          baseRate={category.baseRate}
+          categories={categories}
+          categoryId={category.id}
+          draft={draft}
+          onChange={setDraft}
+          prefix={`nova-atividade-${category.id}`}
+        />
+
+        {failed === null ? null : (
+          <p className={`${BORDER_CLASS} bg-white p-3 text-base text-black`}>
+            {failed}
+          </p>
+        )}
+
+        <Button
+          disabled={busy || activityInputOf(draft, category.id) === null}
+          onClick={() => {
+            const input = activityInputOf(draft, category.id);
+
+            if (input === null) return;
+
+            startAction(async () => {
+              try {
+                await createActivityAction(input);
+                router.push(`/admin/configuracao/${category.id}`);
+              } catch (error) {
+                setFailed(failureText(error));
+              }
+            });
+          }}
+          type="button"
+        >
+          Criar atividade
+        </Button>
+      </div>
+    </Panel>
+  );
+}
+
+/** `onChangeCategory` only on the editing form: a new activity belongs to the page it is created from. */
 function ActivityFields({
   baseRate = null,
   categories,
@@ -484,97 +512,103 @@ function ActivityFields({
         value={draft.description ?? ""}
       />
 
-      {onChangeCategory === undefined ? null : (
+      <div className={"grid gap-3 lg:grid-cols-2"}>
+        {onChangeCategory === undefined ? null : (
+          <Select
+            id={`${prefix}-categoria`}
+            label="Categoria"
+            onChange={(value) => onChangeCategory(Number(value))}
+            value={String(categoryId)}
+          >
+            {categories.map((option) => (
+              <option key={option.id} value={String(option.id)}>
+                {option.name}
+              </option>
+            ))}
+          </Select>
+        )}
+
         <Select
-          id={`${prefix}-categoria`}
-          label="Categoria"
-          onChange={(value) => onChangeCategory(Number(value))}
-          value={String(categoryId)}
+          id={`${prefix}-modo`}
+          label="Como conta"
+          onChange={(value) =>
+            onChange(
+              withCalcMode(draft, value as ActivityRow["calcMode"], baseRate),
+            )
+          }
+          value={draft.calcMode}
         >
-          {categories.map((option) => (
-            <option key={option.id} value={String(option.id)}>
-              {option.name}
+          {CALC_MODES.map((mode) => (
+            <option key={mode.value} value={mode.value}>
+              {mode.label}
             </option>
           ))}
         </Select>
-      )}
+      </div>
 
-      <Select
-        id={`${prefix}-modo`}
-        label="Como conta"
-        onChange={(value) =>
-          onChange(
-            withCalcMode(draft, value as ActivityRow["calcMode"], baseRate),
-          )
-        }
-        value={draft.calcMode}
-      >
-        {CALC_MODES.map((mode) => (
-          <option key={mode.value} value={mode.value}>
-            {mode.label}
-          </option>
-        ))}
-      </Select>
-
-      {draft.calcMode === "free" ? (
+      {draft.calcMode !== "free" ? null : (
         <p className={`${BORDER_CLASS} bg-white p-3 text-base text-black`}>
           Atividade avulsa: o valor é digitado na hora de lançar.
         </p>
-      ) : (
-        <Field
-          id={`${prefix}-valor`}
-          inputMode="decimal"
-          label={
-            draft.calcMode === "duration"
-              ? "Taxa por hora (sugerida pela categoria, dá para mudar)"
-              : "Valor em horas"
-          }
-          onChange={(event) =>
-            onChange({ ...draft, value: event.target.value })
-          }
-          type="text"
-          value={draft.value}
-        />
       )}
 
-      {draft.calcMode === "duration" ? (
-        <Field
-          id={`${prefix}-limite`}
-          inputMode="numeric"
-          label="Limite da sessão, em minutos (vazio: sem limite)"
-          onChange={(event) =>
-            onChange({ ...draft, maxSessionMinutes: event.target.value })
-          }
-          type="text"
-          value={draft.maxSessionMinutes}
-        />
-      ) : null}
+      <div className={`${FIELD_PAIR_CLASS} lg:grid-cols-4`}>
+        {draft.calcMode === "free" ? null : (
+          <Field
+            id={`${prefix}-valor`}
+            inputMode="decimal"
+            label={
+              draft.calcMode === "duration"
+                ? "Taxa por hora (sugerida pela categoria, dá para mudar)"
+                : "Valor em horas"
+            }
+            onChange={(event) =>
+              onChange({ ...draft, value: event.target.value })
+            }
+            type="text"
+            value={draft.value}
+          />
+        )}
 
-      {draft.calcMode === "duration" ? (
-        <Field
-          id={`${prefix}-minimo`}
-          inputMode="numeric"
-          label="Sessão mínima, em minutos (abaixo disso não é enviada)"
-          onChange={(event) =>
-            onChange({ ...draft, minSessionMinutes: event.target.value })
-          }
-          type="text"
-          value={draft.minSessionMinutes}
-        />
-      ) : null}
+        {draft.calcMode === "duration" ? (
+          <Field
+            id={`${prefix}-limite`}
+            inputMode="numeric"
+            label="Limite da sessão, em minutos (vazio: sem limite)"
+            onChange={(event) =>
+              onChange({ ...draft, maxSessionMinutes: event.target.value })
+            }
+            type="text"
+            value={draft.maxSessionMinutes}
+          />
+        ) : null}
 
-      {draft.calcMode === "duration" ? (
-        <Field
-          id={`${prefix}-presumida`}
-          inputMode="numeric"
-          label="Duração presumida do pedido, em minutos (vazio: o menino digita)"
-          onChange={(event) =>
-            onChange({ ...draft, presumedMinutes: event.target.value })
-          }
-          type="text"
-          value={draft.presumedMinutes ?? ""}
-        />
-      ) : null}
+        {draft.calcMode === "duration" ? (
+          <Field
+            id={`${prefix}-minimo`}
+            inputMode="numeric"
+            label="Sessão mínima, em minutos (abaixo disso não é enviada)"
+            onChange={(event) =>
+              onChange({ ...draft, minSessionMinutes: event.target.value })
+            }
+            type="text"
+            value={draft.minSessionMinutes}
+          />
+        ) : null}
+
+        {draft.calcMode === "duration" ? (
+          <Field
+            id={`${prefix}-presumida`}
+            inputMode="numeric"
+            label="Duração presumida do pedido, em minutos (vazio: o menino digita)"
+            onChange={(event) =>
+              onChange({ ...draft, presumedMinutes: event.target.value })
+            }
+            type="text"
+            value={draft.presumedMinutes ?? ""}
+          />
+        ) : null}
+      </div>
 
       {minSessionWarning(draft) === null ? null : (
         <p
@@ -591,27 +625,29 @@ function ActivityFields({
         value={draft.qualityGraded ? 1 : 0}
       />
 
-      <Field
-        id={`${prefix}-cooldown`}
-        inputMode="numeric"
-        label="Só repete depois de quantos dias (0: sem espera)"
-        onChange={(event) =>
-          onChange({ ...draft, repeatCooldownDays: event.target.value })
-        }
-        type="text"
-        value={draft.repeatCooldownDays}
-      />
+      <div className={FIELD_PAIR_CLASS}>
+        <Field
+          id={`${prefix}-cooldown`}
+          inputMode="numeric"
+          label="Só repete depois de quantos dias (0: sem espera)"
+          onChange={(event) =>
+            onChange({ ...draft, repeatCooldownDays: event.target.value })
+          }
+          type="text"
+          value={draft.repeatCooldownDays}
+        />
 
-      <Field
-        id={`${prefix}-ordem`}
-        inputMode="numeric"
-        label="Ordem na lista"
-        onChange={(event) =>
-          onChange({ ...draft, sortOrder: event.target.value })
-        }
-        type="text"
-        value={draft.sortOrder}
-      />
+        <Field
+          id={`${prefix}-ordem`}
+          inputMode="numeric"
+          label="Ordem na lista"
+          onChange={(event) =>
+            onChange({ ...draft, sortOrder: event.target.value })
+          }
+          type="text"
+          value={draft.sortOrder}
+        />
+      </div>
     </div>
   );
 }
