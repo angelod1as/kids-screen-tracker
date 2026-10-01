@@ -437,113 +437,121 @@ export function CategoryDetail({
 
   return (
     <div className="flex flex-col gap-4 lg:grid lg:grid-cols-2 lg:items-start lg:gap-6">
-      <Panel
-        title={`${category.name}${category.active ? "" : " · desativada"}`}
-        top
-      >
-        <ul>
-          <li className={ROW_CLASS}>
-            <span className="text-base text-black">Taxa sugerida</span>
-            <span className={READOUT_CLASS}>
-              {category.baseRate === null
-                ? "nenhuma"
-                : formatDecimalHours(category.baseRate)}
-            </span>
-          </li>
-          <li className={ROW_CLASS}>
-            <span className="text-base text-black">Passo do desgaste</span>
-            <span className={READOUT_CLASS}>
-              {category.decayStepHours === null
-                ? "sem desgaste"
-                : formatDecimalHours(category.decayStepHours)}
-            </span>
-          </li>
-          <li className={ROW_CLASS}>
-            <span className="text-base text-black">Bônus de retorno</span>
-            <span className={READOUT_CLASS}>{bonusText(category)}</span>
-          </li>
-          <li className={ROW_CLASS}>
-            <span className="text-base text-black">Ordem na lista</span>
-            <span className={READOUT_CLASS}>{category.sortOrder}</span>
-          </li>
-        </ul>
+      <div className="flex flex-col gap-4 lg:gap-6">
+        <Panel
+          title={`${category.name}${category.active ? "" : " · desativada"}`}
+          top
+        >
+          <ul>
+            <li className={ROW_CLASS}>
+              <span className="text-base text-black">Taxa sugerida</span>
+              <span className={READOUT_CLASS}>
+                {category.baseRate === null
+                  ? "nenhuma"
+                  : formatDecimalHours(category.baseRate)}
+              </span>
+            </li>
+            <li className={ROW_CLASS}>
+              <span className="text-base text-black">Passo do desgaste</span>
+              <span className={READOUT_CLASS}>
+                {category.decayStepHours === null
+                  ? "sem desgaste"
+                  : formatDecimalHours(category.decayStepHours)}
+              </span>
+            </li>
+            <li className={ROW_CLASS}>
+              <span className="text-base text-black">Bônus de retorno</span>
+              <span className={READOUT_CLASS}>{bonusText(category)}</span>
+            </li>
+            <li className={ROW_CLASS}>
+              <span className="text-base text-black">Ordem na lista</span>
+              <span className={READOUT_CLASS}>{category.sortOrder}</span>
+            </li>
+          </ul>
 
-        <div className="flex flex-col gap-3 border-t-2 border-black p-3">
-          {editing ? null : (
-            <p className="text-base text-black">
-              {asymptoteText(draftOf(category))}
-            </p>
-          )}
-
-          {editing && note !== null ? (
-            <p
-              className={`${BORDER_CLASS} bg-white p-3 text-base font-bold text-black`}
-            >
-              {note}
-            </p>
-          ) : null}
-          {editing && shape !== null ? (
-            <p className={`${BORDER_CLASS} bg-white p-3 text-base text-black`}>
-              {shape}
-            </p>
-          ) : null}
-          {editing ? (
-            <CategoryFields
-              draft={edited}
-              onChange={setEdited}
-              prefix={`categoria-${category.id}`}
-            />
-          ) : null}
-
-          {failed === null ? null : (
-            <p className={`${BORDER_CLASS} bg-white p-3 text-base text-black`}>
-              {failed}
-            </p>
-          )}
-
-          <div className="grid gap-3 lg:grid-cols-2">
-            {editing ? (
-              <Button
-                disabled={busy || categoryInputOf(edited) === null}
-                onClick={() => {
-                  const input = categoryInputOf(edited);
-
-                  if (input === null) return;
-
-                  act(() => updateCategoryAction(category.id, input));
-                }}
-                type="button"
-              >
-                Salvar
-              </Button>
-            ) : (
-              <Button
-                disabled={busy}
-                onClick={() =>
-                  act(() =>
-                    setCategoryActiveAction(category.id, !category.active),
-                  )
-                }
-                type="button"
-              >
-                {category.active ? "Desativar" : "Ativar de novo"}
-              </Button>
+          <div className="flex flex-col gap-3 border-t-2 border-black p-3">
+            {editing ? null : (
+              <p className="text-base text-black">
+                {asymptoteText(draftOf(category))}
+              </p>
             )}
 
-            {/* Never disabled: it cannot fail, and the secondary variant has no disabled look. */}
-            <Button
-              onClick={() => {
-                setEdited(draftOf(category));
-                setEditing(!editing);
-              }}
-              type="button"
-              variant="secondary"
-            >
-              {editing ? "Cancelar" : "Editar números"}
-            </Button>
+            {editing && note !== null ? (
+              <p
+                className={`${BORDER_CLASS} bg-white p-3 text-base font-bold text-black`}
+              >
+                {note}
+              </p>
+            ) : null}
+            {editing && shape !== null ? (
+              <p
+                className={`${BORDER_CLASS} bg-white p-3 text-base text-black`}
+              >
+                {shape}
+              </p>
+            ) : null}
+            {editing ? (
+              <CategoryFields
+                draft={edited}
+                onChange={setEdited}
+                prefix={`categoria-${category.id}`}
+              />
+            ) : null}
+
+            {failed === null ? null : (
+              <p
+                className={`${BORDER_CLASS} bg-white p-3 text-base text-black`}
+              >
+                {failed}
+              </p>
+            )}
+
+            <div className="grid gap-3 lg:grid-cols-2">
+              {editing ? (
+                <Button
+                  disabled={busy || categoryInputOf(edited) === null}
+                  onClick={() => {
+                    const input = categoryInputOf(edited);
+
+                    if (input === null) return;
+
+                    act(() => updateCategoryAction(category.id, input));
+                  }}
+                  type="button"
+                >
+                  Salvar
+                </Button>
+              ) : (
+                <Button
+                  disabled={busy}
+                  onClick={() =>
+                    act(() =>
+                      setCategoryActiveAction(category.id, !category.active),
+                    )
+                  }
+                  type="button"
+                >
+                  {category.active ? "Desativar" : "Ativar de novo"}
+                </Button>
+              )}
+
+              {/* Never disabled: it cannot fail, and the secondary variant has no disabled look. */}
+              <Button
+                onClick={() => {
+                  setEdited(draftOf(category));
+                  setEditing(!editing);
+                }}
+                type="button"
+                variant="secondary"
+              >
+                {editing ? "Cancelar" : "Editar números"}
+              </Button>
+            </div>
           </div>
-        </div>
-      </Panel>
+        </Panel>
+
+        <NumbersHelp />
+      </div>
 
       <div className="flex flex-col gap-4 lg:gap-6">
         <ActivityList category={category} rows={activities} />
@@ -557,6 +565,59 @@ export function CategoryDetail({
     </div>
   );
 }
+
+/** What each number does, in the adult guide's words, under the numbers themselves (#41). */
+function NumbersHelp() {
+  return (
+    <Panel title="O que cada número faz">
+      <dl>
+        {NUMBERS_HELP.map(([term, text]) => (
+          <div
+            className="flex flex-col gap-1 border-t border-black px-3 py-3 first:border-t-0"
+            key={term}
+          >
+            <dt className="text-base font-bold text-black">{term}</dt>
+            <dd className="text-base text-black">{text}</dd>
+          </div>
+        ))}
+      </dl>
+    </Panel>
+  );
+}
+
+const NUMBERS_HELP: readonly (readonly [string, string])[] = [
+  [
+    "Taxa sugerida",
+    "Quantas horas de tela uma hora de atividade vale, como ponto de partida. " +
+      "Só preenche a taxa de uma atividade nova por duração; não entra na conta. " +
+      "Mudar aqui não muda nenhuma atividade que já existe.",
+  ],
+  [
+    "Passo do desgaste",
+    "A cada passo de horas de atividade acumuladas na categoria no dia, a hora " +
+      "seguinte vale metade da anterior. O acumulado é da categoria inteira, zera " +
+      "à meia-noite, e só atividade com duração enche. Vazio: sem desgaste. " +
+      `O mínimo é ${formatDecimalHours(MIN_DECAY_STEP_HOURS)}.`,
+  ],
+  [
+    "Rende no máximo",
+    "Taxa × passo × 2. É o que um dia inteiro na categoria se aproxima de " +
+      "render, sem nunca chegar lá, sem contar o bônus de retorno. A conta " +
+      "usa a taxa sugerida; uma atividade com taxa própria tem o próprio teto.",
+  ],
+  [
+    "Bônus de retorno",
+    "A entrada que volta à categoria depois de mais dias sem ela do que o " +
+      "limiar ganha essa porcentagem a mais, sobre o que sobrou depois do " +
+      "desgaste. Só a primeira do dia ganha, e a estreia da categoria nunca " +
+      `ganha. 0%: sem bônus. Com bônus, o limiar mínimo é ${MIN_RETURN_BONUS_AFTER_DAYS} dia.`,
+  ],
+  [
+    "Ordem na lista",
+    "Onde a categoria aparece nas listas: o número menor vem primeiro. " +
+      "Desativada vai para o fim.",
+  ],
+];
 
 /** Saved, the adult goes back to the list, where the new card is the confirmation. */
 export function NewCategoryForm() {

@@ -179,6 +179,18 @@ describe("the category's page reads its numbers (#41)", () => {
     expect(markup).not.toContain("<input");
   });
 
+  it("explains each number under the numbers (#41)", () => {
+    const markup = renderToStaticMarkup(
+      <CategoryDetail activities={[]} initial={MENTE} initialLocks={LOCKS} />,
+    );
+
+    expect(markup.indexOf("Ordem na lista")).toBeLessThan(
+      markup.indexOf("O que cada número faz"),
+    );
+    expect(markup).toContain("não entra na conta");
+    expect(markup).toContain("O mínimo é 0,25 h.");
+  });
+
   it("offers a new activity only where one can be created", () => {
     const on = renderToStaticMarkup(
       <CategoryDetail activities={[]} initial={MENTE} initialLocks={LOCKS} />,
