@@ -179,12 +179,16 @@ describe("the category's page reads its numbers (#41)", () => {
     expect(markup).not.toContain("<input");
   });
 
-  it("explains each number under the numbers (#41)", () => {
+  it("explains each number, after the activities on a phone (#41)", () => {
     const markup = renderToStaticMarkup(
       <CategoryDetail activities={[]} initial={MENTE} initialLocks={LOCKS} />,
     );
 
+    // Source order is the phone's order: numbers, activities, then the help.
     expect(markup.indexOf("Ordem na lista")).toBeLessThan(
+      markup.indexOf("Atividades"),
+    );
+    expect(markup.indexOf("Atividades")).toBeLessThan(
       markup.indexOf("O que cada número faz"),
     );
     expect(markup).toContain("não entra na conta");

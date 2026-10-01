@@ -435,125 +435,118 @@ export function CategoryDetail({
   const note = lockNote(category, null, locks);
   const shape = shapeNote(category.name);
 
+  // Help sits under the activities on a phone and under the numbers on a desk (#41).
   return (
-    <div className="flex flex-col gap-4 lg:grid lg:grid-cols-2 lg:items-start lg:gap-6">
-      <div className="flex flex-col gap-4 lg:gap-6">
-        <Panel
-          title={`${category.name}${category.active ? "" : " · desativada"}`}
-          top
-        >
-          <ul>
-            <li className={ROW_CLASS}>
-              <span className="text-base text-black">Taxa sugerida</span>
-              <span className={READOUT_CLASS}>
-                {category.baseRate === null
-                  ? "nenhuma"
-                  : formatDecimalHours(category.baseRate)}
-              </span>
-            </li>
-            <li className={ROW_CLASS}>
-              <span className="text-base text-black">Passo do desgaste</span>
-              <span className={READOUT_CLASS}>
-                {category.decayStepHours === null
-                  ? "sem desgaste"
-                  : formatDecimalHours(category.decayStepHours)}
-              </span>
-            </li>
-            <li className={ROW_CLASS}>
-              <span className="text-base text-black">Bônus de retorno</span>
-              <span className={READOUT_CLASS}>{bonusText(category)}</span>
-            </li>
-            <li className={ROW_CLASS}>
-              <span className="text-base text-black">Ordem na lista</span>
-              <span className={READOUT_CLASS}>{category.sortOrder}</span>
-            </li>
-          </ul>
+    <div className="flex flex-col gap-4 lg:grid lg:grid-cols-2 lg:grid-rows-[auto_1fr] lg:items-start lg:gap-6">
+      <Panel
+        title={`${category.name}${category.active ? "" : " · desativada"}`}
+        top
+      >
+        <ul>
+          <li className={ROW_CLASS}>
+            <span className="text-base text-black">Taxa sugerida</span>
+            <span className={READOUT_CLASS}>
+              {category.baseRate === null
+                ? "nenhuma"
+                : formatDecimalHours(category.baseRate)}
+            </span>
+          </li>
+          <li className={ROW_CLASS}>
+            <span className="text-base text-black">Passo do desgaste</span>
+            <span className={READOUT_CLASS}>
+              {category.decayStepHours === null
+                ? "sem desgaste"
+                : formatDecimalHours(category.decayStepHours)}
+            </span>
+          </li>
+          <li className={ROW_CLASS}>
+            <span className="text-base text-black">Bônus de retorno</span>
+            <span className={READOUT_CLASS}>{bonusText(category)}</span>
+          </li>
+          <li className={ROW_CLASS}>
+            <span className="text-base text-black">Ordem na lista</span>
+            <span className={READOUT_CLASS}>{category.sortOrder}</span>
+          </li>
+        </ul>
 
-          <div className="flex flex-col gap-3 border-t-2 border-black p-3">
-            {editing ? null : (
-              <p className="text-base text-black">
-                {asymptoteText(draftOf(category))}
-              </p>
-            )}
+        <div className="flex flex-col gap-3 border-t-2 border-black p-3">
+          {editing ? null : (
+            <p className="text-base text-black">
+              {asymptoteText(draftOf(category))}
+            </p>
+          )}
 
-            {editing && note !== null ? (
-              <p
-                className={`${BORDER_CLASS} bg-white p-3 text-base font-bold text-black`}
-              >
-                {note}
-              </p>
-            ) : null}
-            {editing && shape !== null ? (
-              <p
-                className={`${BORDER_CLASS} bg-white p-3 text-base text-black`}
-              >
-                {shape}
-              </p>
-            ) : null}
+          {editing && note !== null ? (
+            <p
+              className={`${BORDER_CLASS} bg-white p-3 text-base font-bold text-black`}
+            >
+              {note}
+            </p>
+          ) : null}
+          {editing && shape !== null ? (
+            <p className={`${BORDER_CLASS} bg-white p-3 text-base text-black`}>
+              {shape}
+            </p>
+          ) : null}
+          {editing ? (
+            <CategoryFields
+              draft={edited}
+              onChange={setEdited}
+              prefix={`categoria-${category.id}`}
+            />
+          ) : null}
+
+          {failed === null ? null : (
+            <p className={`${BORDER_CLASS} bg-white p-3 text-base text-black`}>
+              {failed}
+            </p>
+          )}
+
+          <div className="grid gap-3 lg:grid-cols-2">
             {editing ? (
-              <CategoryFields
-                draft={edited}
-                onChange={setEdited}
-                prefix={`categoria-${category.id}`}
-              />
-            ) : null}
-
-            {failed === null ? null : (
-              <p
-                className={`${BORDER_CLASS} bg-white p-3 text-base text-black`}
-              >
-                {failed}
-              </p>
-            )}
-
-            <div className="grid gap-3 lg:grid-cols-2">
-              {editing ? (
-                <Button
-                  disabled={busy || categoryInputOf(edited) === null}
-                  onClick={() => {
-                    const input = categoryInputOf(edited);
-
-                    if (input === null) return;
-
-                    act(() => updateCategoryAction(category.id, input));
-                  }}
-                  type="button"
-                >
-                  Salvar
-                </Button>
-              ) : (
-                <Button
-                  disabled={busy}
-                  onClick={() =>
-                    act(() =>
-                      setCategoryActiveAction(category.id, !category.active),
-                    )
-                  }
-                  type="button"
-                >
-                  {category.active ? "Desativar" : "Ativar de novo"}
-                </Button>
-              )}
-
-              {/* Never disabled: it cannot fail, and the secondary variant has no disabled look. */}
               <Button
+                disabled={busy || categoryInputOf(edited) === null}
                 onClick={() => {
-                  setEdited(draftOf(category));
-                  setEditing(!editing);
+                  const input = categoryInputOf(edited);
+
+                  if (input === null) return;
+
+                  act(() => updateCategoryAction(category.id, input));
                 }}
                 type="button"
-                variant="secondary"
               >
-                {editing ? "Cancelar" : "Editar números"}
+                Salvar
               </Button>
-            </div>
+            ) : (
+              <Button
+                disabled={busy}
+                onClick={() =>
+                  act(() =>
+                    setCategoryActiveAction(category.id, !category.active),
+                  )
+                }
+                type="button"
+              >
+                {category.active ? "Desativar" : "Ativar de novo"}
+              </Button>
+            )}
+
+            {/* Never disabled: it cannot fail, and the secondary variant has no disabled look. */}
+            <Button
+              onClick={() => {
+                setEdited(draftOf(category));
+                setEditing(!editing);
+              }}
+              type="button"
+              variant="secondary"
+            >
+              {editing ? "Cancelar" : "Editar números"}
+            </Button>
           </div>
-        </Panel>
+        </div>
+      </Panel>
 
-        <NumbersHelp />
-      </div>
-
-      <div className="flex flex-col gap-4 lg:gap-6">
+      <div className="flex flex-col gap-4 lg:col-start-2 lg:row-span-2 lg:row-start-1 lg:gap-6">
         <ActivityList category={category} rows={activities} />
 
         {category.active ? (
@@ -561,6 +554,10 @@ export function CategoryDetail({
             Nova atividade
           </LinkButton>
         ) : null}
+      </div>
+
+      <div className="lg:col-start-1">
+        <NumbersHelp />
       </div>
     </div>
   );
