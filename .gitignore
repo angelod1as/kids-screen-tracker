@@ -65,3 +65,8 @@ yarn-error.log*
 .sabotage-config/
 # mutants written and removed by src/db/activities.sabotage.test.ts
 .sabotage-activities/
+
+# side-load APK signing key and output (D54)
+*.keystore
+*.jks
+*.apk
