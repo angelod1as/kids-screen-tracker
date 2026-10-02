@@ -133,8 +133,9 @@ export function bandIndex(bucketHours: Fraction, step: Fraction): bigint {
 }
 
 /**
- * `F(bucket + activity) − F(bucket)`, `F(x) = 2·passo − (2·passo − r)·2^-n`, `n = floor(x / passo)`.
- * Closed form, not a loop: exact `2^-i` never underflows, so a tiny step would loop 10^13 times.
+ * `F(bucket + activity) − F(bucket)`, `F(x) = 2·passo − (2·passo − r)·2^-n`,
+ * `n = floor(x / passo)`, `r = x − n·passo`. Closed form, not a loop: exact `2^-i`
+ * never underflows, so a tiny step would loop 10^13 times.
  */
 export function decayedHours(
   bucketHours: Fraction,

@@ -115,7 +115,7 @@ export type CalculationInput = {
   historyFrom: string;
   /** Declared too: under D34 a retroactive entry reads later days. */
   historyTo: string;
-  /** Earliest `occurred_on` of this category frozen before this entry (D34), or null (D47). */
+  /** Earliest `occurred_on` of this category frozen before this entry (D34), over all time, not the window, or null (D47). */
   categoryFirstDay: string | null;
 };
 
