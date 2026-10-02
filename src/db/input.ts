@@ -49,7 +49,8 @@ export function requireNoteWhenRequired(
   required: boolean,
   activityName: string,
 ): void {
-  if (required && (note === null || note.trim() === "")) {
+  // `trim` keeps format characters such as U+200B, which render as a blank note.
+  if (required && (note === null || note.replace(/[\s\p{Cf}]/gu, "") === "")) {
     throw new Error(
       `${activityName} needs a note: the name alone does not tell the adult what happened (#44)`,
     );
