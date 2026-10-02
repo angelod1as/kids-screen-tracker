@@ -1,18 +1,9 @@
-/**
- * Exact rationals for the decay (D39). `fromNumber` reads the typed decimal,
- * which keeps denominators small. No Node built-ins: it ships to the client.
- */
+// Exact rationals for the decay (D39). No Node built-ins: it ships to the client.
 
-/*
- * Cost (D39): the loop re-evaluates the closed form once per emitted band. If
- * it ever matters, accumulate `survived += width · 2^-index` across the walk
- * instead; the closed form is still needed for the total after a fold.
- */
+// Cost (D39): one closed-form call per emitted band. If it matters, accumulate
+// `survived += width · 2^-index` on the walk; the fold still needs the closed form.
 
-/**
- * `n / d`, always with `d > 0` and `gcd(|n|, d) = 1`: normalised on
- * construction, so equal fractions have equal fields and small denominators.
- */
+/** `d > 0` and `gcd(|n|, d) = 1`, normalised on construction: equal fractions, equal fields. */
 export type Fraction = {
   readonly n: bigint;
   readonly d: bigint;
@@ -57,10 +48,7 @@ export function fraction(n: bigint, d: bigint): Fraction {
   return { n: numerator / divisor, d: denominator / divisor };
 }
 
-/**
- * `String(value)` is the shortest decimal that round-trips, i.e. what the adult
- * typed: 0,1 becomes 1/10, not its binary expansion.
- */
+/** `String(value)` round-trips to what the adult typed: 0,1 is 1/10, not its binary expansion. */
 export function fromNumber(value: number): Fraction {
   if (!Number.isFinite(value)) {
     throw new Error(`cannot make an exact fraction of ${value}`);
@@ -117,25 +105,16 @@ export function compare(a: Fraction, b: Fraction): number {
   return left < right ? -1 : left > right ? 1 : 0;
 }
 
-/**
- * D9's only rounding: `floor(100·x + ½)`, `Math.round`'s rule, −0,5 → 0 included.
- * Cents, because they are exact in a `double` and hundredths of an hour are not.
- */
+// D9's only rounding, `Math.round`'s rule (−0,5 → 0). Cents: exact in a `double`,
+// where hundredths of an hour are not.
 export function toCents(value: Fraction): bigint {
   return floorDiv(200n * value.n + value.d, 2n * value.d);
 }
 
-/**
- * Past this the entry is worth under `2^-3071` h, which no `double` rate lifts
- * to half a cent; zero saves building a `2^(10^13)` for a 1e-9 step.
- */
+/** Past this the entry is under `2^-3071` h, which no `double` rate lifts to half a cent. */
 const MAX_START_HALVINGS = 4096n;
 
-/**
- * Tail bound, reached only past 8192 bands (the 0,25h floor crosses 96 a day).
- * That it moves no cent is measured against the unbounded sum in
- * `exact.test.ts`, not proved in prose. D39: whoever touches it redoes both.
- */
+/** Tail bound (D39): measured in `exact.test.ts`, not proved; whoever touches it redoes both. */
 const EXACT_TAIL_HALVINGS = 8192n;
 
 /** `k` may not be negative. */
@@ -154,10 +133,8 @@ export function bandIndex(bucketHours: Fraction, step: Fraction): bigint {
 }
 
 /**
- * `F(bucket + activity) − F(bucket)`, where
- * `F(x) = 2·passo − (2·passo − r)·2^-n`, `n = floor(x / passo)`, `r = x − n·passo`.
- * Closed form, not a loop: exact `2^-i` never underflows, so a tiny step would
- * loop 10^13 times.
+ * `F(bucket + activity) − F(bucket)`, `F(x) = 2·passo − (2·passo − r)·2^-n`, `n = floor(x / passo)`.
+ * Closed form, not a loop: exact `2^-i` never underflows, so a tiny step would loop 10^13 times.
  */
 export function decayedHours(
   bucketHours: Fraction,
@@ -176,7 +153,6 @@ export function decayedHours(
 
   const twoStep = multiply(step, { n: 2n, d: 1n });
 
-  // A: what the day still has to give from the band this entry starts in.
   const startRest = subtract(
     bucketHours,
     multiply(step, fraction(startHalvings, 1n)),
@@ -186,17 +162,14 @@ export function decayedHours(
     halving(startHalvings),
   );
 
-  // Clamp the *end*, never the exponent: a true remainder with a frozen
-  // exponent sawtooths, and the result stops being monotone (D39).
+  // Clamp the *end* with a `min` on the value, never the exponent nor the band
+  // index: either one broke monotonicity (D39).
   const limit = startHalvings + EXACT_TAIL_HALVINGS;
   const ceiling = multiply(step, fraction(limit, 1n));
-  // A `min` on the value, not a step on the band index: the step let the end
-  // climb past the ceiling inside band `limit` and then drop back (D39).
   const trueEnd = add(bucketHours, activityHours);
   const end = compare(trueEnd, ceiling) > 0 ? ceiling : trueEnd;
   const endHalvings = bandIndex(end, step);
 
-  // B: the same quantity where the entry stops, which is what it does not take.
   const endRest = subtract(end, multiply(step, fraction(endHalvings, 1n)));
   const unreached = multiply(subtract(twoStep, endRest), halving(endHalvings));
 

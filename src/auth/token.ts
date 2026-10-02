@@ -1,21 +1,13 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 
-/*
- * Signed, not encrypted: the username is visible to its own holder. Only
- * username and expiry, never role or id, which `currentSession` reads per call.
- */
+// Signed, not encrypted. Never role or id: `currentSession` reads them per call.
 
-/**
- * Varlock checks the secret exists, not that it is unguessable. Length, not
- * entropy: a hurried placeholder is short, and an estimator blocks good ones.
- */
+// Varlock checks the secret exists, not that it is unguessable. Length, not entropy:
+// a hurried placeholder is short, and an estimator blocks good ones.
 export const MIN_SESSION_SECRET_LENGTH = 32;
 
-/**
- * Throws on every session path so a bad deploy fails closed instead of signing
- * forgeable cookies. Reports the length, never the value. `typeof` despite the
- * type: Varlock can hand over `undefined`.
- */
+// Throws on every session path so a bad deploy fails closed. Reports the length, never
+// the value. `typeof` despite the type: Varlock can hand over `undefined`.
 export function assertUsableSecret(secret: string): void {
   if (
     typeof secret === "string" &&
@@ -57,11 +49,8 @@ export function signSessionToken(token: SessionToken, secret: string): string {
   return `${payload}.${sign(payload, secret)}`;
 }
 
-/**
- * One `null` for forged, malformed or expired. A short secret throws instead,
- * or "log in again" would hide a broken deploy. `timingSafeEqual`, never `===`,
- * which would tell a forger how many signature bytes are right.
- */
+// One `null` for forged, malformed or expired; a short secret throws, or "log in again"
+// would hide a broken deploy. `timingSafeEqual`: `===` leaks how many bytes are right.
 export function verifySessionToken(
   value: string,
   secret: string,
