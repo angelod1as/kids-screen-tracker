@@ -16,10 +16,13 @@ import {
 export function LinkButton({
   children,
   href,
+  scroll,
   variant = "primary",
 }: {
   children: ReactNode;
   href: string;
+  /** False keeps the reader where they were, as "Ver mais" (#64) needs. */
+  scroll?: boolean;
   variant?: "primary" | "secondary";
 }) {
   const colors =
@@ -31,6 +34,7 @@ export function LinkButton({
     <Link
       className={`${TOUCH_TARGET_CLASS} ${BORDER_CLASS} ${CONTROL_RADIUS_CLASS} ${colors} flex w-full items-center justify-center gap-3 px-3 py-5 text-center text-lg font-bold uppercase tracking-[0.08em]`}
       href={href}
+      scroll={scroll}
     >
       {children}
     </Link>

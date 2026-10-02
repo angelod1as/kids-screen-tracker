@@ -1,6 +1,6 @@
 "use server";
 
-import { and, desc, eq, sql } from "drizzle-orm";
+import { and, desc, eq, gte, or, sql } from "drizzle-orm";
 import { alias } from "drizzle-orm/sqlite-core";
 
 import { requireAccess } from "../../auth/guard";
@@ -8,7 +8,7 @@ import { getDb } from "../../db";
 import { rejectionReason } from "../../db/queue";
 import { activities, activityLogs, ledger, users } from "../../db/schema";
 import { saoPauloDay } from "../../engine/day";
-import { HISTORY_LIMIT } from "../../ui/entries";
+import { HISTORY_LIMIT, MAX_HISTORY_DAYS } from "../../ui/entries";
 
 /** `label` is resolved here so no two screens join the three tables differently. */
 export type LedgerEntry = {
@@ -114,6 +114,77 @@ export async function fetchHistoryAction(
     .map((placed) => placed.entry);
 }
 
+/** One page of the history screen (#64): `days` counts days with an entry, not calendar days. */
+export type HistoryDays = {
+  entries: HistoryEntry[];
+  /** An older day with an entry exists beyond the window. */
+  more: boolean;
+};
+
+/**
+ * #64: the newest `days` days that have an entry, so an empty day costs the
+ * boy no tap. Paged in SQL; nothing older than the window leaves the database.
+ */
+export async function fetchHistoryDaysAction(
+  targetUserId: number,
+  days: number,
+): Promise<HistoryDays> {
+  await requireAccess({ kind: "view", targetUserId });
+  requireDays(days);
+
+  const found = entryDays(targetUserId, days + 1);
+  const since = found.slice(0, days).at(-1);
+
+  if (since === undefined) {
+    return { entries: [], more: false };
+  }
+
+  const rows: Placed<HistoryEntry>[] = [
+    ...ledgerEntries(targetUserId, HISTORY_LIMIT, since),
+    ...rejectedEntries(targetUserId, HISTORY_LIMIT, since),
+    ...zeroEntries(targetUserId, HISTORY_LIMIT, since),
+  ];
+
+  return {
+    entries: rows
+      .sort(newestFirst)
+      .slice(0, HISTORY_LIMIT)
+      .map((placed) => placed.entry),
+    more: found.length > days,
+  };
+}
+
+/** The same three sources as the history, reduced to their days, newest first. D13: text compares as dates. */
+function entryDays(targetUserId: number, limit: number): string[] {
+  const db = getDb();
+  const ledgerDays = db
+    .select({ day: ledger.occurredOn })
+    .from(ledger)
+    .where(eq(ledger.userId, targetUserId));
+  const logDays = db
+    .select({ day: activityLogs.occurredOn })
+    .from(activityLogs)
+    .where(
+      and(
+        eq(activityLogs.userId, targetUserId),
+        or(
+          eq(activityLogs.status, "rejected"),
+          and(
+            eq(activityLogs.status, "approved"),
+            eq(activityLogs.computedHours, 0),
+          ),
+        ),
+      ),
+    );
+
+  return ledgerDays
+    .union(logDays)
+    .orderBy(sql`1 desc`)
+    .limit(limit)
+    .all()
+    .map((row) => row.day);
+}
+
 /** D8 read backwards: most recent first, and the same order on every visit. */
 function newestFirst(
   left: Placed<HistoryEntry>,
@@ -134,6 +205,7 @@ function newestFirst(
 function ledgerEntries(
   targetUserId: number,
   limit: number,
+  since?: string,
 ): Placed<LedgerEntry>[] {
   const rows = getDb()
     .select({
@@ -163,7 +235,12 @@ function ledgerEntries(
         sql`coalesce(${ledger.voidedBy}, ${activityLogs.voidedBy})`,
       ),
     )
-    .where(eq(ledger.userId, targetUserId))
+    .where(
+      and(
+        eq(ledger.userId, targetUserId),
+        since === undefined ? undefined : gte(ledger.occurredOn, since),
+      ),
+    )
     .orderBy(desc(ledger.occurredOn), desc(ledger.createdAt), desc(ledger.id))
     .limit(limit)
     .all();
@@ -190,6 +267,7 @@ function ledgerEntries(
 function rejectedEntries(
   targetUserId: number,
   limit: number,
+  since?: string,
 ): Placed<RejectedEntry>[] {
   const rows = getDb()
     .select({
@@ -206,6 +284,7 @@ function rejectedEntries(
       and(
         eq(activityLogs.userId, targetUserId),
         eq(activityLogs.status, "rejected"),
+        since === undefined ? undefined : gte(activityLogs.occurredOn, since),
       ),
     )
     .orderBy(
@@ -256,7 +335,11 @@ function adultValue(row: {
     : null;
 }
 
-function zeroEntries(targetUserId: number, limit: number): Placed<ZeroEntry>[] {
+function zeroEntries(
+  targetUserId: number,
+  limit: number,
+  since?: string,
+): Placed<ZeroEntry>[] {
   const rows = getDb()
     .select({
       id: activityLogs.id,
@@ -275,6 +358,7 @@ function zeroEntries(targetUserId: number, limit: number): Placed<ZeroEntry>[] {
         eq(activityLogs.userId, targetUserId),
         eq(activityLogs.status, "approved"),
         eq(activityLogs.computedHours, 0),
+        since === undefined ? undefined : gte(activityLogs.occurredOn, since),
       ),
     )
     .orderBy(
@@ -308,6 +392,14 @@ function requireLimit(limit: number): void {
   if (!Number.isInteger(limit) || limit < 1 || limit > HISTORY_LIMIT) {
     throw new Error(
       `a ledger page is between 1 and ${HISTORY_LIMIT} entries, received ${limit}`,
+    );
+  }
+}
+
+function requireDays(days: number): void {
+  if (!Number.isInteger(days) || days < 1 || days > MAX_HISTORY_DAYS) {
+    throw new Error(
+      `a history page is between 1 and ${MAX_HISTORY_DAYS} days, received ${days}`,
     );
   }
 }

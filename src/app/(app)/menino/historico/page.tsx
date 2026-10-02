@@ -1,15 +1,26 @@
 import { requireSession } from "../../../../auth/guard";
-import { EntryList, HISTORY_LIMIT } from "../../../../ui/entries";
+import {
+  EntryList,
+  HISTORY_LIMIT,
+  historyDays,
+  MAX_HISTORY_DAYS,
+} from "../../../../ui/entries";
+import { LinkButton } from "../../../../ui/link-button";
 import { Panel, PanelText } from "../../../../ui/panel";
-import { fetchHistoryAction } from "../../../actions/history";
+import { fetchHistoryDaysAction } from "../../../actions/history";
 
 /**
  * The action, not this page, keeps the brother's data out (`requireAccess`).
  * History, not ledger (#72): a refusal moves no hours but must not vanish (D19).
  */
-export default async function KidHistoryPage() {
+export default async function KidHistoryPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ dias?: string | string[] }>;
+}) {
   const session = await requireSession();
-  const entries = await fetchHistoryAction(session.userId, HISTORY_LIMIT);
+  const days = historyDays((await searchParams).dias);
+  const { entries, more } = await fetchHistoryDaysAction(session.userId, days);
 
   return (
     <div className="flex flex-col gap-4 lg:gap-6 lg:max-w-2xl">
@@ -28,11 +39,27 @@ export default async function KidHistoryPage() {
         />
       </Panel>
 
+      {more && days < MAX_HISTORY_DAYS ? (
+        <LinkButton
+          href={`/menino/historico?dias=${days + 1}`}
+          scroll={false}
+          variant="secondary"
+        >
+          Ver mais
+        </LinkButton>
+      ) : null}
+
       {/* A list that stops must say so. */}
       {entries.length === HISTORY_LIMIT ? (
         <Panel title="Aviso">
           <PanelText>
             Mostrando os {HISTORY_LIMIT} lançamentos mais recentes.
+          </PanelText>
+        </Panel>
+      ) : more && days === MAX_HISTORY_DAYS ? (
+        <Panel title="Aviso">
+          <PanelText>
+            Mostrando os {MAX_HISTORY_DAYS} dias mais recentes com lançamentos.
           </PanelText>
         </Panel>
       ) : null}

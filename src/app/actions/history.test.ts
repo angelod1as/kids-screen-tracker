@@ -2,6 +2,7 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
+import { eq } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { openDatabase } from "../../db/client";
@@ -9,9 +10,17 @@ import { migrateDatabase } from "../../db/migrate";
 import { approveLog, rejectionNote } from "../../db/queue";
 import { activityLogs, ledger, users } from "../../db/schema";
 import { seedWithTestUsers } from "../../db/test-users";
-import { HISTORY_LIMIT, RECENT_ENTRIES_LIMIT } from "../../ui/entries";
+import {
+  HISTORY_LIMIT,
+  MAX_HISTORY_DAYS,
+  RECENT_ENTRIES_LIMIT,
+} from "../../ui/entries";
 import { fetchBalanceAction } from "./balance";
-import { fetchHistoryAction, fetchLedgerEntriesAction } from "./history";
+import {
+  fetchHistoryAction,
+  fetchHistoryDaysAction,
+  fetchLedgerEntriesAction,
+} from "./history";
 
 /**
  * Only the cookie is mocked. A forged POST with the brother's id is sent, and a
@@ -634,5 +643,216 @@ describe("the history says which value an adult decided (D50)", () => {
     const entries = await fetchHistoryAction(idOf("kid1"), 10);
 
     expect(entries.map((entry) => entry.kind)).not.toContain("zero");
+  });
+});
+
+describe("the history opens on the newest days with an entry (#64)", () => {
+  function days(entries: { occurredOn: string }[]): string[] {
+    return [...new Set(entries.map((entry) => entry.occurredOn))];
+  }
+
+  function addSpend(username: string, occurredOn: string): void {
+    connection.db
+      .insert(ledger)
+      .values({
+        userId: idOf(username),
+        kind: "spend",
+        hours: 0.5,
+        occurredOn,
+        destination: "Xbox",
+        createdBy: idOf("admin1"),
+        createdAt: new Date(`${occurredOn}T12:00:00Z`),
+      })
+      .run();
+  }
+
+  it("is empty, with nothing more, for a boy with no entry", async () => {
+    connection.db
+      .delete(ledger)
+      .where(eq(ledger.userId, idOf("kid2")))
+      .run();
+    mocked.username = "kid2";
+
+    await expect(fetchHistoryDaysAction(idOf("kid2"), 2)).resolves.toEqual({
+      entries: [],
+      more: false,
+    });
+  });
+
+  it("shows a single day whole, with nothing more", async () => {
+    mocked.username = "kid2";
+
+    const page = await fetchHistoryDaysAction(idOf("kid2"), 2);
+
+    expect(days(page.entries)).toEqual(["2026-09-02"]);
+    expect(page.more).toBe(false);
+  });
+
+  it("skips the empty days between two entries", async () => {
+    // Kid1 has 30/08, 01/09 and 02/09; 31/08 is empty.
+    mocked.username = "kid1";
+
+    const first = await fetchHistoryDaysAction(idOf("kid1"), 2);
+    const next = await fetchHistoryDaysAction(idOf("kid1"), 3);
+
+    expect(days(first.entries)).toEqual(["2026-09-02", "2026-09-01"]);
+    expect(first.more).toBe(true);
+    expect(days(next.entries)).toEqual([
+      "2026-09-02",
+      "2026-09-01",
+      "2026-08-30",
+    ]);
+  });
+
+  it("says the list ended once the oldest day is shown", async () => {
+    mocked.username = "kid1";
+
+    const page = await fetchHistoryDaysAction(idOf("kid1"), 3);
+
+    expect(page.more).toBe(false);
+    await expect(fetchHistoryDaysAction(idOf("kid1"), 10)).resolves.toEqual(
+      page,
+    );
+  });
+
+  it("counts a day that holds only a refusal or a zero, and shows them", async () => {
+    addRejected({
+      username: "kid1",
+      occurredOn: "2026-09-05",
+      reason: "Não foi isso",
+      createdAt: new Date("2026-09-05T18:00:00Z"),
+    });
+    const zero = connection.db
+      .insert(activityLogs)
+      .values({
+        userId: idOf("kid1"),
+        activityId: 15,
+        status: "pending",
+        source: "request",
+        occurredOn: "2026-09-04",
+        createdBy: idOf("kid1"),
+        createdAt: new Date("2026-09-04T18:00:00Z"),
+      })
+      .returning({ id: activityLogs.id })
+      .get().id;
+    approveLog(
+      connection,
+      zero,
+      idOf("admin1"),
+      { overrideHours: 0 },
+      new Date("2026-09-04T19:00:00Z"),
+    );
+    mocked.username = "kid1";
+
+    const page = await fetchHistoryDaysAction(idOf("kid1"), 2);
+
+    expect(page.entries.map((entry) => [entry.occurredOn, entry.kind])).toEqual(
+      [
+        ["2026-09-05", "rejected"],
+        ["2026-09-04", "zero"],
+      ],
+    );
+    expect(page.entries[0]).toMatchObject({ reason: "Não foi isso" });
+    expect(page.more).toBe(true);
+  });
+
+  it("keeps a voided entry inside the window, marked (D52)", async () => {
+    connection.db
+      .update(ledger)
+      .set({
+        voidedAt: new Date("2026-09-03T10:00:00Z"),
+        voidedBy: idOf("admin1"),
+      })
+      .where(eq(ledger.destination, "Xbox"))
+      .run();
+    mocked.username = "kid1";
+
+    const page = await fetchHistoryDaysAction(idOf("kid1"), 1);
+
+    expect(page.entries).toMatchObject([
+      { kind: "refund", voided: { on: "2026-09-03", by: expect.any(String) } },
+    ]);
+  });
+
+  it("reads only the window from the database, not the whole history", async () => {
+    for (let day = 1; day <= 20; day += 1) {
+      addSpend("kid1", `2026-07-${String(day).padStart(2, "0")}`);
+    }
+    const statements: string[] = [];
+    const prepare = connection.sqlite.prepare.bind(connection.sqlite);
+    vi.spyOn(connection.sqlite, "prepare").mockImplementation((source) => {
+      statements.push(source);
+      return prepare(source);
+    });
+    mocked.username = "kid1";
+
+    const page = await fetchHistoryDaysAction(idOf("kid1"), 2);
+
+    expect(days(page.entries)).toEqual(["2026-09-02", "2026-09-01"]);
+    expect(JSON.stringify(page)).not.toContain("2026-07-");
+    // Every read of entries is bounded by the window's first day in SQL.
+    const reads = statements.filter(
+      (source) =>
+        /from "(ledger|activity_logs)"/.test(source) && !/union/.test(source),
+    );
+    expect(reads).toHaveLength(3);
+    for (const source of reads) {
+      expect(source).toMatch(/"occurred_on" >= \?/);
+    }
+    // The day list stops one past the window, which is how `more` is known.
+    const [union] = statements.filter((source) => /union/.test(source));
+    expect(union).toMatch(/limit \?/);
+    expect(page.more).toBe(true);
+  });
+
+  it("refuses a page that is not between 1 and the cap", async () => {
+    mocked.username = "kid1";
+
+    for (const value of [-1, 0, 1.5, Number.NaN, MAX_HISTORY_DAYS + 1]) {
+      await expect(
+        fetchHistoryDaysAction(idOf("kid1"), value),
+        String(value),
+      ).rejects.toThrow(/between 1 and 60 days/);
+    }
+  });
+
+  it("refuses the brother's id, on every page (D33)", async () => {
+    mocked.username = "kid1";
+
+    for (const value of [2, 3, MAX_HISTORY_DAYS]) {
+      await expect(
+        fetchHistoryDaysAction(idOf("kid2"), value),
+      ).rejects.toMatchObject({
+        name: "AccessDeniedError",
+        reason: "forbidden",
+      });
+    }
+  });
+
+  it("refuses a caller with no session", async () => {
+    mocked.username = null;
+
+    await expect(fetchHistoryDaysAction(idOf("kid1"), 2)).rejects.toMatchObject(
+      { reason: "unauthenticated" },
+    );
+  });
+
+  it("leaves the brother's entries out of a page the caller may have", async () => {
+    mocked.username = "kid1";
+
+    const page = await fetchHistoryDaysAction(idOf("kid1"), MAX_HISTORY_DAYS);
+
+    expect(JSON.stringify(page)).not.toContain(KID2_ONLY);
+  });
+
+  it("lets an admin page through either boy", async () => {
+    mocked.username = "admin1";
+
+    await expect(
+      fetchHistoryDaysAction(idOf("kid2"), 2),
+    ).resolves.toMatchObject({ more: false });
+    await expect(
+      fetchHistoryDaysAction(idOf("kid1"), 2),
+    ).resolves.toMatchObject({ more: true });
   });
 });

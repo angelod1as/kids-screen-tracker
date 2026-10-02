@@ -2,7 +2,11 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 
 import type { Session } from "../../../auth/access";
-import { HISTORY_LIMIT } from "../../../ui/entries";
+import {
+  FIRST_HISTORY_DAYS,
+  HISTORY_LIMIT,
+  MAX_HISTORY_DAYS,
+} from "../../../ui/entries";
 import { NEGATIVE_CLASS, PENDING_BG_CLASS } from "../../../ui/style";
 import type { AdultValue, HistoryEntry } from "../../actions/history";
 
@@ -15,8 +19,9 @@ import type { AdultValue, HistoryEntry } from "../../actions/history";
 const mocked = vi.hoisted(() => ({
   session: null as Session | null,
   calculatorFor: [] as number[],
-  ledgerFor: [] as { userId: number; limit: number }[],
+  historyFor: [] as { userId: number; days: number }[],
   entries: [] as HistoryEntry[],
+  more: false,
 }));
 
 vi.mock("../../../auth/guard", () => ({
@@ -39,15 +44,19 @@ vi.mock("../../actions/calculator", () => ({
 }));
 
 vi.mock("../../actions/history", () => ({
-  fetchHistoryAction: async (userId: number, limit: number) => {
-    mocked.ledgerFor.push({ userId, limit });
+  fetchHistoryDaysAction: async (userId: number, days: number) => {
+    mocked.historyFor.push({ userId, days });
 
-    return mocked.entries.slice(0, limit);
+    return { entries: mocked.entries, more: mocked.more };
   },
 }));
 
 const KidCalculatorPage = (await import("./calculadora/page")).default;
 const KidHistoryPage = (await import("./historico/page")).default;
+
+function address(dias?: string | string[]) {
+  return { searchParams: Promise.resolve({ dias }) };
+}
 
 const KID1: Session = {
   userId: 3,
@@ -87,16 +96,16 @@ describe("the screens ask about the boy who is logged in", () => {
     }
   });
 
-  it("reads the ledger of the session's own id, at the screen's limit", async () => {
+  it("reads the history of the session's own id, two days at first (#64)", async () => {
     for (const session of [KID1, KID2]) {
       mocked.session = session;
-      mocked.ledgerFor = [];
+      mocked.historyFor = [];
       mocked.entries = [];
 
-      await KidHistoryPage();
+      await KidHistoryPage(address());
 
-      expect(mocked.ledgerFor).toStrictEqual([
-        { userId: session.userId, limit: HISTORY_LIMIT },
+      expect(mocked.historyFor).toStrictEqual([
+        { userId: session.userId, days: FIRST_HISTORY_DAYS },
       ]);
     }
   });
@@ -109,7 +118,7 @@ describe("a history that stops says that it stopped (#16)", () => {
       entry(index + 1),
     );
 
-    return renderToStaticMarkup(await KidHistoryPage());
+    return renderToStaticMarkup(await KidHistoryPage(address()));
   }
 
   it("writes the line when the answer came back full", async () => {
@@ -134,7 +143,7 @@ describe("the refusal the boy used to watch vanish (#72)", () => {
     mocked.session = KID1;
     mocked.entries = entries;
 
-    return renderToStaticMarkup(await KidHistoryPage());
+    return renderToStaticMarkup(await KidHistoryPage(address()));
   }
 
   function rejected(reason: string | null): HistoryEntry {
@@ -189,7 +198,7 @@ describe("a value an adult decided says so on the boy's history (D50)", () => {
     mocked.session = KID1;
     mocked.entries = entries;
 
-    return renderToStaticMarkup(await KidHistoryPage());
+    return renderToStaticMarkup(await KidHistoryPage(address()));
   }
 
   function earn(override: AdultValue | null): HistoryEntry {
@@ -261,5 +270,65 @@ describe("a value an adult decided says so on the boy's history (D50)", () => {
 
     expect(markup).toContain("valor decidido por um adulto");
     expect(markup).toContain("Pela regra: 3h");
+  });
+});
+
+describe("the history reveals one more day at a time (#64)", () => {
+  async function render(dias?: string | string[]): Promise<string> {
+    mocked.session = KID1;
+    mocked.historyFor = [];
+
+    return renderToStaticMarkup(await KidHistoryPage(address(dias)));
+  }
+
+  it("asks for the days in the address, and the first page for garbage", async () => {
+    const cases: [string | string[] | undefined, number][] = [
+      ["3", 3],
+      ["abc", FIRST_HISTORY_DAYS],
+      ["2.5", FIRST_HISTORY_DAYS],
+      ["-4", FIRST_HISTORY_DAYS],
+      ["1", FIRST_HISTORY_DAYS],
+      [["5", "6"], FIRST_HISTORY_DAYS],
+      ["9999", MAX_HISTORY_DAYS],
+    ];
+
+    for (const [dias, days] of cases) {
+      await render(dias);
+
+      expect(mocked.historyFor, String(dias)).toStrictEqual([
+        { userId: KID1.userId, days },
+      ]);
+    }
+  });
+
+  it("links to one more day while an older one exists", async () => {
+    mocked.entries = [entry(1)];
+    mocked.more = true;
+
+    const markup = await render("3");
+
+    expect(markup).toContain('href="/menino/historico?dias=4"');
+    expect(markup).toContain("Ver mais");
+  });
+
+  it("drops the control at the end of the history", async () => {
+    mocked.entries = [entry(1)];
+    mocked.more = false;
+
+    expect(await render()).not.toContain("Ver mais");
+  });
+
+  it("says where it stops at the cap, instead of offering a page it refuses", async () => {
+    mocked.entries = [entry(1)];
+    mocked.more = true;
+
+    const markup = await render(String(MAX_HISTORY_DAYS));
+
+    expect(markup).not.toContain("Ver mais");
+    expect(markup).toContain(
+      `Mostrando os ${MAX_HISTORY_DAYS} dias mais recentes com lançamentos.`,
+    );
+
+    mocked.more = false;
   });
 });

@@ -13,8 +13,9 @@ const mocked = vi.hoisted(() => ({
     { id: 3, displayName: "Kid1" },
     { id: 4, displayName: "Kid2" },
   ],
-  historyFor: [] as { userId: number; limit: number }[],
+  historyFor: [] as { userId: number; days: number }[],
   entries: [] as HistoryEntry[],
+  more: false,
 }));
 
 vi.mock("../actions/people", () => ({
@@ -30,10 +31,10 @@ vi.mock("../actions/queue", () => ({
 }));
 
 vi.mock("../actions/history", () => ({
-  fetchHistoryAction: async (userId: number, limit: number) => {
-    mocked.historyFor.push({ userId, limit });
+  fetchHistoryDaysAction: async (userId: number, days: number) => {
+    mocked.historyFor.push({ userId, days });
 
-    return mocked.entries;
+    return { entries: mocked.entries, more: mocked.more };
   },
 }));
 
@@ -55,11 +56,14 @@ const AdminHomePage = (await import("./admin/page")).default;
 const AdminKidHistoryPage = (await import("./admin/historico/[userId]/page"))
   .default;
 
-async function historyMarkup(userId: string): Promise<string> {
+async function historyMarkup(userId: string, dias?: string): Promise<string> {
   mocked.historyFor = [];
 
   return renderToStaticMarkup(
-    await AdminKidHistoryPage({ params: Promise.resolve({ userId }) }),
+    await AdminKidHistoryPage({
+      params: Promise.resolve({ userId }),
+      searchParams: Promise.resolve({ dias }),
+    }),
   );
 }
 
@@ -96,10 +100,22 @@ describe("the balance an adult reads is the thing he taps (#73)", () => {
 });
 
 describe("the history an adult opens is the boy's own (#73)", () => {
-  it("asks for the boy named in the address, at the screen's limit", async () => {
+  it("asks for the boy named in the address, with the boy's own cut (#64)", async () => {
     await historyMarkup("4");
 
-    expect(mocked.historyFor).toEqual([{ userId: 4, limit: 200 }]);
+    expect(mocked.historyFor).toEqual([{ userId: 4, days: 2 }]);
+  });
+
+  it("reveals one more day for the adult too, on the same boy (#64)", async () => {
+    mocked.entries = [];
+    mocked.more = true;
+
+    const markup = await historyMarkup("4", "5");
+
+    expect(mocked.historyFor).toEqual([{ userId: 4, days: 5 }]);
+    expect(markup).toContain('href="/admin/historico/4?dias=6"');
+
+    mocked.more = false;
   });
 
   it("says whose history it is", async () => {
