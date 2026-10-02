@@ -2052,7 +2052,8 @@ novo. Instala uma vez.
   no iPhone instalado.
 - **`fallbackType: webview`.** Se o telefone não tiver navegador capaz de TWA,
   o Bubblewrap abre o site num WebView em vez de falhar. Não foi medido se o
-  bloqueio do Family Link conta como "não ter".
+  bloqueio do Family Link conta como "não ter": o app abriu com o Chrome
+  bloqueado (medição abaixo), mas não se anotou por qual dos dois caminhos.
 
 **Por quê.** O dono quer que o Family Link enxergue um aplicativo próprio, não
 o Chrome, e não quer gerar APK a cada mudança. O TWA é o caminho do próprio
@@ -2067,14 +2068,17 @@ não precisa passar a ter.
 - *Workflow no GitHub Actions* (`workflow_dispatch` publicando o APK): era o
   pedido da issue, e o dono trocou pela build local.
 - *Wrapper com WebView próprio:* não depende do app Chrome, mas perde o Web
-  Push e é código Android nosso para manter. Fica como saída se o risco abaixo
-  se confirmar.
+  Push e é código Android nosso para manter. Era a saída se o Family Link
+  derrubasse o TWA; a medição abaixo mostrou que não derruba.
 
-**Risco, a medir.** O TWA usa o Chrome por baixo. Se o Family Link bloquear o
-Chrome, o app pode morrer junto, que é exatamente o que o dono quer evitar. O
-teste: com o APK instalado, bloquear o Chrome no Family Link e abrir o app
-(`twa/README.md`, passo 7). Resultado: *pendente*. Se morrer junto, o conserto
-não é neste APK: abre-se issue para o wrapper com WebView.
+**Risco medido e fechado.** O TWA usa o Chrome por baixo, e o risco era o app
+morrer junto se o Family Link bloqueasse o Chrome. O dono mediu em 02/10/2026:
+com o APK instalado e o Chrome bloqueado no Family Link, o app **abriu**
+(`twa/README.md`, "O teste do Family Link"). O wrapper com WebView não é
+preciso. Ficam sem medir dois pontos: se ele abriu como TWA ou caiu no
+`fallbackType: webview`, e se o aviso push (D51) continua chegando com o Chrome
+bloqueado. No WebView não haveria push; o primeiro aviso que não chegar com o
+Chrome bloqueado é a resposta.
 
 **Resíduos aceitos.**
 
