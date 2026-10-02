@@ -97,6 +97,21 @@ describe("the asymptote, while the category is being edited (#26)", () => {
     ).toBe("Rende no máximo 8,00 h por dia (taxa × passo × 2).");
   });
 
+  it("previews the stored step while its field is untouched, as the endpoint keeps it (#55)", () => {
+    const saved = {
+      ...DRAFT,
+      decayStep: { hours: "1", minutes: "1" },
+      savedDecayStepHours: 1.01,
+    };
+
+    expect(asymptoteText(saved)).toBe(
+      "Rende no máximo 4,04 h por dia (taxa × passo × 2).",
+    );
+    expect(
+      asymptoteText({ ...saved, decayStep: { hours: "1", minutes: "2" } }),
+    ).toBe("Rende no máximo 4,12 h por dia (taxa × passo × 2).");
+  });
+
   it("says there is no asymptote when there is no decay (D2)", () => {
     expect(
       asymptoteText({ ...DRAFT, decayStep: { hours: "", minutes: "" } }),

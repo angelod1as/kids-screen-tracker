@@ -1,6 +1,9 @@
 import { asc, desc, eq } from "drizzle-orm";
 
-import { DEFAULT_MIN_SESSION_MINUTES } from "../engine/timer";
+import {
+  DEFAULT_MIN_SESSION_MINUTES,
+  keptUnlessRetyped,
+} from "../engine/timer";
 import type { Connection, Transaction } from "./client";
 import { writeTransaction } from "./client";
 import { requireCount, requireNonNegativeHours, requireText } from "./input";
@@ -273,6 +276,16 @@ export function updateActivity(
   writeTransaction(connection, (tx) => {
     const found = requireActivityRow(tx, activityId);
     requireLiveCategory(tx, checked.categoryId);
+
+    // A duration's value is a rate, typed as a decimal, not a time.
+    if (
+      checked.value !== null &&
+      found.value !== null &&
+      checked.calcMode !== "duration" &&
+      found.calcMode !== "duration"
+    ) {
+      checked.value = keptUnlessRetyped(checked.value, found.value);
+    }
 
     // D37: only the fields that price a waiting entry; a rename is free.
     const repriced =

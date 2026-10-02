@@ -2,7 +2,7 @@
 
 Vinte e cinco ambiguidades da spec, resolvidas e justificadas antes da primeira
 linha de código, mais as que cada fase mediu depois. Hoje são cinquenta e
-cinco, D1–D55, mais catorze emendas e as duas declarações da Fase 4, uma delas
+cinco, D1–D55, mais dezesseis emendas e as duas declarações da Fase 4, uma delas
 revogada.
 
 **Onde este documento e `spec.md` discordarem, este documento vence.**
@@ -195,6 +195,26 @@ a issue à Configuração.
 
 **Resíduo aceito.** Um passo de desgaste de 0h20 vira 0,33 h, e a assíntota
 mostrada é a desse passo, não a de 1/3 h exato.
+
+**Emenda (#55) — campo não tocado devolve o que estava gravado.** A volta só
+alcança os centésimos `k` com `k mod 5 ∈ {0, 2, 3}`, e um valor gravado antes
+da #48 fora dessa grade mudava num save que só trocava o nome: de 0,01 a 10,00,
+400 dos 1000 centésimos (0,66 → 0,67). Com pendência, a D37 recusava a troca de
+nome; sem, o valor novo era gravado em silêncio.
+
+- **O servidor compara em minutos.** Em `updateActivity` (`fixed` e
+  `delivery`, nos dois lados) e `updateCategory` (passo), se o tempo recebido é
+  o minuto em que o valor gravado aparece na tela, fica o gravado
+  (`keptUnlessRetyped`), antes da comparação da D37. Minuto diferente grava a
+  grade desta decisão, como antes. A prévia da assíntota usa a mesma regra.
+- **Os valores fora da grade ficam.** Nenhuma migration, nenhum valor
+  normalizado: normalizar mudaria o preço de lançamento futuro sem ninguém ter
+  pedido. Eles saem da grade só quando o adulto digita outro tempo, e aí a D37
+  vale como sempre.
+
+**Resíduo aceito.** Um valor fora da grade não pode ser redigitado como ele
+mesmo: digitar o minuto que ele já mostra é "não mexi". Para trocar 0,66 por
+0,67, digita-se outro minuto e depois 0h40.
 
 ### D10 — Nota zero numa atividade `delivery`
 

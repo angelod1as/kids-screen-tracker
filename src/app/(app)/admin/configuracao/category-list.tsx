@@ -14,7 +14,7 @@ import {
   MIN_DECAY_STEP_HOURS,
   MIN_RETURN_BONUS_AFTER_DAYS,
 } from "../../../../engine/limits";
-import { minutesToHours } from "../../../../engine/timer";
+import { keptUnlessRetyped, minutesToHours } from "../../../../engine/timer";
 import { Button } from "../../../../ui/button";
 import { failureText } from "../../../../ui/failure";
 import { Field, TimeFields } from "../../../../ui/field";
@@ -92,6 +92,8 @@ export type CategoryDraft = {
   baseRate: string;
   /** D2: empty is no decay. */
   decayStep: TypedTime;
+  /** What the column holds, so an untouched field previews what the endpoint keeps (#55). */
+  savedDecayStepHours?: number | null;
   /** Percentage points ("50"); the column is a fraction, converted once in `categoryInputOf`. */
   returnBonusPct: string;
   returnBonusAfterDays: string;
@@ -118,7 +120,7 @@ export function categoryInputOf(draft: CategoryDraft): CategoryRequest | null {
   const decayStep = isBlankTime(draft.decayStep)
     ? null
     : parseTypedTime(draft.decayStep);
-  const decayStepHours = typedStepHours(draft.decayStep);
+  const decayStepHours = typedStepHours(draft);
   const baseRate =
     draft.baseRate.trim() === "" ? null : parseTypedHours(draft.baseRate);
   const returnBonusPct = typedBonusFraction(draft.returnBonusPct);
@@ -156,7 +158,7 @@ export function categoryInputOf(draft: CategoryDraft): CategoryRequest | null {
 /** No step means no asymptote (D2); no rate means nothing to compute one from (D11). */
 export function asymptoteText(draft: CategoryDraft): string {
   const typedStep = !isBlankTime(draft.decayStep);
-  const step = typedStepHours(draft.decayStep);
+  const step = typedStepHours(draft);
   const rate =
     draft.baseRate.trim() === "" ? null : parseTypedHours(draft.baseRate);
 
@@ -185,7 +187,7 @@ export function asymptoteText(draft: CategoryDraft): string {
 export function decayStepWarning(draft: CategoryDraft): string | null {
   if (isBlankTime(draft.decayStep)) return null;
 
-  const step = typedStepHours(draft.decayStep);
+  const step = typedStepHours(draft);
 
   if (step === null) {
     return "Digite o passo em horas e minutos inteiros, até 59 minutos. Ex.: 1 h e 30 min";
@@ -238,10 +240,15 @@ export function returnBonusWarning(draft: CategoryDraft): string | null {
 }
 
 /** Rounded the way the endpoint rounds before it judges, so screen and server agree on 0h20. */
-function typedStepHours(time: TypedTime): number | null {
-  const minutes = typedMinutes(time);
+function typedStepHours(draft: CategoryDraft): number | null {
+  const minutes = typedMinutes(draft.decayStep);
 
-  return minutes === null ? null : minutesToHours(minutes);
+  if (minutes === null) return null;
+
+  const typed = minutesToHours(minutes);
+  const saved = draft.savedDecayStepHours ?? null;
+
+  return saved === null ? typed : keptUnlessRetyped(typed, saved);
 }
 
 /** In the column's fraction, at the endpoint's precision (see `typedStepHours`). */
@@ -267,6 +274,7 @@ function draftOf(category: CategoryRow): CategoryDraft {
     name: category.name,
     baseRate: category.baseRate === null ? "" : decimal(category.baseRate),
     decayStep: timeFromHours(category.decayStepHours),
+    savedDecayStepHours: category.decayStepHours,
     returnBonusPct: percentText(category.returnBonusPct),
     returnBonusAfterDays: String(category.returnBonusAfterDays),
     sortOrder: String(category.sortOrder),
