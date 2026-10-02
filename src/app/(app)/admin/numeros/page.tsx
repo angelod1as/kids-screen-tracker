@@ -119,7 +119,8 @@ export default async function AdminNumbersPage({
     bucketed(category.earnedPerDay),
   );
   const tallest = Math.max(0, ...series.flat());
-  const weekly = dashboard.days.length !== (series[0]?.length ?? 0);
+  const weekly =
+    bucketed(dashboard.days.map(() => 0)).length !== dashboard.days.length;
   const mostEntries = Math.max(1, ...dashboard.used.map((use) => use.entries));
 
   return (
