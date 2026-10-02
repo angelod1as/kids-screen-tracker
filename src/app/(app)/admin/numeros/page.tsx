@@ -89,6 +89,15 @@ function DecayAndBonus({ category }: { category: CategoryStats }) {
             : null}
         </p>
       ) : null}
+      {category.excluded > 0 ? (
+        <p className="text-base text-black">
+          {category.excluded === 1
+            ? "1 entrada desta categoria ficou fora desta conta"
+            : `${category.excluded} entradas desta categoria ficaram fora desta conta`}
+          , e o bônus e o desgaste dela{category.excluded === 1 ? "" : "s"} não
+          aparecem aqui.
+        </p>
+      ) : null}
     </li>
   );
 }

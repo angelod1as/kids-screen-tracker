@@ -167,6 +167,21 @@ describe("decay and the return bonus, off the engine's own lines (#9, #54)", () 
 
     expect(week().overridden).toBe(1);
     expect(mente().split).toEqual({ rule: 3, decay: 0, bonus: 0.75 });
+    expect(mente().excluded).toBe(1);
+  });
+
+  it("keeps an overridden return among the returns, and says it is out of the bonus count", () => {
+    connection.db
+      .update(activityLogs)
+      .set({ overridden: true })
+      .where(eq(activityLogs.occurredOn, "2026-09-06"))
+      .run();
+
+    const category = mente();
+
+    expect(category.gapsBeforeReturn).toEqual([4]);
+    expect(category.returnsWithBonus).toBe(0);
+    expect(category.excluded).toBe(1);
   });
 });
 

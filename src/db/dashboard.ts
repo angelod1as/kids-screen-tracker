@@ -53,6 +53,8 @@ export type CategoryStats = {
   /** Days without the category before each return in the period (D6's count). */
   gapsBeforeReturn: number[];
   returnsWithBonus: number;
+  /** Overridden or unreproduced here: out of `split` and `returnsWithBonus`. */
+  excluded: number;
 };
 
 export type BalancePoint = { day: string; balance: number };
@@ -291,6 +293,7 @@ export function readDashboard(
         kidDaysPastStep: 0,
         gapsBeforeReturn: [],
         returnsWithBonus: 0,
+        excluded: 0,
       },
     ]),
   );
@@ -323,12 +326,14 @@ export function readDashboard(
 
     if (log.overridden) {
       overridden += 1;
+      entry.excluded += 1;
       continue;
     }
 
     const split = replay(log, logs, activity, category);
     if (split === null) {
       unreproduced += 1;
+      entry.excluded += 1;
       continue;
     }
 
