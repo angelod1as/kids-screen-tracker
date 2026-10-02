@@ -209,7 +209,7 @@ describe("the request without a stopwatch (#44)", () => {
     expect(timer.requestLogAction).toHaveBeenCalledWith(3, {
       activityId: 15,
       occurredOn: "2026-09-30",
-      durationMinutes: null,
+      duration: null,
       note: "cinema com a turma",
     });
   });
@@ -333,7 +333,7 @@ describe("Configuração (#44)", () => {
 
   it("says it in the activity's summary line", () => {
     expect(activitySummary({ ...FRIENDS, noteRequired: true })).toBe(
-      "3,00 h fixas · pede observação",
+      "3h fixas · pede observação",
     );
     expect(activitySummary(FRIENDS)).not.toContain("observação");
   });

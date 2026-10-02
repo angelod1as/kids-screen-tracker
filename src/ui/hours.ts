@@ -1,3 +1,4 @@
+import type { HoursMinutes } from "../db/input";
 import { durationMinutes, durationSeconds } from "../engine/timer";
 
 /**
@@ -79,6 +80,60 @@ export function parseTypedHours(text: string): number | null {
   const hours = Number(typed);
 
   return Number.isFinite(hours) ? hours : null;
+}
+
+/** What the two fields hold, as typed (#48). */
+export type TypedTime = { hours: string; minutes: string };
+
+export const EMPTY_TIME: TypedTime = { hours: "", minutes: "" };
+
+export function isBlankTime(time: TypedTime): boolean {
+  return time.hours.trim() === "" && time.minutes.trim() === "";
+}
+
+/**
+ * A blank field is zero, so `2` and nothing is two hours; both blank is null,
+ * not zero, as for `parseTypedHours`. Minutes past 59 are refused, not carried.
+ */
+export function parseTypedTime(time: TypedTime): HoursMinutes | null {
+  if (isBlankTime(time)) return null;
+
+  const hours = time.hours.trim() === "" ? 0 : parseTypedCount(time.hours);
+  const minutes =
+    time.minutes.trim() === "" ? 0 : parseTypedCount(time.minutes);
+
+  if (hours === null || minutes === null || minutes >= MINUTES_PER_HOUR) {
+    return null;
+  }
+
+  return { hours, minutes };
+}
+
+export function typedMinutes(time: TypedTime): number | null {
+  const parsed = parseTypedTime(time);
+
+  return parsed === null
+    ? null
+    : parsed.hours * MINUTES_PER_HOUR + parsed.minutes;
+}
+
+/** The fields filled from a stored number of minutes; the minutes left blank when zero. */
+export function timeFromMinutes(minutes: number | null): TypedTime {
+  if (minutes === null) return EMPTY_TIME;
+
+  const rest = minutes % MINUTES_PER_HOUR;
+
+  return {
+    hours: String(Math.floor(minutes / MINUTES_PER_HOUR)),
+    minutes: rest === 0 ? "" : String(rest),
+  };
+}
+
+/** Rounded to the minute, as `formatHours` shows it. */
+export function timeFromHours(hours: number | null): TypedTime {
+  return timeFromMinutes(
+    hours === null ? null : Math.round(hours * MINUTES_PER_HOUR),
+  );
 }
 
 /**

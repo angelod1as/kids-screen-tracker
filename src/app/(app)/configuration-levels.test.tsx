@@ -283,10 +283,11 @@ describe("the activity's page, tapped into (#41)", () => {
       description: null,
       noteRequired: false,
       calcMode: "duration",
-      value: 2,
-      maxSessionMinutes: 120,
-      minSessionMinutes: 5,
-      presumedMinutes: null,
+      rate: 2,
+      amount: null,
+      maxSession: { hours: 2, minutes: 0 },
+      minSession: { hours: 0, minutes: 5 },
+      presumed: null,
       qualityGraded: false,
       repeatCooldownDays: 0,
       sortOrder: 1,
@@ -316,8 +317,9 @@ describe("the activity's page, tapped into (#41)", () => {
     );
 
     await click("Editar números");
-    const step =
-      container.querySelector<HTMLInputElement>("#categoria-2-passo");
+    const step = container.querySelector<HTMLInputElement>(
+      "#categoria-2-passo-horas",
+    );
     expect(step?.value).toBe("1");
 
     await click("Salvar");
@@ -325,12 +327,12 @@ describe("the activity's page, tapped into (#41)", () => {
     expect(config.updateCategoryAction).toHaveBeenCalledWith(2, {
       name: "Mente",
       baseRate: 2,
-      decayStepHours: 1,
+      decayStep: { hours: 1, minutes: 0 },
       returnBonusPct: 0.5,
       returnBonusAfterDays: 3,
       sortOrder: 2,
     });
-    expect(container.querySelector("#categoria-2-passo")).toBeNull();
+    expect(container.querySelector("#categoria-2-passo-horas")).toBeNull();
     expect(container.textContent).toContain("Rende no máximo 8,00 h por dia");
   });
 

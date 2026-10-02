@@ -1,27 +1,26 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import type {
-  EntryPreview,
-  LaunchResult,
-  NewEntry,
-} from "../../../../db/admin";
+import type { EntryPreview, LaunchResult } from "../../../../db/admin";
 import { Button } from "../../../../ui/button";
 import type { Choice } from "../../../../ui/choice";
 import { ChoiceGroup } from "../../../../ui/choice";
 import { formatDay } from "../../../../ui/dates";
 import { Result } from "../../../../ui/explanation";
 import { failureText } from "../../../../ui/failure";
-import { Field } from "../../../../ui/field";
+import { Field, TimeFields } from "../../../../ui/field";
+import type { TypedTime } from "../../../../ui/hours";
 import {
+  EMPTY_TIME,
   formatDuration,
   formatHours,
-  parseTypedHours,
+  parseTypedTime,
 } from "../../../../ui/hours";
 import { KidSelect } from "../../../../ui/kid-select";
 import { Select } from "../../../../ui/select";
 import { BORDER_CLASS } from "../../../../ui/style";
 import type {
+  EntryRequest,
   LaunchActivity,
   LaunchData,
   Movement,
@@ -60,17 +59,17 @@ export function entryOf(
     occurredOn: string;
     durationMinutes: number;
     quality: number;
-    freeValue: string;
+    freeValue: TypedTime;
     note: string;
   },
   activity: Pick<LaunchActivity, "calcMode" | "qualityGraded"> | undefined,
-): NewEntry | null {
+): EntryRequest | null {
   if (activity === undefined || form.userId === 0 || form.occurredOn === "") {
     return null;
   }
 
   const freeValue =
-    activity.calcMode === "free" ? parseTypedHours(form.freeValue) : null;
+    activity.calcMode === "free" ? parseTypedTime(form.freeValue) : null;
 
   if (activity.calcMode === "free" && freeValue === null) return null;
 
@@ -101,7 +100,7 @@ export function LaunchForm({ data, kids }: { data: LaunchData; kids: Kid[] }) {
     DEFAULT_DURATION_MINUTES,
   );
   const [quality, setQuality] = useState(DEFAULT_QUALITY);
-  const [freeValue, setFreeValue] = useState("");
+  const [freeValue, setFreeValue] = useState(EMPTY_TIME);
   const [note, setNote] = useState("");
 
   const [preview, setPreview] = useState<EntryPreview | null>(null);
@@ -251,14 +250,12 @@ export function LaunchForm({ data, kids }: { data: LaunchData; kids: Kid[] }) {
         />
       ) : null}
 
-      {/* D11, D12: a `free` activity's value is typed here, in hours outright. */}
+      {/* D11, D12: a `free` activity's value is typed here, as hours and minutes (#48). */}
       {activity.calcMode === "free" ? (
-        <Field
+        <TimeFields
           id="valor"
-          inputMode="decimal"
-          label="Quanto vale, em horas"
-          onChange={(event) => change(() => setFreeValue(event.target.value))}
-          type="text"
+          legend="Quanto vale"
+          onChange={(typed) => change(() => setFreeValue(typed))}
           value={freeValue}
         />
       ) : null}

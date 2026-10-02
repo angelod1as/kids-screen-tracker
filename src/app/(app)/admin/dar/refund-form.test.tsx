@@ -96,16 +96,20 @@ describe("the refund reason (#106)", () => {
   });
 
   it("sends the default when the adult confirms it", async () => {
-    await type("#horas", "1");
+    await type("#tempo-horas", "1");
     await refundAndConfirm();
 
     expect(ledger.refundHoursAction).toHaveBeenCalledWith(
-      expect.objectContaining({ userId: 7, hours: 1, reason: "Não usou" }),
+      expect.objectContaining({
+        userId: 7,
+        time: { hours: 1, minutes: 0 },
+        reason: "Não usou",
+      }),
     );
   });
 
   it("sends what the adult typed instead of the default", async () => {
-    await type("#horas", "1");
+    await type("#tempo-horas", "1");
     await type("#motivo", "o Xbox ficou fora do ar");
     await refundAndConfirm();
 
@@ -115,7 +119,7 @@ describe("the refund reason (#106)", () => {
   });
 
   it("still requires a reason once the default is erased", async () => {
-    await type("#horas", "1");
+    await type("#tempo-horas", "1");
     await type("#motivo", "");
 
     expect(reasonField()?.value).toBe("");
@@ -127,13 +131,58 @@ describe("the refund reason (#106)", () => {
   });
 });
 
+describe("hours and minutes, never a fraction (#48)", () => {
+  it("sends 1h25 as typed in the two fields", async () => {
+    await type("#tempo-horas", "1");
+    await type("#tempo-minutos", "25");
+    await refundAndConfirm();
+
+    expect(ledger.refundHoursAction).toHaveBeenCalledWith(
+      expect.objectContaining({ time: { hours: 1, minutes: 25 } }),
+    );
+  });
+
+  it("sends 0h25 with the hours left blank", async () => {
+    await type("#tempo-minutos", "25");
+    await refundAndConfirm();
+
+    expect(ledger.refundHoursAction).toHaveBeenCalledWith(
+      expect.objectContaining({ time: { hours: 0, minutes: 25 } }),
+    );
+  });
+
+  it("offers neither sixty minutes nor a fraction", async () => {
+    await type("#tempo-horas", "1");
+    await type("#tempo-minutos", "60");
+
+    expect(refundButton().disabled).toBe(true);
+
+    await type("#tempo-horas", "1,5");
+    await type("#tempo-minutos", "");
+
+    expect(refundButton().disabled).toBe(true);
+  });
+
+  it("asks for a number keypad on both fields", () => {
+    for (const id of ["#tempo-horas", "#tempo-minutos"]) {
+      expect(container.querySelector(id)?.getAttribute("inputmode")).toBe(
+        "numeric",
+      );
+    }
+  });
+});
+
 describe("the confirmation (D53)", () => {
   it("shows the boy, the action, the hours and the server's two balances before writing", async () => {
-    await type("#horas", "1");
+    await type("#tempo-horas", "1");
     await act(async () => refundButton().click());
 
     expect(ledger.previewRefundAction).toHaveBeenCalledWith(
-      expect.objectContaining({ userId: 7, hours: 1, reason: "Não usou" }),
+      expect.objectContaining({
+        userId: 7,
+        time: { hours: 1, minutes: 0 },
+        reason: "Não usou",
+      }),
     );
     expect(ledger.refundHoursAction).not.toHaveBeenCalled();
     expect(dialog()?.textContent).toContain("MeninoKid2");
@@ -143,7 +192,7 @@ describe("the confirmation (D53)", () => {
   });
 
   it("writes once confirmed, closes, and says the balance the write left", async () => {
-    await type("#horas", "1");
+    await type("#tempo-horas", "1");
     await refundAndConfirm();
 
     expect(ledger.refundHoursAction).toHaveBeenCalledTimes(1);
@@ -152,9 +201,9 @@ describe("the confirmation (D53)", () => {
   });
 
   it("closes when the form behind it changes, so nothing stale is confirmed", async () => {
-    await type("#horas", "1");
+    await type("#tempo-horas", "1");
     await act(async () => refundButton().click());
-    await type("#horas", "2");
+    await type("#tempo-horas", "2");
 
     expect(dialog()).toBeNull();
     expect(ledger.refundHoursAction).not.toHaveBeenCalled();
@@ -168,23 +217,24 @@ describe("the confirmation (D53)", () => {
       }),
     );
 
-    await type("#horas", "1");
+    await type("#tempo-horas", "1");
     await act(async () => refundButton().click());
-    await type("#horas", "2");
+    await type("#tempo-horas", "2");
     await act(async () =>
       answer({ displayName: "Kid2", hours: 1, before: 2, after: 3 }),
     );
     await act(async () => button("Confirmar e dar").click());
 
     expect(ledger.refundHoursAction).toHaveBeenCalledWith(
-      expect.objectContaining({ userId: 7, hours: 1 }),
+      expect.objectContaining({ userId: 7, time: { hours: 1, minutes: 0 } }),
     );
   });
 
   it("puts the form behind it out of reach while open", async () => {
-    const form = () => container.querySelector("#horas")?.closest("[inert]");
+    const form = () =>
+      container.querySelector("#tempo-horas")?.closest("[inert]");
 
-    await type("#horas", "1");
+    await type("#tempo-horas", "1");
 
     expect(form()).toBeNull();
 
@@ -194,7 +244,7 @@ describe("the confirmation (D53)", () => {
   });
 
   it("writes nothing when cancelled", async () => {
-    await type("#horas", "1");
+    await type("#tempo-horas", "1");
     await act(async () => refundButton().click());
     await act(async () => button("Cancelar").click());
 
@@ -207,7 +257,7 @@ describe("the confirmation (D53)", () => {
       new TypeError("Failed to fetch"),
     );
 
-    await type("#horas", "1");
+    await type("#tempo-horas", "1");
     await refundAndConfirm();
 
     expect(dialog()).toBeNull();
@@ -220,7 +270,7 @@ describe("the confirmation (D53)", () => {
       new TypeError("Failed to fetch"),
     );
 
-    await type("#horas", "1");
+    await type("#tempo-horas", "1");
     await act(async () => refundButton().click());
 
     expect(dialog()).toBeNull();

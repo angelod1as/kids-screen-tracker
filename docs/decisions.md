@@ -2,7 +2,7 @@
 
 Vinte e cinco ambiguidades da spec, resolvidas e justificadas antes da primeira
 linha de código, mais as que cada fase mediu depois. Hoje são cinquenta e
-cinco, D1–D55, mais onze emendas e as duas declarações da Fase 4, uma delas
+cinco, D1–D55, mais doze emendas e as duas declarações da Fase 4, uma delas
 revogada.
 
 **Onde este documento e `spec.md` discordarem, este documento vence.**
@@ -169,6 +169,32 @@ soma tem que fechar.
 
 **Por quê.** Com queda geométrica, arredondar em cada faixa acumula erro rápido. E
 se a conta não fecha à vista na tela, a confiança no sistema vai junto.
+
+**Emenda (#48) — tempo se digita em hora e minuto, nunca em fração.** Todo campo
+onde o adulto ou o menino digita uma quantidade de tempo tem dois campos, horas e
+minutos, os dois inteiros e com teclado numérico: dar e tirar horas, o valor
+final arbitrado (D50), a duração corrigida na fila, o valor da atividade avulsa,
+o valor da atividade `fixed` e `delivery`, o passo do desgaste, o limite e a
+sessão mínima (D44), a duração presumida e o pedido sem cronômetro (D49). Ficam
+em decimal a taxa e o bônus de retorno, que não são tempo: "1,5 hora de tela
+por hora de atividade" não vira 1h30. Decisão do dono, 01/10/2026, que estendeu
+a issue à Configuração.
+
+- **O banco não muda.** A conversão é feita no server action, que recebe
+  `{ hours, minutes }` e recusa minuto fora de 0–59, negativo ou fracionário
+  (D33). Nenhuma migration, nenhum saldo mexido.
+- **Coluna em minutos recebe minutos exatos:** `h × 60 + m`.
+- **Coluna em horas recebe as duas casas desta decisão**, arredondadas em
+  inteiros (`round(5m / 3)` centésimos, que nunca empata). Minuto múltiplo de 3
+  é exato; os outros erram no máximo um terço de centésimo, 12 s: 1h25 grava
+  1,42 h (12 s a mais), 2h59 grava 2,98 h (12 s a menos). O motor consome o
+  número gravado, não o digitado, como já consumia.
+- **Ida e volta exata.** O erro máximo, 0,3 min, é menor que o meio minuto em
+  que `formatHours` arredonda, então o histórico mostra exatamente o que foi
+  digitado, em qualquer hora e qualquer minuto.
+
+**Resíduo aceito.** Um passo de desgaste de 0h20 vira 0,33 h, e a assíntota
+mostrada é a desse passo, não a de 1/3 h exato.
 
 ### D10 — Nota zero numa atividade `delivery`
 

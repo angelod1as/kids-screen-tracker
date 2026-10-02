@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { durationMinutes } from "../engine/timer";
+import { durationMinutes, minutesToHours } from "../engine/timer";
 import { formatSignedHours } from "./dates";
 import {
   formatClock,
@@ -8,6 +8,8 @@ import {
   formatDuration,
   formatHours,
   formatRecordedDuration,
+  timeFromHours,
+  timeFromMinutes,
 } from "./hours";
 
 describe("an amount of screen time, in hours and minutes (#105)", () => {
@@ -163,5 +165,38 @@ describe("a running clock", () => {
   it("is not `formatDuration`, which labels a button", () => {
     expect(formatClock(5400)).toBe("1:30:00");
     expect(formatDuration(90)).toBe("1h30");
+  });
+});
+
+describe("a typed time and what the extract shows (#48)", () => {
+  it("reads back every minute of the hour, at any hour, as it was typed", () => {
+    for (const hours of [0, 1, 2, 23, 999_999]) {
+      for (let minutes = 0; minutes < 60; minutes += 1) {
+        const total = hours * 60 + minutes;
+
+        if (total === 0) continue;
+
+        expect(formatHours(minutesToHours(total))).toBe(formatDuration(total));
+      }
+    }
+  });
+
+  it("stores 0h25, 1h00, 1h25 and 2h59 in D9's two decimals", () => {
+    expect([25, 60, 85, 179].map(minutesToHours)).toEqual([
+      0.42, 1, 1.42, 2.98,
+    ]);
+  });
+
+  it("is exact on a minute that divides, and a third of a hundredth off on one that does not", () => {
+    expect(minutesToHours(3)).toBe(0.05);
+    expect(minutesToHours(1)).toBe(0.02);
+    expect(minutesToHours(2)).toBe(0.03);
+  });
+
+  it("fills the fields back from what was stored", () => {
+    expect(timeFromHours(1.42)).toEqual({ hours: "1", minutes: "25" });
+    expect(timeFromHours(0.25)).toEqual({ hours: "0", minutes: "15" });
+    expect(timeFromMinutes(120)).toEqual({ hours: "2", minutes: "" });
+    expect(timeFromMinutes(null)).toEqual({ hours: "", minutes: "" });
   });
 });

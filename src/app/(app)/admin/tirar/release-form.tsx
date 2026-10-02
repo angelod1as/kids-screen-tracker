@@ -1,17 +1,27 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import type { Release } from "../../../../db/ledger";
 import { Button } from "../../../../ui/button";
 import type { Choice } from "../../../../ui/choice";
 import { ChoiceGroup } from "../../../../ui/choice";
 import { ConfirmMovement } from "../../../../ui/confirm-movement";
 import { failureText, previewFailureText } from "../../../../ui/failure";
-import { Field } from "../../../../ui/field";
-import { formatHours, parseTypedHours } from "../../../../ui/hours";
+import { Field, TimeFields } from "../../../../ui/field";
+import type { TypedTime } from "../../../../ui/hours";
+import {
+  formatDuration,
+  formatHours,
+  parseTypedTime,
+  timeFromMinutes,
+  typedMinutes,
+} from "../../../../ui/hours";
 import { KidSelect } from "../../../../ui/kid-select";
 import { BORDER_CLASS, balanceToneClass } from "../../../../ui/style";
-import type { Movement, MovementPreview } from "../../../actions/ledger";
+import type {
+  Movement,
+  MovementPreview,
+  ReleaseRequest,
+} from "../../../actions/ledger";
 import {
   previewReleaseAction,
   releaseHoursAction,
@@ -24,28 +34,27 @@ import type { Kid } from "../../../actions/people";
  * on, and what is configured there is not its business (D41).
  */
 
-const HOUR_CHOICES: readonly Choice[] = [0.5, 1, 1.5, 2, 3, 4].map((hours) => ({
-  value: hours,
-  label: formatHours(hours),
-}));
+const MINUTE_CHOICES: readonly Choice[] = [30, 60, 90, 120, 180, 240].map(
+  (minutes) => ({ value: minutes, label: formatDuration(minutes) }),
+);
 
-const DEFAULT_HOURS = "1";
+const DEFAULT_TIME: TypedTime = { hours: "1", minutes: "" };
 
 export function ReleaseForm({ kids }: { kids: Kid[] }) {
   const [userId, setUserId] = useState(kids[0]?.id ?? 0);
-  const [hours, setHours] = useState(DEFAULT_HOURS);
+  const [time, setTime] = useState(DEFAULT_TIME);
   const [destination, setDestination] = useState("");
 
   /** D53: confirming writes the request that was previewed, never the form as it is now. */
   const [asked, setAsked] = useState<{
-    request: Release;
+    request: ReleaseRequest;
     preview: MovementPreview;
   } | null>(null);
   const [done, setDone] = useState<Movement | null>(null);
   const [failed, setFailed] = useState<string | null>(null);
   const [busy, startAction] = useTransition();
 
-  const typed = parseTypedHours(hours);
+  const typed = parseTypedTime(time);
   const kid = kids.find((candidate) => candidate.id === userId);
 
   function change(apply: () => void) {
@@ -58,9 +67,9 @@ export function ReleaseForm({ kids }: { kids: Kid[] }) {
   function ask() {
     if (typed === null) return;
 
-    const request: Release = {
+    const request: ReleaseRequest = {
       userId,
-      hours: typed,
+      time: typed,
       destination: destination.trim() === "" ? null : destination.trim(),
     };
 
@@ -146,18 +155,16 @@ export function ReleaseForm({ kids }: { kids: Kid[] }) {
 
         <ChoiceGroup
           legend="Quanto"
-          onSelect={(chosen) => change(() => setHours(String(chosen)))}
-          options={HOUR_CHOICES}
-          value={typed ?? 0}
+          onSelect={(chosen) => change(() => setTime(timeFromMinutes(chosen)))}
+          options={MINUTE_CHOICES}
+          value={typedMinutes(time) ?? 0}
         />
 
-        <Field
-          id="horas"
-          inputMode="decimal"
-          label="Horas"
-          onChange={(event) => change(() => setHours(event.target.value))}
-          type="text"
-          value={hours}
+        <TimeFields
+          id="tempo"
+          legend="Ou digite"
+          onChange={(typed) => change(() => setTime(typed))}
+          value={time}
         />
 
         <Field

@@ -236,7 +236,7 @@ describe("trigger 2: a decision goes to the boy who owns the entry, and only him
   it("an approval at a value the adult decided (D50)", async () => {
     const logId = await kidRequests();
 
-    await approveLogAction(logId, { overrideHours: 0.5 });
+    await approveLogAction(logId, { override: { hours: 0, minutes: 30 } });
     await settle();
 
     expect(recipients()).toEqual([ENDPOINT[KID1]]);
@@ -278,10 +278,13 @@ describe("nothing else sends a push", () => {
       activityId: WORSHIP,
       occurredOn: TODAY,
     });
-    await releaseHoursAction({ userId: KID1, hours: 1 });
+    await releaseHoursAction({
+      userId: KID1,
+      time: { hours: 1, minutes: 0 },
+    });
     await refundHoursAction({
       userId: KID1,
-      hours: 1,
+      time: { hours: 1, minutes: 0 },
       occurredOn: TODAY,
       reason: "Não usou",
     });

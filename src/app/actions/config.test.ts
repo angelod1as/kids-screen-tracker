@@ -4,6 +4,7 @@ import { join } from "node:path";
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import type { ActivityRow } from "../../db/activities";
 import { listActivities } from "../../db/activities";
 import type { CategoryRow } from "../../db/categories";
 import { listCategories } from "../../db/categories";
@@ -13,7 +14,9 @@ import { migrateDatabase } from "../../db/migrate";
 import type { World } from "../../db/queue.rules";
 import { BOOK, makeWorld, THAT_DAY } from "../../db/queue.rules";
 import { seedWithTestUsers } from "../../db/test-users";
+import type { ActivityRequest, CategoryRequest } from "./config";
 import {
+  createActivityAction,
   setActivityActiveAction,
   setCategoryActiveAction,
   updateActivityAction,
@@ -84,6 +87,36 @@ function mente(): CategoryRow {
   return found;
 }
 
+/** A stored time back as the two fields send it (#48). */
+function timeOf(minutes: number) {
+  return { hours: Math.floor(minutes / 60), minutes: minutes % 60 };
+}
+
+function categoryRequest(row: CategoryRow): CategoryRequest {
+  return {
+    ...row,
+    decayStep:
+      row.decayStepHours === null
+        ? null
+        : timeOf(Math.round(row.decayStepHours * 60)),
+  };
+}
+
+function activityRequest(row: ActivityRow): ActivityRequest {
+  return {
+    ...row,
+    rate: row.calcMode === "duration" ? row.value : null,
+    amount:
+      row.calcMode === "duration" || row.value === null
+        ? null
+        : timeOf(Math.round(row.value * 60)),
+    maxSession:
+      row.maxSessionMinutes === null ? null : timeOf(row.maxSessionMinutes),
+    minSession: timeOf(row.minSessionMinutes),
+    presumed: row.presumedMinutes == null ? null : timeOf(row.presumedMinutes),
+  };
+}
+
 function book() {
   const found = listActivities(world.connection, mente().id).find(
     (row) => row.id === world.activityId(BOOK),
@@ -105,8 +138,8 @@ describe("D37's refusal reaches the browser word for word (#7)", () => {
 
     await expect(
       updateActivityAction(mente().id, before.id, {
-        ...before,
-        value: 10,
+        ...activityRequest(before),
+        rate: 10,
       }),
     ).resolves.toEqual({ refused: waitingSentence(BOOK, waiting) });
 
@@ -128,7 +161,10 @@ describe("D37's refusal reaches the browser word for word (#7)", () => {
     const category = mente();
 
     await expect(
-      updateCategoryAction(category.id, { ...category, decayStepHours: 3 }),
+      updateCategoryAction(category.id, {
+        ...categoryRequest(category),
+        decayStep: { hours: 3, minutes: 0 },
+      }),
     ).resolves.toEqual({ refused: waitingSentence("Mente", waiting) });
 
     await expect(setCategoryActiveAction(category.id, false)).resolves.toEqual({
@@ -142,7 +178,10 @@ describe("D37's refusal reaches the browser word for word (#7)", () => {
     const category = mente();
 
     await expect(
-      updateCategoryAction(category.id, { ...category, name: " " }),
+      updateCategoryAction(category.id, {
+        ...categoryRequest(category),
+        name: " ",
+      }),
     ).rejects.toThrow(/a category needs a name/);
   });
 
@@ -153,5 +192,100 @@ describe("D37's refusal reaches the browser word for word (#7)", () => {
     await expect(
       setCategoryActiveAction(mente().id, false),
     ).rejects.toMatchObject({ reason: "forbidden", message: "Acesso negado." });
+  });
+});
+
+describe("times typed as hours and minutes (#48)", () => {
+  it("stores a fixed value of 1h25 in D9's two decimals", async () => {
+    const rows = await createActivityAction({
+      categoryId: mente().id,
+      name: "Visita",
+      calcMode: "fixed",
+      rate: null,
+      amount: { hours: 1, minutes: 25 },
+      maxSession: null,
+      minSession: { hours: 0, minutes: 5 },
+      qualityGraded: false,
+      repeatCooldownDays: 0,
+      sortOrder: 0,
+    });
+
+    expect(rows.find((row) => row.name === "Visita")?.value).toBe(1.42);
+  });
+
+  it("stores a session limit and a minimum as whole minutes", async () => {
+    await updateActivityAction(mente().id, book().id, {
+      ...activityRequest(book()),
+      maxSession: { hours: 2, minutes: 59 },
+      minSession: { hours: 0, minutes: 25 },
+      presumed: { hours: 1, minutes: 0 },
+    });
+
+    expect(book()).toMatchObject({
+      maxSessionMinutes: 179,
+      minSessionMinutes: 25,
+      presumedMinutes: 60,
+    });
+  });
+
+  it("keeps the rate a decimal: it is not a time", async () => {
+    await updateActivityAction(mente().id, book().id, {
+      ...activityRequest(book()),
+      rate: 1.5,
+    });
+
+    expect(book().value).toBe(1.5);
+  });
+
+  it("stores a decay step of 0h15, the floor (D35), and refuses 0h14", async () => {
+    await updateCategoryAction(mente().id, {
+      ...categoryRequest(mente()),
+      decayStep: { hours: 0, minutes: 15 },
+    });
+
+    expect(mente().decayStepHours).toBe(0.25);
+
+    await expect(
+      updateCategoryAction(mente().id, {
+        ...categoryRequest(mente()),
+        decayStep: { hours: 0, minutes: 14 },
+      }),
+    ).rejects.toThrow(/below the floor/);
+  });
+
+  it("refuses sixty minutes on the server, not just on the screen (D33)", async () => {
+    const before = book();
+
+    await expect(
+      updateActivityAction(mente().id, before.id, {
+        ...activityRequest(before),
+        maxSession: { hours: 1, minutes: 60 },
+      }),
+    ).rejects.toThrow(/between 0 and 59/);
+    await expect(
+      updateCategoryAction(mente().id, {
+        ...categoryRequest(mente()),
+        decayStep: { hours: 1, minutes: 60 },
+      }),
+    ).rejects.toThrow(/between 0 and 59/);
+    await expect(
+      createActivityAction({
+        ...activityRequest(before),
+        name: "Visita",
+        calcMode: "fixed",
+        amount: { hours: 1, minutes: 60 },
+      }),
+    ).rejects.toThrow(/between 0 and 59/);
+
+    expect(book()).toEqual(before);
+  });
+
+  it("refuses a fraction of an hour sent as hours", async () => {
+    await expect(
+      updateCategoryAction(mente().id, {
+        ...categoryRequest(mente()),
+        decayStep: { hours: 1.5, minutes: 0 },
+      }),
+    ).rejects.toThrow(/the hours of a decay step/);
   });
 });

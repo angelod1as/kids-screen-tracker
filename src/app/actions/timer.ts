@@ -4,6 +4,8 @@ import { and, desc, eq } from "drizzle-orm";
 
 import { requireAccess } from "../../auth/guard";
 import { getConnection, getDb } from "../../db";
+import type { HoursMinutes } from "../../db/input";
+import { requireHoursMinutes } from "../../db/input";
 import type { NewRequest, RequestableActivity } from "../../db/requests";
 import { listRequestableActivities, requestLog } from "../../db/requests";
 import { activities, activityLogs } from "../../db/schema";
@@ -161,17 +163,33 @@ export async function stopTimerAction(
   return screen(targetUserId, written.read, written.proposed);
 }
 
+/** #48: typed as hours and minutes; converted here, at the edge. */
+export type RequestEntry = Omit<NewRequest, "durationMinutes"> & {
+  duration?: HoursMinutes | null;
+};
+
 /** The boy's second write (D49); the read after it settles the timer (D16). */
 export async function requestLogAction(
   targetUserId: number,
-  request: NewRequest,
+  { duration, ...request }: RequestEntry,
 ): Promise<TimerScreenData> {
   await requireAccess({ kind: "requestLog", targetUserId });
 
   const now = new Date();
   const connection = getConnection();
 
-  requestLog(connection, targetUserId, request, now);
+  requestLog(
+    connection,
+    targetUserId,
+    {
+      ...request,
+      durationMinutes:
+        duration === undefined || duration === null
+          ? duration
+          : requireHoursMinutes(duration, "a duration"),
+    },
+    now,
+  );
 
   const requested = getDb()
     .select({ name: activities.name })

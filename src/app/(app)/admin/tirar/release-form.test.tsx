@@ -65,12 +65,55 @@ function dialog(): HTMLElement | null {
   return container.querySelector('[role="dialog"]');
 }
 
+describe("hours and minutes, never a fraction (#48)", () => {
+  function field(id: string): HTMLInputElement | null {
+    return container.querySelector<HTMLInputElement>(id);
+  }
+
+  async function type(id: string, value: string) {
+    const input = field(id);
+
+    if (input === null) throw new Error(`no input ${id}`);
+
+    await act(async () => {
+      Object.getOwnPropertyDescriptor(
+        HTMLInputElement.prototype,
+        "value",
+      )?.set?.call(input, value);
+      input.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+  }
+
+  it("fills both fields from a shortcut, in one tap", async () => {
+    await act(async () => button("1h30").click());
+
+    expect(field("#tempo-horas")?.value).toBe("1");
+    expect(field("#tempo-minutos")?.value).toBe("30");
+  });
+
+  it("sends 2h59 as typed", async () => {
+    await type("#tempo-horas", "2");
+    await type("#tempo-minutos", "59");
+    await act(async () => button("Tirar").click());
+
+    expect(ledger.previewReleaseAction).toHaveBeenCalledWith(
+      expect.objectContaining({ time: { hours: 2, minutes: 59 } }),
+    );
+  });
+
+  it("does not offer sixty minutes", async () => {
+    await type("#tempo-minutos", "60");
+
+    expect(button("Tirar").disabled).toBe(true);
+  });
+});
+
 describe("the confirmation (D53)", () => {
   it("shows the boy, the action, the hours and the server's two balances before writing", async () => {
     await act(async () => button("Tirar").click());
 
     expect(ledger.previewReleaseAction).toHaveBeenCalledWith(
-      expect.objectContaining({ userId: 7, hours: 1 }),
+      expect.objectContaining({ userId: 7, time: { hours: 1, minutes: 0 } }),
     );
     expect(ledger.releaseHoursAction).not.toHaveBeenCalled();
     expect(dialog()?.textContent).toContain("MeninoKid2");
@@ -96,7 +139,8 @@ describe("the confirmation (D53)", () => {
   });
 
   it("puts the form behind it out of reach while open", async () => {
-    const form = () => container.querySelector("#horas")?.closest("[inert]");
+    const form = () =>
+      container.querySelector("#tempo-horas")?.closest("[inert]");
 
     expect(form()).toBeNull();
 
@@ -157,7 +201,7 @@ describe("the confirmation (D53)", () => {
     await act(async () => button("Confirmar e tirar").click());
 
     expect(ledger.releaseHoursAction).toHaveBeenCalledWith(
-      expect.objectContaining({ userId: 7, hours: 1 }),
+      expect.objectContaining({ userId: 7, time: { hours: 1, minutes: 0 } }),
     );
   });
 

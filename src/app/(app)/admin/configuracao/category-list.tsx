@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 
 import type { ActivityRow } from "../../../../db/activities";
-import type { CategoryInput, CategoryRow } from "../../../../db/categories";
+import type { CategoryRow } from "../../../../db/categories";
 import type { Locks } from "../../../../db/pending";
 import type { Refused } from "../../../../db/refusal";
 import {
@@ -14,13 +14,21 @@ import {
   MIN_DECAY_STEP_HOURS,
   MIN_RETURN_BONUS_AFTER_DAYS,
 } from "../../../../engine/limits";
+import { minutesToHours } from "../../../../engine/timer";
 import { Button } from "../../../../ui/button";
 import { failureText } from "../../../../ui/failure";
-import { Field } from "../../../../ui/field";
+import { Field, TimeFields } from "../../../../ui/field";
+import type { TypedTime } from "../../../../ui/hours";
 import {
+  EMPTY_TIME,
   formatDecimalHours,
+  formatHours,
+  isBlankTime,
   parseTypedCount,
   parseTypedHours,
+  parseTypedTime,
+  timeFromHours,
+  typedMinutes,
 } from "../../../../ui/hours";
 import { CardLink, LinkButton } from "../../../../ui/link-button";
 import { Panel } from "../../../../ui/panel";
@@ -30,6 +38,7 @@ import {
   READOUT_CLASS,
   ROW_CLASS,
 } from "../../../../ui/style";
+import type { CategoryRequest } from "../../../actions/config";
 import {
   createCategoryAction,
   fetchLocksAction,
@@ -81,7 +90,8 @@ export function lockNote(
 export type CategoryDraft = {
   name: string;
   baseRate: string;
-  decayStepHours: string;
+  /** D2: empty is no decay. */
+  decayStep: TypedTime;
   /** Percentage points ("50"); the column is a fraction, converted once in `categoryInputOf`. */
   returnBonusPct: string;
   returnBonusAfterDays: string;
@@ -91,7 +101,7 @@ export type CategoryDraft = {
 export const EMPTY_CATEGORY: CategoryDraft = {
   name: "",
   baseRate: "",
-  decayStepHours: "",
+  decayStep: EMPTY_TIME,
   returnBonusPct: "0",
   returnBonusAfterDays: "0",
   sortOrder: "0",
@@ -101,14 +111,14 @@ export const EMPTY_CATEGORY: CategoryDraft = {
  * One function, not a `canSave`/`inputOf` pair that could disagree. Ceilings,
  * lengths and roundings belong to the endpoint.
  */
-export function categoryInputOf(draft: CategoryDraft): CategoryInput | null {
+export function categoryInputOf(draft: CategoryDraft): CategoryRequest | null {
   const name = draft.name.trim();
 
   // An empty decay field is D2's "no decay", and an empty rate is D11's "no rate".
-  const decayStepHours =
-    draft.decayStepHours.trim() === ""
-      ? null
-      : typedStepHours(draft.decayStepHours);
+  const decayStep = isBlankTime(draft.decayStep)
+    ? null
+    : parseTypedTime(draft.decayStep);
+  const decayStepHours = typedStepHours(draft.decayStep);
   const baseRate =
     draft.baseRate.trim() === "" ? null : parseTypedHours(draft.baseRate);
   const returnBonusPct = typedBonusFraction(draft.returnBonusPct);
@@ -117,7 +127,7 @@ export function categoryInputOf(draft: CategoryDraft): CategoryInput | null {
 
   if (
     name === "" ||
-    (draft.decayStepHours.trim() !== "" && decayStepHours === null) ||
+    (!isBlankTime(draft.decayStep) && decayStep === null) ||
     (draft.baseRate.trim() !== "" && baseRate === null) ||
     returnBonusPct === null ||
     returnBonusAfterDays === null ||
@@ -136,7 +146,7 @@ export function categoryInputOf(draft: CategoryDraft): CategoryInput | null {
   return {
     name,
     baseRate,
-    decayStepHours,
+    decayStep,
     returnBonusPct,
     returnBonusAfterDays,
     sortOrder,
@@ -145,14 +155,14 @@ export function categoryInputOf(draft: CategoryDraft): CategoryInput | null {
 
 /** No step means no asymptote (D2); no rate means nothing to compute one from (D11). */
 export function asymptoteText(draft: CategoryDraft): string {
-  const typedStep = draft.decayStepHours.trim() !== "";
-  const step = typedStep ? parseTypedHours(draft.decayStepHours) : null;
+  const typedStep = !isBlankTime(draft.decayStep);
+  const step = typedStepHours(draft.decayStep);
   const rate =
     draft.baseRate.trim() === "" ? null : parseTypedHours(draft.baseRate);
 
   // Unreadable is neither an asymptote nor "sem desgaste", which would contradict the warning below.
   if (typedStep && step === null) {
-    return "Passo do desgaste ainda não é um número.";
+    return "Passo do desgaste ainda não é um tempo.";
   }
 
   if (draft.baseRate.trim() !== "" && rate === null) {
@@ -173,16 +183,18 @@ export function asymptoteText(draft: CategoryDraft): string {
 
 /** The endpoint refuses; this is the same predicate, said before the tap. */
 export function decayStepWarning(draft: CategoryDraft): string | null {
-  if (draft.decayStepHours.trim() === "") return null;
+  if (isBlankTime(draft.decayStep)) return null;
 
-  const step = typedStepHours(draft.decayStepHours);
+  const step = typedStepHours(draft.decayStep);
 
-  if (step === null) return "Digite o passo em horas, com vírgula. Ex.: 1,5";
+  if (step === null) {
+    return "Digite o passo em horas e minutos inteiros, até 59 minutos. Ex.: 1 h e 30 min";
+  }
   if (isUsableDecayStep(step)) return null;
 
   // The floor is about the table's shape (D35), and this sentence holds at any rate.
   return (
-    `O passo mínimo é ${formatDecimalHours(MIN_DECAY_STEP_HOURS)}: abaixo disso a categoria rende ` +
+    `O passo mínimo é ${formatHours(MIN_DECAY_STEP_HOURS)}: abaixo disso a categoria rende ` +
     "menos da metade da taxa dela por dia, que na prática é uma categoria " +
     "desligada — e para desligar existe o botão de desativar. Para uma " +
     "categoria sem desgaste, deixe o campo vazio."
@@ -225,11 +237,11 @@ export function returnBonusWarning(draft: CategoryDraft): string | null {
   );
 }
 
-/** Rounded the way the endpoint rounds before it judges, so screen and server agree on 0,247. */
-function typedStepHours(text: string): number | null {
-  const step = parseTypedHours(text);
+/** Rounded the way the endpoint rounds before it judges, so screen and server agree on 0h20. */
+function typedStepHours(time: TypedTime): number | null {
+  const minutes = typedMinutes(time);
 
-  return step === null ? null : Math.round(step * 100) / 100;
+  return minutes === null ? null : minutesToHours(minutes);
 }
 
 /** In the column's fraction, at the endpoint's precision (see `typedStepHours`). */
@@ -254,8 +266,7 @@ function draftOf(category: CategoryRow): CategoryDraft {
   return {
     name: category.name,
     baseRate: category.baseRate === null ? "" : decimal(category.baseRate),
-    decayStepHours:
-      category.decayStepHours === null ? "" : decimal(category.decayStepHours),
+    decayStep: timeFromHours(category.decayStepHours),
     returnBonusPct: percentText(category.returnBonusPct),
     returnBonusAfterDays: String(category.returnBonusAfterDays),
     sortOrder: String(category.sortOrder),
@@ -288,7 +299,7 @@ export function categorySummary(category: CategoryRow): string {
     category.decayStepHours === null
       ? "sem desgaste"
       : asymptote === null
-        ? `passo de ${formatDecimalHours(category.decayStepHours)}`
+        ? `passo de ${formatHours(category.decayStepHours)}`
         : `até ${formatDecimalHours(asymptote)} por dia`;
   const bonus =
     category.returnBonusPct <= 0
@@ -456,7 +467,7 @@ export function CategoryDetail({
             <span className={READOUT_CLASS}>
               {category.decayStepHours === null
                 ? "sem desgaste"
-                : formatDecimalHours(category.decayStepHours)}
+                : formatHours(category.decayStepHours)}
             </span>
           </li>
           <li className={ROW_CLASS}>
@@ -687,28 +698,23 @@ function CategoryFields({
         value={draft.name}
       />
 
-      <div className={FIELD_PAIR_CLASS}>
-        <Field
-          id={`${prefix}-taxa`}
-          inputMode="decimal"
-          label="Taxa sugerida (vazio: nenhuma)"
-          onChange={(event) =>
-            onChange({ ...draft, baseRate: event.target.value })
-          }
-          type="text"
-          value={draft.baseRate}
-        />
-        <Field
-          id={`${prefix}-passo`}
-          inputMode="decimal"
-          label="Passo do desgaste, em horas (vazio: sem desgaste)"
-          onChange={(event) =>
-            onChange({ ...draft, decayStepHours: event.target.value })
-          }
-          type="text"
-          value={draft.decayStepHours}
-        />
-      </div>
+      <Field
+        id={`${prefix}-taxa`}
+        inputMode="decimal"
+        label="Taxa sugerida (vazio: nenhuma)"
+        onChange={(event) =>
+          onChange({ ...draft, baseRate: event.target.value })
+        }
+        type="text"
+        value={draft.baseRate}
+      />
+
+      <TimeFields
+        id={`${prefix}-passo`}
+        legend="Passo do desgaste (vazio: sem desgaste)"
+        onChange={(decayStep) => onChange({ ...draft, decayStep })}
+        value={draft.decayStep}
+      />
 
       {rateWarning === null ? null : (
         <p

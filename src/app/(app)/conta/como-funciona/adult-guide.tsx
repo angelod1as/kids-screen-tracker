@@ -166,12 +166,12 @@ export function AdultGuide({ data }: { data: HowItWorksData }) {
         <Points>
           <li>
             <strong>Taxa ou valor de uma atividade:</strong> Configuração,
-            atividade, campo “Taxa por hora” ou “Valor em horas”.
+            atividade, campo “Taxa por hora” ou “Valor”, em horas e minutos.
           </li>
           <li>
             <strong>Passo do desgaste:</strong> Configuração, categoria, campo
-            “Passo do desgaste, em horas”. Vazio desliga o desgaste. O mínimo é{" "}
-            {formatDuration(MIN_DECAY_STEP_HOURS * 60)}.
+            “Passo do desgaste”, em horas e minutos. Vazio desliga o desgaste. O
+            mínimo é {formatDuration(MIN_DECAY_STEP_HOURS * 60)}.
           </li>
           <li>
             <strong>Bônus de retorno:</strong> Configuração, categoria, campos
@@ -185,7 +185,7 @@ export function AdultGuide({ data }: { data: HowItWorksData }) {
           </li>
           <li>
             <strong>Sessão mínima e limite:</strong> Configuração, atividade,
-            campos “Sessão mínima, em minutos” e “Limite da sessão, em minutos”.
+            campos “Sessão mínima” e “Limite da sessão”, em horas e minutos.
           </li>
           <li>
             A taxa sugerida da categoria só preenche a taxa de uma atividade
@@ -237,11 +237,12 @@ export function AdultGuide({ data }: { data: HowItWorksData }) {
           </li>
           <li>
             <strong>Valor final:</strong> em vez de corrigir o relato, dá para
-            dizer quanto a entrada vale, em horas, em qualquer atividade, fixa
-            inclusive. A regra não é consultada. O desgaste do dia continua
-            contando o tempo que a atividade durou, e a repetição e o bônus a
-            contam como feita. O menino vê no histórico que o valor foi decidido
-            por um adulto, quanto a regra daria e o motivo, se você escrever um.
+            dizer quanto a entrada vale, em horas e minutos, em qualquer
+            atividade, fixa inclusive. A regra não é consultada. O desgaste do
+            dia continua contando o tempo que a atividade durou, e a repetição e
+            o bônus a contam como feita. O menino vê no histórico que o valor
+            foi decidido por um adulto, quanto a regra daria e o motivo, se você
+            escrever um.
           </li>
           <li>
             <strong>Ordem:</strong> uma entrada não pode ser aprovada enquanto

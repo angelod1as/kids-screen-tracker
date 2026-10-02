@@ -222,6 +222,14 @@ export function durationMinutes(seconds: number): number {
   );
 }
 
+/**
+ * Typed minutes to D9's two decimals of an hour (#48), in integers: `5m / 3`
+ * never ties, so a minute that does not divide moves at most a third of a hundredth.
+ */
+export function minutesToHours(minutes: number): number {
+  return Math.floor((minutes * 10 + 3) / 6) / 100;
+}
+
 /** Floored, so the column holds an integer and `durationMinutes` rounds the stored number. */
 export function durationSeconds(seconds: number): number {
   return Math.max(0, Math.floor(seconds));

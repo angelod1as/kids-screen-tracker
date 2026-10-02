@@ -10,17 +10,22 @@ import type { Choice } from "../../../../ui/choice";
 import { ChoiceGroup } from "../../../../ui/choice";
 import { formatDay } from "../../../../ui/dates";
 import { failureText, RESYNCED_TEXT } from "../../../../ui/failure";
-import { Field } from "../../../../ui/field";
+import { Field, TimeFields } from "../../../../ui/field";
+import type { TypedTime } from "../../../../ui/hours";
 import {
+  EMPTY_TIME,
   formatHours,
   formatRecordedDuration,
-  parseTypedHours,
+  isBlankTime,
+  parseTypedTime,
+  timeFromMinutes,
+  typedMinutes,
 } from "../../../../ui/hours";
 import { Panel, PanelText } from "../../../../ui/panel";
 import { PendingMark } from "../../../../ui/pending";
 import { Select } from "../../../../ui/select";
 import { META_CLASS, READOUT_CLASS } from "../../../../ui/style";
-import type { QueueData } from "../../../actions/queue";
+import type { ApprovalEdits, QueueData } from "../../../actions/queue";
 import {
   approveLogAction,
   fetchQueueAction,
@@ -125,16 +130,16 @@ export function canApprove(
   entry: Pick<QueueEntry, "blockedBy" | "qualityGraded" | "quality"> &
     Partial<Pick<QueueEntry, "durationMinutes" | "calcMode" | "unpriceable">>,
   editing: boolean,
-  minutes: string,
+  duration: TypedTime,
   grade: number | null = null,
-  value = "",
-  override = "",
+  value: TypedTime = EMPTY_TIME,
+  override: TypedTime = EMPTY_TIME,
 ): boolean {
   if (entry.blockedBy !== null) return false;
 
   // D50: the adult's final number stands in for the grade or value the rule lacks.
-  const overridden = editing && override.trim() !== "";
-  if (overridden && parseTypedHours(override) === null) return false;
+  const overridden = editing && !isBlankTime(override);
+  if (overridden && parseTypedTime(override) === null) return false;
 
   // The stopwatch never grades, so a graded activity waits for the adult's grade (D37).
   const graded =
@@ -145,19 +150,17 @@ export function canApprove(
   const priced =
     overridden ||
     (!entry.unpriceable?.includes("duration") &&
-      (entry.calcMode !== "free" || Number(value.replace(",", ".")) >= 0.01));
+      (entry.calcMode !== "free" || (typedMinutes(value) ?? 0) >= 1));
 
   if (!editing) return !graded && priced;
 
   // An untimed request of a non-`duration` activity has no minutes to correct.
   if (entry.durationMinutes === null) return !graded && priced;
 
-  const typed = Number(minutes);
+  const typed = typedMinutes(duration);
 
   // The same ceiling `requireDuration` enforces, said before the round trip.
-  return (
-    !graded && Number.isInteger(typed) && typed >= 1 && typed <= MAX_MINUTES
-  );
+  return !graded && typed !== null && typed >= 1 && typed <= MAX_MINUTES;
 }
 
 /**
@@ -195,16 +198,6 @@ const QUALITY_CHOICES: readonly Choice[] = [0, 0.3, 0.5, 0.7, 1].map(
   }),
 );
 
-type Edits = {
-  activityId?: number;
-  durationMinutes?: number;
-  quality?: number | null;
-  freeValue?: number;
-  overrideHours?: number;
-  overrideReason?: string | null;
-  note?: string | null;
-};
-
 function Card({
   activities,
   busy,
@@ -215,21 +208,25 @@ function Card({
   activities: TimedActivity[];
   busy: boolean;
   entry: QueueEntry;
-  onApprove: (edits: Edits) => void;
+  onApprove: (edits: ApprovalEdits) => void;
   onReject: (reason: string) => void;
 }) {
   const [editing, setEditing] = useState(false);
   const [rejecting, setRejecting] = useState(false);
   const [activityId, setActivityId] = useState(entry.activityId);
-  const [minutes, setMinutes] = useState(String(entry.durationMinutes ?? ""));
+  const [duration, setDuration] = useState(
+    timeFromMinutes(entry.durationMinutes),
+  );
   const [grade, setGrade] = useState<number | null>(entry.quality);
   const [note, setNote] = useState(entry.note ?? "");
   const [reason, setReason] = useState("");
-  const [value, setValue] = useState("");
-  const [override, setOverride] = useState("");
+  const [value, setValue] = useState(EMPTY_TIME);
+  const [override, setOverride] = useState(EMPTY_TIME);
   const [overrideReason, setOverrideReason] = useState("");
 
-  const typed = Number(minutes);
+  const typedDuration = parseTypedTime(duration);
+  const typedValue = parseTypedTime(value);
+  const typedOverride = parseTypedTime(override);
   const timed = entry.durationMinutes !== null;
   // Asked on the card, not behind Corrigir: two taps (D49, D37).
   const needsValue = entry.unpriceable?.includes("value") ?? false;
@@ -282,12 +279,10 @@ function Card({
       ) : null}
 
       {needsValue ? (
-        <Field
+        <TimeFields
           id={`valor-${entry.id}`}
-          inputMode="decimal"
-          label="Valor em horas"
-          onChange={(event) => setValue(event.target.value)}
-          type="text"
+          legend="Valor"
+          onChange={setValue}
           value={value}
         />
       ) : null}
@@ -305,12 +300,10 @@ function Card({
           ) : null}
 
           {entry.calcMode === "free" && !needsValue ? (
-            <Field
+            <TimeFields
               id={`valor-${entry.id}`}
-              inputMode="decimal"
-              label="Valor em horas"
-              onChange={(event) => setValue(event.target.value)}
-              type="text"
+              legend="Valor"
+              onChange={setValue}
               value={value}
             />
           ) : null}
@@ -330,25 +323,21 @@ function Card({
                 ))}
               </Select>
 
-              <Field
+              <TimeFields
                 id={`duracao-${entry.id}`}
-                inputMode="numeric"
-                label="Duração em minutos"
-                onChange={(event) => setMinutes(event.target.value)}
-                type="text"
-                value={minutes}
+                legend="Duração"
+                onChange={setDuration}
+                value={duration}
               />
             </>
           ) : null}
 
           {/* D50: a second path beside correcting the report, for any mode. */}
           <div className="flex flex-col gap-1">
-            <Field
+            <TimeFields
               id={`valor-final-${entry.id}`}
-              inputMode="decimal"
-              label="Valor final em horas (opcional)"
-              onChange={(event) => setOverride(event.target.value)}
-              type="text"
+              legend="Valor final (opcional)"
+              onChange={setOverride}
               value={override}
             />
             <p className="text-base text-black">
@@ -358,7 +347,7 @@ function Card({
             </p>
           </div>
 
-          {override.trim() === "" ? null : (
+          {isBlankTime(override) ? null : (
             <Field
               id={`motivo-valor-${entry.id}`}
               label="Motivo do valor final (opcional)"
@@ -405,20 +394,22 @@ function Card({
           <Button
             disabled={
               busy ||
-              !canApprove(entry, editing, minutes, grade, value, override)
+              !canApprove(entry, editing, duration, grade, value, override)
             }
             onClick={() =>
               onApprove(
                 editing
                   ? {
-                      ...(timed ? { activityId, durationMinutes: typed } : {}),
-                      ...(entry.calcMode === "free" && value.trim() !== ""
-                        ? { freeValue: Number(value.replace(",", ".")) }
+                      ...(timed && typedDuration !== null
+                        ? { activityId, duration: typedDuration }
                         : {}),
-                      ...(override.trim() === ""
+                      ...(entry.calcMode === "free" && typedValue !== null
+                        ? { freeValue: typedValue }
+                        : {}),
+                      ...(typedOverride === null
                         ? {}
                         : {
-                            overrideHours: Number(override.replace(",", ".")),
+                            override: typedOverride,
                             overrideReason:
                               overrideReason.trim() === ""
                                 ? null
@@ -428,8 +419,8 @@ function Card({
                       note: note.trim() === "" ? null : note.trim(),
                     }
                   : {
-                      ...(needsValue && value.trim() !== ""
-                        ? { freeValue: Number(value.replace(",", ".")) }
+                      ...(needsValue && typedValue !== null
+                        ? { freeValue: typedValue }
                         : {}),
                       ...(needsGrade ? { quality: grade } : {}),
                     },

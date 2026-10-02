@@ -147,7 +147,7 @@ describe("a `free` entry is priced on the card, in two taps (D49)", () => {
   it("asks for the value without opening the correction", async () => {
     await render(entry({}));
 
-    expect(container.querySelector("#valor-7")).not.toBeNull();
+    expect(container.querySelector("#valor-7-horas")).not.toBeNull();
     expect(button("Aprovar").disabled).toBe(true);
   });
 
@@ -158,18 +158,21 @@ describe("a `free` entry is priced on the card, in two taps (D49)", () => {
     });
     await render(entry({}));
 
-    await type("#valor-7", "2,5");
+    await type("#valor-7-horas", "2");
+    await type("#valor-7-minutos", "30");
     expect(button("Aprovar").disabled).toBe(false);
     await click("Aprovar");
 
-    expect(queue.approveLogAction).toHaveBeenCalledWith(7, { freeValue: 2.5 });
+    expect(queue.approveLogAction).toHaveBeenCalledWith(7, {
+      freeValue: { hours: 2, minutes: 30 },
+    });
   });
 
   it("keeps one value field when the correction is open", async () => {
     await render(entry({}));
     await click("Corrigir");
 
-    expect(container.querySelectorAll("#valor-7")).toHaveLength(1);
+    expect(container.querySelectorAll("#valor-7-horas")).toHaveLength(1);
   });
 });
 
@@ -199,7 +202,11 @@ describe("a missing grade is chosen on the card (D37)", () => {
     await render(GRADED);
     await click("Corrigir");
 
-    expect(container.querySelectorAll("fieldset")).toHaveLength(1);
+    expect(
+      [...container.querySelectorAll("legend")].filter(
+        (legend) => legend.textContent === "Nota",
+      ),
+    ).toHaveLength(1);
   });
 });
 
@@ -220,9 +227,75 @@ describe("a priced entry is unchanged", () => {
       }),
     );
 
-    expect(container.querySelector("#valor-7")).toBeNull();
+    expect(container.querySelector("#valor-7-horas")).toBeNull();
     await click("Aprovar");
 
     expect(queue.approveLogAction).toHaveBeenCalledWith(7, {});
+  });
+});
+
+describe("a correction typed as hours and minutes (#48)", () => {
+  const TIMED = entry({
+    activityName: "Ler livro",
+    calcMode: "duration",
+    source: "timer",
+    durationMinutes: 85,
+    durationSeconds: 85 * 60,
+    preview: { hours: 2, lines: [] },
+    unpriceable: null,
+  });
+
+  beforeEach(() => {
+    queue.approveLogAction.mockResolvedValue({ entries: [], activities: [] });
+  });
+
+  it("opens the duration as the hours and minutes it was", async () => {
+    await render(TIMED);
+    await click("Corrigir");
+
+    expect(
+      container.querySelector<HTMLInputElement>("#duracao-7-horas")?.value,
+    ).toBe("1");
+    expect(
+      container.querySelector<HTMLInputElement>("#duracao-7-minutos")?.value,
+    ).toBe("25");
+  });
+
+  it("sends a corrected 2h59 as typed", async () => {
+    await render(TIMED);
+    await click("Corrigir");
+    await type("#duracao-7-horas", "2");
+    await type("#duracao-7-minutos", "59");
+    await click("Aprovar com as correções");
+
+    expect(queue.approveLogAction).toHaveBeenCalledWith(
+      7,
+      expect.objectContaining({ duration: { hours: 2, minutes: 59 } }),
+    );
+  });
+
+  it("sends a final value of 0h25 as typed (D50)", async () => {
+    await render(TIMED);
+    await click("Corrigir");
+    await type("#valor-final-7-minutos", "25");
+    await click("Aprovar com as correções");
+
+    expect(queue.approveLogAction).toHaveBeenCalledWith(
+      7,
+      expect.objectContaining({ override: { hours: 0, minutes: 25 } }),
+    );
+  });
+
+  it("does not offer sixty minutes in either field", async () => {
+    await render(TIMED);
+    await click("Corrigir");
+    await type("#duracao-7-minutos", "60");
+
+    expect(button("Aprovar com as correções").disabled).toBe(true);
+
+    await type("#duracao-7-minutos", "25");
+    await type("#valor-final-7-minutos", "60");
+
+    expect(button("Aprovar com as correções").disabled).toBe(true);
   });
 });
