@@ -192,7 +192,7 @@ describe("the category's page reads its numbers (#41)", () => {
       markup.indexOf("O que cada número faz"),
     );
     expect(markup).toContain("não entra na conta");
-    expect(markup).toContain("O mínimo é 0,25 h.");
+    expect(markup).toContain("O mínimo é 15 min.");
   });
 
   it("offers a new activity only where one can be created", () => {

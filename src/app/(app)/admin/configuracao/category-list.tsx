@@ -605,7 +605,7 @@ const NUMBERS_HELP: readonly (readonly [string, string])[] = [
     "A cada passo de horas de atividade acumuladas na categoria no dia, a hora " +
       "seguinte vale metade da anterior. O acumulado é da categoria inteira, zera " +
       "à meia-noite, e só atividade com duração enche. Vazio: sem desgaste. " +
-      `O mínimo é ${formatDecimalHours(MIN_DECAY_STEP_HOURS)}.`,
+      `O mínimo é ${formatHours(MIN_DECAY_STEP_HOURS)}.`,
   ],
   [
     "Rende no máximo",
