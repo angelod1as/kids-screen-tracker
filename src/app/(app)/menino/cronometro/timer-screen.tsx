@@ -316,7 +316,7 @@ function Confirm({
 
       <Field
         id="nota"
-        label={noteLabel(open.noteRequired === true)}
+        label={noteLabel(!short && open.noteRequired === true)}
         maxLength={500}
         onChange={(event) => onNote(event.target.value)}
         type="text"

@@ -269,6 +269,8 @@ describe("the stopwatch (#44)", () => {
   it("asks nothing under the floor, where nothing is filed (D44)", async () => {
     await confirming(session(true, 2 * 60));
 
+    expect(container.textContent).not.toContain(REQUIRED_LABEL);
+    expect(container.textContent).toContain(OPTIONAL_LABEL);
     expect(container.textContent).not.toContain(NOTE_REQUIRED_TEXT);
     expect(button("Encerrar sem enviar").disabled).toBe(false);
   });
