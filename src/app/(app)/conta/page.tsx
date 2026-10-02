@@ -25,9 +25,14 @@ export default async function AccountPage() {
           <LinkButton href="/conta/como-funciona">Como funciona</LinkButton>
 
           {session.role === "admin" ? (
-            <LinkButton href="/admin/configuracao" variant="secondary">
-              Configuração
-            </LinkButton>
+            <>
+              <LinkButton href="/admin/configuracao" variant="secondary">
+                Configuração
+              </LinkButton>
+              <LinkButton href="/admin/numeros" variant="secondary">
+                Números
+              </LinkButton>
+            </>
           ) : null}
         </div>
       </Panel>
