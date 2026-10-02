@@ -41,7 +41,7 @@ mesmos de `public/` (D46).
 | `~/qtv-apk/password` | A senha da chave, gerada sozinha. |
 | `~/qtv-apk/config` | Domínio e pacote que você respondeu. Apague para perguntar de novo. |
 | `~/qtv-apk/quanto-tempo-vale.apk` | O arquivo para instalar. |
-| este diretório | Imagem, modelo e script. Nada de domínio, pacote ou chave: o repositório é público. |
+| este diretório | Imagem, modelo e script. Nada de domínio nem chave: o repositório é público. O pacote padrão do script é público de qualquer jeito. |
 
 Outra pasta: `QTV_DIR=/outro/lugar ./twa/apk.sh`.
 

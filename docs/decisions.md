@@ -2034,10 +2034,11 @@ novo. Instala uma vez.
   `twa/apk.sh`, que cria a chave na primeira vez, gera o APK e imprime o que
   colar no Coolify ([`twa/README.md`](../twa/README.md)). Não há workflow nem
   segredo de assinatura no GitHub, e a build não toca o caminho do deploy (D43).
-- **O repositório não carrega domínio, pacote nem chave.** O modelo
+- **O repositório não carrega domínio nem chave.** O modelo
   `twa/twa-manifest.template.json` tem nome, cores e ícones; domínio, pacote,
-  chave e senha ficam em `~/qtv-apk`, fora do repositório. Os ícones são os de
-  `public/` (D46).
+  chave e senha ficam em `~/qtv-apk`, fora do repositório. O `apk.sh` sugere um
+  pacote padrão na primeira vez: o pacote é público, o `assetlinks.json` o
+  publica. Os ícones são os de `public/` (D46).
 - **`/.well-known/assetlinks.json` é servido pelo app**, a partir de
   `TWA_PACKAGE_ID` e `TWA_SHA256_FINGERPRINTS` no Coolify. São `@sensitive=false`
   porque a rota as publica (o varlock recusa servir valor sensível) e
