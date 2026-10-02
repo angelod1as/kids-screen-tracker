@@ -62,6 +62,7 @@ Unauthenticated` do Coolify), sete no arquivo. Confira
 | `/admin/tirar` | Tira horas do saldo, para usar no aparelho. |
 | `/admin/dar` | Dá horas sem atividade; motivo padrão "Não usou". |
 | `/admin/configuracao` | Categorias e atividades, com assíntota ao vivo. Trava o que precifica entrada pendente (D37). |
+| `/admin/numeros` | Números para calibrar a tabela (#9, #54): horas por categoria, desgaste e bônus, saldo no tempo, atividades usadas e sem uso. Aberta pela Conta. |
 | `/conta` | Identidade, aberta pela barra fixa embaixo. |
 | `/conta/como-funciona` | Explicação para meninos e para adultos. |
 

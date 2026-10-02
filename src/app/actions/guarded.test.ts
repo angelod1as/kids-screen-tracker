@@ -160,6 +160,7 @@ describe("the server actions this app has", () => {
       "fetchBalanceAction",
       "fetchCalculatorDataAction",
       "fetchCategoriesAction",
+      "fetchDashboardAction",
       "fetchHistoryAction",
       "fetchHowItWorksAction",
       "fetchLaunchDataAction",

@@ -81,13 +81,14 @@ describe("the account page, per role (#70)", () => {
     expect(links(page)).toEqual(["/conta/como-funciona"]);
   });
 
-  it("gives an admin Configuração as well", async () => {
-    // It left the bottom bar (#70); this is the only way to reach it.
+  it("gives an admin Configuração and Números as well", async () => {
+    // They are not in the bottom bar (#70, #9); this is the only way to reach them.
     const page = await screen(ADMIN1);
 
     expect(links(page)).toEqual([
       "/conta/como-funciona",
       "/admin/configuracao",
+      "/admin/numeros",
     ]);
   });
 
