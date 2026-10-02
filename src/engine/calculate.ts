@@ -19,10 +19,7 @@ import {
 /** Re-exported for existing callers; they live in `./day` so the stopwatch skips the engine. */
 export { daysBetween, saoPauloDay, shiftDate } from "./day";
 
-/*
- * Pure, one copy shared by the boy's calculator and the admin's entry. Safe in a
- * `"use client"` component: the schema import is `import type`.
- */
+// One copy for the boy's calculator and the admin's entry; client-safe: schema is `import type`.
 
 const MINUTES_PER_HOUR = 60;
 
@@ -59,11 +56,8 @@ export type EngineCategory = Pick<
   "id" | "name" | "decayStepHours" | "returnBonusPct" | "returnBonusAfterDays"
 >;
 
-/**
- * `userId` and `status` are required so a query missing either filter fails to
- * compile. `categoryId` is frozen on the log (D37). No `calcMode`: the hours
- * are the row's `duration_minutes` (D5); a live mode could change under it.
- */
+// `userId` and `status` required, so a query missing either filter fails to compile.
+// `categoryId` frozen (D37). No `calcMode`: the hours are the row's `duration_minutes` (D5).
 export type ApprovedLog = Pick<
   ActivityLog,
   | "id"
@@ -77,11 +71,8 @@ export type ApprovedLog = Pick<
   categoryId: number;
 };
 
-/**
- * The only place D19's status rule is written; every boundary that builds an
- * `ApprovedLog[]` goes through it. Throws rather than filters, so a query
- * missing its `where` fails loudly instead of matching a correct one.
- */
+// D19's status rule, written once. Throws rather than filters, so a query missing its
+// `where` fails loudly instead of matching a correct one.
 export function approvedOnly<
   T extends { id: number; status: string; categoryId: number | null },
 >(rows: readonly T[]): (T & { status: "approved"; categoryId: number })[] {
@@ -118,21 +109,13 @@ export type CalculationInput = {
   quality?: number | null;
   /** Required by `free`: the value the admin typed. */
   freeValue?: number | null;
-  /**
-   * The approved logs frozen **before this entry** (D34), covering at least
-   * `[historyFrom, historyTo]`. All of them count; excluding later-frozen ones
-   * is the caller's job.
-   */
+  /** Frozen before this entry (D34), over `[historyFrom, historyTo]`; filtering is the caller's job. */
   history: ApprovedLog[];
   /** Declared, not assumed: a short window silently over-credits. */
   historyFrom: string;
   /** Declared too: under D34 a retroactive entry reads later days. */
   historyTo: string;
-  /**
-   * The earliest `occurred_on` among this user's logs of this category frozen
-   * before this entry (D34), over all time, or null. D47: no earlier entry, no
-   * return.
-   */
+  /** Earliest `occurred_on` of this category frozen before this entry (D34), over all time, not the window, or null (D47). */
   categoryFirstDay: string | null;
 };
 
@@ -145,10 +128,7 @@ export type ExplanationLine = {
 };
 
 export type Calculation = {
-  /**
-   * D9: rounded once. Can be 0 on an approved log, which then gets no ledger
-   * row: `ledger_hours_check` is `> 0` (D10).
-   */
+  /** D9: rounded once. Can be 0, which books no ledger row (D10). */
   hours: number;
   lines: ExplanationLine[];
 };
@@ -228,9 +208,8 @@ export function calculateEarnedHours(input: CalculationInput): Calculation {
     }
   }
 
-  // D3 bucket, D5 membership. Summed in whole minutes: six 20-minute logs
-  // summed as hours give 1,9999…, and the base line would say "cheio" two
-  // halvings deep.
+  // D3 bucket, D5 membership. Whole minutes: six 20-minute logs as hours give 1,9999…,
+  // and the base line would say "cheio" two halvings deep.
   const bucketMinutes = counted
     .filter(
       (log) =>
@@ -297,12 +276,10 @@ export function calculateEarnedHours(input: CalculationInput): Calculation {
 
   // `exactStep !== null` is implied by `decays`; written out for the narrowing.
   if (exactStep !== null && step !== null && decays) {
-    // The decay factor depends only on the bucket, so a session crossing a band
-    // is split by its hours.
+    // The factor depends only on the bucket, so a session crossing a band is split.
     const perActivityHour = divide(value, exactActivityHours);
     const end = add(exactBucketHours, exactActivityHours);
-    // Walked, not listed: exact `2^-i` never underflows, so only the fold
-    // bounds the loop.
+    // Walked: exact `2^-i` never underflows, so only the fold bounds the loop.
     let emitted = 0;
     let foldedFrom: number | null = null;
     let index = bandIndex(exactBucketHours, exactStep);
@@ -325,8 +302,7 @@ export function calculateEarnedHours(input: CalculationInput): Calculation {
         emitted += 1;
 
         if (emitted === MAX_DECAY_LINES && hasNext) {
-          // The band's own bound, as the lines above print it; the fold never
-          // lands on the first band.
+          // The band's own bound as printed; the fold never lands on the first band.
           foldedFrom = bandBound(index, step);
           break;
         }
@@ -385,10 +361,8 @@ export function calculateEarnedHours(input: CalculationInput): Calculation {
   return roundOnce(drafts);
 }
 
-/**
- * `return_bonus_pct` is a fraction — 0,5 is +50% — matching the seed and the
- * spec's `× (1 + pct)`. `decisions.md` does not settle it; a test pins it.
- */
+// `return_bonus_pct` is a fraction (0,5 is +50%), like the seed and the spec's
+// `× (1 + pct)`. `decisions.md` does not settle it; a test pins it.
 function returnBonusMultiplier(pct: number): Fraction {
   return add(ONE, fromNumber(pct));
 }
@@ -400,11 +374,8 @@ type DraftLine = {
   total: Fraction;
 };
 
-/**
- * D9: round once, and hand each line the difference from what is already shown,
- * so the lines sum to the total by construction. Kept in whole cents, which a
- * `double` holds exactly.
- */
+// D9: round once; each line gets the difference from what is shown, so the lines sum
+// to the total by construction. Whole cents, which a `double` holds exactly.
 function roundOnce(drafts: DraftLine[]): Calculation {
   let shown = 0n;
 
@@ -446,10 +417,7 @@ function plural(days: number): string {
   return days === 1 ? "1 dia" : `${days} dias`;
 }
 
-/**
- * The exact count when the history shows the last entry, "mais de N dias"
- * bounded by `historyFrom` otherwise: never a number that is not in the input.
- */
+/** Never a number that is not in the input: "mais de N dias" when history lacks the last entry. */
 function awayText(
   categoryLogs: ApprovedLog[],
   occurredOn: string,
@@ -471,10 +439,8 @@ function awayText(
   return `faz mais de ${plural(covered)}`;
 }
 
-/**
- * `index * step` in float drifts ("2000,01h" for 2000h); `step` has two decimals
- * on every path that sets it, so rounding recovers the exact bound.
- */
+// `index * step` in float drifts ("2000,01h" for 2000h); `step` has two decimals on
+// every path that sets it, so rounding recovers the exact bound.
 function bandBound(index: bigint, step: number): number {
   return Math.round(Number(index) * step * 100) / 100;
 }
@@ -523,11 +489,8 @@ function formatGrade(value: number): string {
   return value.toFixed(1).replace(".", ",");
 }
 
-/**
- * Hours only when they are exact at two decimals, minutes otherwise, so the
- * line's own multiplication closes: a rounded factor made "0,02h × 2,0" read
- * 0,03h.
- */
+// Hours only when exact at two decimals, so the line's own product closes: a rounded
+// factor made "0,02h × 2,0" read 0,03h.
 function durationText(minutes: number): string {
   const hours = minutes / MINUTES_PER_HOUR;
 
@@ -546,11 +509,7 @@ function formatRate(value: number): string {
     .replace(".", ",");
 }
 
-/*
- * The `require*` guards below refuse to guess: a missing duration read as zero
- * is the silent wrong number this module exists to prevent. Each is a call-site
- * bug.
- */
+// The `require*` guards refuse to guess: a missing value read as zero is the silent wrong number.
 
 /** A short window is invisible and generous: a cooldown that never fires, a bonus that does. */
 function requireHistoryWindow(input: CalculationInput): void {
@@ -595,8 +554,7 @@ function assertOwnHistory(input: CalculationInput): void {
 function requireDurationMinutes(input: CalculationInput): number {
   const minutes = input.durationMinutes;
 
-  // `stopTimer` refuses a session that rounds to zero; `Infinity > 0` is true,
-  // hence the isFinite.
+  // `stopTimer` refuses a session that rounds to zero; `Infinity > 0` is true, hence isFinite.
   if (minutes == null || !(minutes > 0) || !Number.isFinite(minutes)) {
     throw new Error(
       `${input.activity.name}: a duration activity needs a finite durationMinutes > 0, received ${minutes}`,
@@ -606,10 +564,7 @@ function requireDurationMinutes(input: CalculationInput): number {
   return minutes;
 }
 
-/**
- * Null is the off switch (D2). Zero would make every band `Infinity`; the
- * calculator never reaches the CHECK.
- */
+/** Null is the off switch (D2). Zero would make every band `Infinity`, before any CHECK. */
 function requireDecayStep(category: EngineCategory): number | null {
   const step = category.decayStepHours;
 

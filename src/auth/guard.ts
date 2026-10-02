@@ -7,18 +7,13 @@ import { isAllowed } from "./access";
 import type { StoredAccount } from "./accounts";
 import { readSessionUsername } from "./session";
 
-/*
- * Server-side only. Every server action calls in here (`guarded.test.ts`): a
- * hidden link stops nobody, the action is a POST taking a number. No
- * `middleware.ts` on purpose: it runs on edge, where SQLite cannot load (D22).
- */
+// Every server action calls in here (`guarded.test.ts`). No `middleware.ts`: it runs
+// on edge, where SQLite cannot load (D22).
 
 export type DenialReason = "unauthenticated" | "forbidden";
 
-/**
- * Thrown, so an unchecked result is not a way past it. The message is fixed: it
- * can reach the browser, and naming the target would answer a forged request.
- */
+// Thrown, so an unchecked result is no way past it. Fixed message: it can reach the
+// browser, and naming the target would answer a forged request.
 export class AccessDeniedError extends Error {
   readonly reason: DenialReason;
 
@@ -29,10 +24,8 @@ export class AccessDeniedError extends Error {
   }
 }
 
-/**
- * The cookie proves only a username; id and role are read per call, so a
- * deactivation (D14) bites on the next request and a reseed cannot remap a cookie.
- */
+// The cookie proves only a username: a deactivation (D14) bites on the next request,
+// and a reseed cannot remap a cookie.
 export async function currentSession(): Promise<Session | null> {
   const username = await readSessionUsername();
   if (username === null) {
@@ -61,10 +54,8 @@ export async function currentSession(): Promise<Session | null> {
   };
 }
 
-/**
- * The login's only read of `users` (D45). Inactive rows are invisible (D14),
- * so a deactivated person fails exactly like an unknown name.
- */
+// The login's only read of `users` (D45). Inactive rows are invisible (D14), so a
+// deactivated person fails exactly like an unknown name.
 export function findLoginAccount(username: string): StoredAccount | undefined {
   return getDb()
     .select({

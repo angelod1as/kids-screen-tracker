@@ -1,17 +1,9 @@
 import type { Timer } from "../db/schema";
 import { saoPauloDay, saoPauloDayStart, shiftDate } from "./day";
 
-/**
- * The timer as pure arithmetic over its stamps; `now` is always a parameter, so
- * the cut depends on the stamps and not on when the app was opened (#19). D16
- * forbids a background process, so every read reconciles instead.
- */
-
-/*
- * `paused_at` is the boundary of the current stretch: the pause start while
- * paused, the pause end while running. `started_at` never moves, so the log
- * keeps the session's true beginning.
- */
+// Pure over the stamps, `now` a parameter, so the cut never depends on when the app
+// was opened (#19); D16 forbids a background process, so every read reconciles.
+// `paused_at`: pause start while paused, pause end while running. `started_at` never moves.
 
 export type TimerStatus = Timer["status"];
 
@@ -34,10 +26,7 @@ function stretchStartedAt(timer: TimerState): Date {
   return timer.pausedAt ?? timer.startedAt;
 }
 
-/**
- * D17: pauses excluded. Floored at zero: a clock that moved backwards must not
- * shrink the day's bucket.
- */
+/** D17: pauses excluded. Floored at zero: a clock moving backwards must not shrink the bucket. */
 export function activeSeconds(timer: TimerState, now: Date): number {
   if (timer.status !== "running") {
     return timer.accumulatedSeconds;
@@ -49,10 +38,7 @@ export function activeSeconds(timer: TimerState, now: Date): number {
   return timer.accumulatedSeconds + Math.max(0, elapsed);
 }
 
-/**
- * #19 measures the limit in active time, so a pause defers the cut. The
- * allowance comes back with the instant so no caller recomputes it.
- */
+/** #19 measures the limit in active time, so a pause defers the cut. */
 export function autoStop(
   timer: TimerState,
   maxSessionMinutes: number | null,
@@ -80,20 +66,15 @@ export function abandonAt(timer: TimerState): Date | null {
     : null;
 }
 
-/**
- * A session does not cross midnight (D31): its hours would land in a day that
- * is over, at that day's rate. Also the only bound on `accumulated_seconds`.
- */
+/** D31: a session does not cross midnight. Also the only bound on `accumulated_seconds`. */
 export function dayEndsAt(timer: TimerState): Date {
   return saoPauloDayStart(shiftDate(saoPauloDay(timer.startedAt), 1));
 }
 
-/** How a session ended without the boy ending it. */
 export type SettlementReason = "limit" | "dayEnd" | "abandoned";
 
 export type Reconciliation = {
   state: TimerState;
-  /** When the session ended by itself, or null while it is still the boy's. */
   settledAt: Date | null;
   reason: SettlementReason | null;
   /** D16: marks the record of an automatic stop. An abandonment has none. */
@@ -108,10 +89,7 @@ type Settlement = {
   activeSeconds: number;
 };
 
-/**
- * The day's end applies to both states, so the clock picks the rule. Ties go to
- * the earlier entry: twelve hours at midnight is the boy who went to bed.
- */
+/** Ties go to the earlier entry: twelve hours at midnight is the boy who went to bed. */
 function settlements(
   timer: TimerState,
   maxSessionMinutes: number | null,
@@ -165,10 +143,7 @@ function firstSettlement(
   return earliest;
 }
 
-/**
- * D16's lazy reconciliation. `now` decides only *whether* a rule fired, never
- * *where*, so a read one second or one month late gives the same record (#19).
- */
+/** D16, lazily: `now` decides only *whether* a rule fired, never *where* (#19). */
 export function reconcileTimer(
   timer: TimerState,
   maxSessionMinutes: number | null,
@@ -212,20 +187,14 @@ export function reconcileTimer(
   };
 }
 
-/**
- * D17 as amended by #71: nearest minute, no floor. Integer arithmetic on
- * floored seconds, so no float enters the chain (D39).
- */
+/** D17 as amended by #71: nearest minute, in integers on floored seconds (D39). */
 export function durationMinutes(seconds: number): number {
   return Math.floor(
     (durationSeconds(seconds) + SECONDS_PER_MINUTE / 2) / SECONDS_PER_MINUTE,
   );
 }
 
-/**
- * Typed minutes to D9's two decimals of an hour (#48), in integers: `5m / 3`
- * never ties, so a minute that does not divide moves at most a third of a hundredth.
- */
+/** Typed minutes to D9's two decimals (#48), in integers: `5m / 3` never ties. */
 export function minutesToHours(minutes: number): number {
   return Math.floor((minutes * 10 + 3) / 6) / 100;
 }
@@ -238,10 +207,7 @@ export function durationSeconds(seconds: number): number {
 /** The floor a new activity starts with, in minutes (D44). */
 export const DEFAULT_MIN_SESSION_MINUTES = 5;
 
-/**
- * Whether a session is long enough to be filed (D44): at least the floor it
- * was opened under, and never one that rounds to zero minutes (D17).
- */
+/** D44's floor, and never a session that rounds to zero minutes (D17). */
 export function reachesMinimum(
   seconds: number,
   minSessionMinutes: number,

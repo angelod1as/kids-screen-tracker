@@ -1,9 +1,6 @@
 import { createHash } from "node:crypto";
 
-/*
- * In-process, per submitted username, and a delay rather than a lock (D48).
- * Lost on restart; the app runs as one container.
- */
+// In-process, per username, a delay not a lock (D48). Lost on restart: one container.
 
 /** Failures a typo-prone human gets before any wait. */
 export const FREE_FAILURES = 5;
@@ -17,11 +14,8 @@ export const MAX_ENTRIES = 50_000;
 
 type Entry = { failures: number; lastAt: number; blockedUntil: number };
 
-/**
- * `trusted`: the browser carries a device cookie for this very username, so a
- * sibling's failures from another device do not delay it (D48). Hashed, so an
- * arbitrarily long username costs a fixed-size key.
- */
+// `trusted`: a device cookie for this username, so a sibling's failures elsewhere do
+// not delay it (D48). Hashed: any username length costs a fixed-size key.
 export function throttleKey(
   normalizedUsername: string,
   trusted: boolean,
@@ -74,11 +68,8 @@ export function createLoginThrottle() {
   }
 
   return {
-    /**
-     * Charged as a failure before the password is checked, and synchronously,
-     * so parallel requests cannot all slip through one open window. `false`:
-     * refuse without checking.
-     */
+    // Charged before the password is checked, synchronously, so parallel requests
+    // cannot slip through one open window. `false`: refuse without checking.
     begin(key: string, nowMs: number): boolean {
       const entry = live(key, nowMs);
       if (entry !== undefined && nowMs < entry.blockedUntil) {

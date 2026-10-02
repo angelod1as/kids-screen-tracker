@@ -1,12 +1,6 @@
-/**
- * D13's calendar day, apart from `calculate.ts` so the stopwatch screen does not
- * ship the engine. Pure: every function takes its moment.
- */
+// D13's calendar day, apart from `calculate.ts` so the stopwatch does not ship the engine.
 
-/**
- * Where `occurredOn` comes from (D13). `formatToParts` with a fixed locale, so
- * the machine's locale cannot reorder or renumber the result.
- */
+/** D13. `formatToParts` with a fixed locale, so the machine's locale cannot reorder the date. */
 export function saoPauloDay(instant: Date): string {
   const parts = new Intl.DateTimeFormat("en-CA", {
     timeZone: "America/Sao_Paulo",
@@ -20,11 +14,8 @@ export function saoPauloDay(instant: Date): string {
   return `${part("year")}-${part("month")}-${part("day")}`;
 }
 
-/**
- * The one place a calendar date legitimately becomes an instant (D13, D31).
- * The offset is read from the zone, not hardcoded as −03:00, in case daylight
- * saving returns; two passes settle it on the day that contains the midnight.
- */
+// The one place a date becomes an instant (D13, D31). Offset read from the zone, not
+// −03:00, in case DST returns; two passes settle it on the day that holds the midnight.
 export function saoPauloDayStart(day: string): Date {
   const midnightUtc = parseDate(day);
   let instant = midnightUtc;
