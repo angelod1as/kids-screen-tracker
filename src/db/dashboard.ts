@@ -44,6 +44,8 @@ export type CategoryStats = {
   earned: number;
   entries: number;
   activityMinutes: number;
+  /** Earned by the entries that have minutes: a `fixed` hour has no time to divide by. */
+  activityEarned: number;
   split: Split;
   /** Kid-days with any entry here, and those whose bucket passed one step (D3). */
   kidDays: number;
@@ -283,6 +285,7 @@ export function readDashboard(
         earned: 0,
         entries: 0,
         activityMinutes: 0,
+        activityEarned: 0,
         split: { rule: 0, decay: 0, bonus: 0 },
         kidDays: 0,
         kidDaysPastStep: 0,
@@ -309,6 +312,7 @@ export function readDashboard(
     entry.earnedPerDay[index] = (entry.earnedPerDay[index] ?? 0) + hours;
     entry.entries += 1;
     entry.activityMinutes += log.durationMinutes ?? 0;
+    if (log.durationMinutes !== null) entry.activityEarned += hours;
 
     // D3: the bucket counts the row's minutes, whatever its value (D50).
     const key = `${log.userId}|${log.categoryId}|${log.occurredOn}`;
@@ -376,6 +380,7 @@ export function readDashboard(
     .map((entry) => ({
       ...entry,
       earned: round2(entry.earned),
+      activityEarned: round2(entry.activityEarned),
       earnedPerDay: entry.earnedPerDay.map(round2),
       split: {
         rule: round2(entry.split.rule),

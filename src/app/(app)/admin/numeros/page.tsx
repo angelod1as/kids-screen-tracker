@@ -188,7 +188,7 @@ export default async function AdminNumbersPage({
                             ? `atividade ${formatHours(category.activityMinutes / 60)}`
                             : null,
                           category.activityMinutes > 0
-                            ? `rende ${rate(category.earned / (category.activityMinutes / 60))} por hora`
+                            ? `rende ${rate(category.activityEarned / (category.activityMinutes / 60))} por hora`
                             : null,
                         ]
                           .filter((part) => part !== null)

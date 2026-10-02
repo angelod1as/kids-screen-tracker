@@ -102,6 +102,27 @@ describe("hours per category (#9)", () => {
     expect(category.activityMinutes).toBe(180);
   });
 
+  it("divides only timed hours by the time, so a `fixed` entry does not inflate the yield", () => {
+    clock += 1000;
+    launchEntry(
+      connection,
+      {
+        userId: KID1,
+        activityId: activityId("Academia"),
+        occurredOn: "2026-09-04",
+      },
+      ADMIN1,
+      new Date(clock),
+    );
+    launch(KID1, "Bicicleta", "2026-09-05", 60);
+
+    const corpo = week().categories.find((c) => c.name === "Corpo");
+
+    expect(corpo?.activityMinutes).toBe(60);
+    expect(corpo?.activityEarned).toBe(1.5);
+    expect(corpo?.earned).toBeGreaterThan(1.5);
+  });
+
   it("reads only the kids asked for", () => {
     const corpo = week().categories.find((c) => c.name === "Corpo");
 
