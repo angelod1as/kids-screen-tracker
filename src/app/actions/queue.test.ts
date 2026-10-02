@@ -414,6 +414,38 @@ describe("a correction typed as hours and minutes (#48)", () => {
     expect(world.logRow(id).computedHours).toBe(0);
   });
 
+  it("asks a free activity's value as 2h30 and pays 2.5 (D49)", async () => {
+    const id = world.addPending({
+      activity: "Atividade avulsa",
+      durationMinutes: null,
+    });
+
+    await approveLogAction(id, { freeValue: { hours: 2, minutes: 30 } });
+
+    expect(world.logRow(id)).toMatchObject({
+      status: "approved",
+      computedHours: 2.5,
+    });
+  });
+
+  it.each([
+    ["free value", { freeValue: { hours: 1, minutes: 60 } }],
+    ["free value", { freeValue: { hours: 0, minutes: 0 } }],
+  ])(
+    "refuses a %s the server cannot pay, and leaves the entry waiting (D33)",
+    async (_what, edits) => {
+      const id = world.addPending({
+        activity: "Atividade avulsa",
+        durationMinutes: null,
+      });
+
+      await expect(approveLogAction(id, edits)).rejects.toThrow(
+        /free activity's value/,
+      );
+      expect(world.logRow(id).status).toBe("pending");
+    },
+  );
+
   it.each([
     ["duration", { duration: { hours: 0, minutes: 60 } }],
     ["final value", { override: { hours: 1, minutes: 60 } }],

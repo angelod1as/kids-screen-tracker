@@ -11,7 +11,7 @@ export function formatHours(hours: number): string {
   return `${hours < 0 && minutes > 0 ? "−" : ""}${formatDuration(minutes)}`;
 }
 
-/** Rate, decay step, asymptote: per-hour quantities, not durations, so D9's two decimals. */
+/** Rate and asymptote: per-hour quantities, not durations, so D9's two decimals. */
 export function formatDecimalHours(hours: number): string {
   return `${hours
     .toLocaleString("pt-BR", {

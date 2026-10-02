@@ -200,6 +200,10 @@ describe("the request without a stopwatch (#44)", () => {
     await type("#pedido-nota", "   ");
     expect(button("Pedir").disabled).toBe(true);
 
+    await type("#pedido-nota", "\u200b\u2060");
+    expect(container.textContent).toContain(NOTE_REQUIRED_TEXT);
+    expect(button("Pedir").disabled).toBe(true);
+
     await type("#pedido-nota", "cinema com a turma");
     expect(container.textContent).not.toContain(NOTE_REQUIRED_TEXT);
     expect(button("Pedir").disabled).toBe(false);
@@ -248,6 +252,10 @@ describe("the stopwatch (#44)", () => {
     expect(button("Enviar para aprovação").disabled).toBe(true);
     expect(button("Voltar").disabled).toBe(false);
 
+    await type("#nota", "\u200b\u2060");
+    expect(container.textContent).toContain(NOTE_REQUIRED_TEXT);
+    expect(button("Enviar para aprovação").disabled).toBe(true);
+
     await type("#nota", "li o capítulo três");
 
     expect(container.textContent).not.toContain(NOTE_REQUIRED_TEXT);
@@ -269,6 +277,8 @@ describe("the stopwatch (#44)", () => {
   it("asks nothing under the floor, where nothing is filed (D44)", async () => {
     await confirming(session(true, 2 * 60));
 
+    expect(container.textContent).not.toContain(REQUIRED_LABEL);
+    expect(container.textContent).toContain(OPTIONAL_LABEL);
     expect(container.textContent).not.toContain(NOTE_REQUIRED_TEXT);
     expect(button("Encerrar sem enviar").disabled).toBe(false);
   });

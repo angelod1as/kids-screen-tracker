@@ -8,6 +8,7 @@ import { formatHours } from "./hours";
 import { Panel } from "./panel";
 import {
   balanceToneClass,
+  CONTENT_TOP_CLASS,
   META_CLASS,
   NAV_SAFE_BOTTOM_CLASS,
   READOUT_CLASS,
@@ -44,7 +45,7 @@ export function ConfirmMovement({
     <div
       aria-label={confirmLabel}
       aria-modal="true"
-      className={`${SURFACE_BG_CLASS} ${NAV_SAFE_BOTTOM_CLASS} fixed inset-0 z-10 overflow-y-auto`}
+      className={`${SURFACE_BG_CLASS} ${CONTENT_TOP_CLASS} ${NAV_SAFE_BOTTOM_CLASS} fixed inset-0 z-10 overflow-y-auto`}
       onKeyDown={(event) => {
         if (event.key === "Escape" && !busy) onCancel();
       }}

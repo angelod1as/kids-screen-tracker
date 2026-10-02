@@ -41,7 +41,7 @@ mesmos de `public/` (D46).
 | `~/qtv-apk/password` | A senha da chave, gerada sozinha. |
 | `~/qtv-apk/config` | Domínio e pacote que você respondeu. Apague para perguntar de novo. |
 | `~/qtv-apk/quanto-tempo-vale.apk` | O arquivo para instalar. |
-| este diretório | Imagem, modelo e script. Nada de domínio, pacote ou chave: o repositório é público. |
+| este diretório | Imagem, modelo e script. Nada de domínio nem chave: o repositório é público. O pacote padrão do script é público de qualquer jeito. |
 
 Outra pasta: `QTV_DIR=/outro/lugar ./twa/apk.sh`.
 
@@ -78,9 +78,9 @@ bloquear o Chrome.**
 3. Anote: abriu normal, abriu com barra, não abriu, ou mostrou aviso do
    Family Link.
 
-O resultado vai na D54. Se o app morrer junto, o caminho é um wrapper com
-WebView, que não depende do app Chrome mas perde o aviso push (D51). Isso é
-issue nova, não ajuste neste APK.
+Medido em 02/10/2026: com o Chrome bloqueado, o app abriu. O resultado e o
+que ficou sem medir estão na D54. Repita o teste se trocar de telefone ou de
+versão do Android.
 
 ## Limpar depois
 

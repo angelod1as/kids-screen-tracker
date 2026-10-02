@@ -43,13 +43,18 @@ export function requireText(text: string | null, what: string): void {
   }
 }
 
+/** `trim` keeps format characters such as U+200B, which render as a blank note. */
+export function isBlankNote(note: string | null): boolean {
+  return note === null || note.replace(/[\s\p{Cf}]/gu, "") === "";
+}
+
 /** #44: the screen holds the tap back; this refuses the forged one (D33). */
 export function requireNoteWhenRequired(
   note: string | null,
   required: boolean,
   activityName: string,
 ): void {
-  if (required && (note === null || note.trim() === "")) {
+  if (required && isBlankNote(note)) {
     throw new Error(
       `${activityName} needs a note: the name alone does not tell the adult what happened (#44)`,
     );

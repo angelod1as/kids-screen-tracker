@@ -468,9 +468,15 @@ describe("the bar is pinned, and covers nothing (#70)", () => {
 
   it("clears the status bar, with insets the viewport actually reports (D54)", () => {
     const shell = readFileSync(join(SRC, "ui", "app-shell.tsx"), "utf8");
+    // A `fixed inset-0` layer sits outside the shell's padding.
+    const confirm = readFileSync(
+      join(SRC, "ui", "confirm-movement.tsx"),
+      "utf8",
+    );
 
     expect(CONTENT_TOP_CLASS).toBe("pt-[env(safe-area-inset-top)]");
     expect(shell).toContain("CONTENT_TOP_CLASS");
+    expect(confirm).toContain("CONTENT_TOP_CLASS");
     expect(readFileSync(join(SRC, "app", "layout.tsx"), "utf8")).toContain(
       'viewportFit: "cover"',
     );

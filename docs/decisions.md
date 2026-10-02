@@ -2,7 +2,7 @@
 
 Vinte e cinco ambiguidades da spec, resolvidas e justificadas antes da primeira
 linha de código, mais as que cada fase mediu depois. Hoje são cinquenta e
-cinco, D1–D55, mais doze emendas e as duas declarações da Fase 4, uma delas
+cinco, D1–D55, mais catorze emendas e as duas declarações da Fase 4, uma delas
 revogada.
 
 **Onde este documento e `spec.md` discordarem, este documento vence.**
@@ -380,9 +380,9 @@ efeito visível. O que se perde vale zero hora, e é a mesma troca que a D16 já
 no abandono.
 
 **Resíduo aceito, 3 — correção do adulto reescreve os segundos.** A correção é
-digitada em minutos, então corrigir a duração grava `duration_seconds` como
-`minutos × 60`: a linha passa a dizer uma coisa só, e o que o cronômetro mediu
-deixa de valer para aquele registro. O lançamento avulso do admin (D18) e o dado
+digitada em hora e minuto inteiros (emenda #48 à D9), então corrigir a duração
+grava `duration_seconds` como `minutos × 60`: a linha passa a dizer uma coisa
+só, e o que o cronômetro mediu deixa de valer para aquele registro. O lançamento avulso do admin (D18) e o dado
 de demonstração seguem a mesma regra. O limite de edição do adulto continua em
 1 minuto (decisão do dono): a #71 mudou o que o cronômetro grava, não o que o
 adulto pode digitar.
@@ -1604,7 +1604,8 @@ Decisões do dono (24/09/2026):
   passado segue a D8 e a D34 como qualquer outra: quem congela depois lê o que
   a janela já gastou, e nada congelado se move (D15).
 - **Todas as atividades ativas aparecem**, as de duração inclusive, com o
-  menino digitando os minutos. *"Tudo passa por aprovação de qualquer jeito."*
+  menino digitando hora e minuto (emenda #48 à D9). *"Tudo passa por
+  aprovação de qualquer jeito."*
   O menino nunca manda valor nem nota: `delivery` chega sem nota e o adulto dá
   a nota na aprovação (D37); `free` chega sem valor e o adulto digita o valor
   na aprovação (`LogEdits.freeValue`), que é o que a D12 já dizia do Curinga.
@@ -1613,7 +1614,8 @@ Decisões do dono (24/09/2026):
 - **O servidor só recusa o que a D33 recusa:** pedido em nome de outra pessoa
   (a guarda `requestLog` só deixa o menino pedir para si), atividade inexistente
   ou desativada, categoria desativada, menino desativado, e corpo mal formado —
-  data que não existe, minutos que não são inteiros de 1 a 1.000.000, nota
+  data que não existe, hora e minuto que não são inteiros ou somam fora de 1 a
+  1.000.000 minutos, nota
   acima de 500 caracteres. A recusa sai como as outras hoje (#7).
 
 **Consequência que o dono precisa ler.** A D32 não deixa aprovar uma entrada
@@ -2032,10 +2034,11 @@ novo. Instala uma vez.
   `twa/apk.sh`, que cria a chave na primeira vez, gera o APK e imprime o que
   colar no Coolify ([`twa/README.md`](../twa/README.md)). Não há workflow nem
   segredo de assinatura no GitHub, e a build não toca o caminho do deploy (D43).
-- **O repositório não carrega domínio, pacote nem chave.** O modelo
+- **O repositório não carrega domínio nem chave.** O modelo
   `twa/twa-manifest.template.json` tem nome, cores e ícones; domínio, pacote,
-  chave e senha ficam em `~/qtv-apk`, fora do repositório. Os ícones são os de
-  `public/` (D46).
+  chave e senha ficam em `~/qtv-apk`, fora do repositório. O `apk.sh` sugere um
+  pacote padrão na primeira vez: o pacote é público, o `assetlinks.json` o
+  publica. Os ícones são os de `public/` (D46).
 - **`/.well-known/assetlinks.json` é servido pelo app**, a partir de
   `TWA_PACKAGE_ID` e `TWA_SHA256_FINGERPRINTS` no Coolify. São `@sensitive=false`
   porque a rota as publica (o varlock recusa servir valor sensível) e
@@ -2044,6 +2047,8 @@ novo. Instala uma vez.
   sensíveis e dinâmicas do schema; o `docker-smoke.sh` prova, na imagem, que o
   valor servido é o do start. Onde a D23, a D40, a D45 e a D51 dizem "duas
   obrigatórias e duas opcionais", leia "duas obrigatórias e quatro opcionais".
+  O `assert-no-build-secrets.sh` (D40) não confere as duas do APK: são
+  públicas, e o build pode vê-las.
 - **O app desenha por baixo das barras do Android e se afasta delas.** Com
   `targetSdk` 35 ou mais, o Android 15 põe o TWA de ponta a ponta. O viewport
   declara `viewport-fit=cover`, sem o qual todo `env(safe-area-inset-*)` vale
@@ -2052,7 +2057,8 @@ novo. Instala uma vez.
   no iPhone instalado.
 - **`fallbackType: webview`.** Se o telefone não tiver navegador capaz de TWA,
   o Bubblewrap abre o site num WebView em vez de falhar. Não foi medido se o
-  bloqueio do Family Link conta como "não ter".
+  bloqueio do Family Link conta como "não ter": o app abriu com o Chrome
+  bloqueado (medição abaixo), mas não se anotou por qual dos dois caminhos.
 
 **Por quê.** O dono quer que o Family Link enxergue um aplicativo próprio, não
 o Chrome, e não quer gerar APK a cada mudança. O TWA é o caminho do próprio
@@ -2067,14 +2073,17 @@ não precisa passar a ter.
 - *Workflow no GitHub Actions* (`workflow_dispatch` publicando o APK): era o
   pedido da issue, e o dono trocou pela build local.
 - *Wrapper com WebView próprio:* não depende do app Chrome, mas perde o Web
-  Push e é código Android nosso para manter. Fica como saída se o risco abaixo
-  se confirmar.
+  Push e é código Android nosso para manter. Era a saída se o Family Link
+  derrubasse o TWA; a medição abaixo mostrou que não derruba.
 
-**Risco, a medir.** O TWA usa o Chrome por baixo. Se o Family Link bloquear o
-Chrome, o app pode morrer junto, que é exatamente o que o dono quer evitar. O
-teste: com o APK instalado, bloquear o Chrome no Family Link e abrir o app
-(`twa/README.md`, passo 7). Resultado: *pendente*. Se morrer junto, o conserto
-não é neste APK: abre-se issue para o wrapper com WebView.
+**Risco medido e fechado.** O TWA usa o Chrome por baixo, e o risco era o app
+morrer junto se o Family Link bloqueasse o Chrome. O dono mediu em 02/10/2026:
+com o APK instalado e o Chrome bloqueado no Family Link, o app **abriu**
+(`twa/README.md`, "O teste do Family Link"). O wrapper com WebView não é
+preciso. Ficam sem medir dois pontos: se ele abriu como TWA ou caiu no
+`fallbackType: webview`, e se o aviso push (D51) continua chegando com o Chrome
+bloqueado. No WebView não haveria push; o primeiro aviso que não chegar com o
+Chrome bloqueado é a resposta.
 
 **Resíduos aceitos.**
 
@@ -2082,8 +2091,10 @@ não é neste APK: abre-se issue para o wrapper com WebView.
   Mitigado por guardar a chave fora do computador; o `assetlinks.json` aceita
   mais de uma impressão digital para a troca.
 - O `apk.sh` não roda no CI. Uma atualização do Bubblewrap ou do SDK que
-  quebre a build só aparece quando o dono gerar o APK de novo; as versões estão
-  fixadas no `twa/Dockerfile` por isso.
+  quebre a build só aparece quando o dono gerar o APK de novo; as versões do
+  SDK Android e do Bubblewrap estão fixadas no `twa/Dockerfile` por isso. A
+  imagem `node:22-bookworm` e o JDK do `apt` não estão, e podem mudar entre uma
+  build e a seguinte.
 - A imagem é `linux/amd64`, emulada num Mac ARM: as ferramentas Android não
   têm binário Linux ARM. Mais lenta, e só roda uma vez.
 - A senha da chave fica num arquivo ao lado dela, em `~/qtv-apk`. Proteger

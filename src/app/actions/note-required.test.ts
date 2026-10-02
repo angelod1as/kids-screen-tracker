@@ -112,6 +112,9 @@ describe("the stopwatch's Enviar (#44)", () => {
 
     await expect(stopTimerAction(KID1, "")).rejects.toThrow(/needs a note/);
     await expect(stopTimerAction(KID1, "   ")).rejects.toThrow(/needs a note/);
+    await expect(stopTimerAction(KID1, "\u200b\u2060")).rejects.toThrow(
+      /needs a note/,
+    );
 
     expect(logs()).toHaveLength(0);
     expect(openTimers()).toHaveLength(1);
@@ -179,6 +182,13 @@ describe("the request without a stopwatch (#44, D49)", () => {
         activityId: FRIENDS,
         occurredOn: TODAY,
         note: "  ",
+      }),
+    ).rejects.toThrow(/needs a note/);
+    await expect(
+      requestLogAction(KID1, {
+        activityId: FRIENDS,
+        occurredOn: TODAY,
+        note: "\u200b\u200c\u200d",
       }),
     ).rejects.toThrow(/needs a note/);
 

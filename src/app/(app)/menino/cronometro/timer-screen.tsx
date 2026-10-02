@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useTransition } from "react";
 
+import { isBlankNote } from "../../../../db/input";
 import type { TimerSettlement } from "../../../../db/timers";
 import { reachesMinimum } from "../../../../engine/timer";
 import { Button } from "../../../../ui/button";
@@ -294,8 +295,7 @@ function Confirm({
   // #86: the server refuses under the floor (D44); the screen says so before the tap.
   const short = !reachesMinimum(open.activeSeconds, open.minSessionMinutes);
   // Under the floor nothing is filed (D44), so there is nothing to explain.
-  const missingNote =
-    !short && open.noteRequired === true && note.trim() === "";
+  const missingNote = !short && open.noteRequired === true && isBlankNote(note);
 
   return (
     <section className="flex flex-col gap-4">
@@ -316,7 +316,7 @@ function Confirm({
 
       <Field
         id="nota"
-        label={noteLabel(open.noteRequired === true)}
+        label={noteLabel(!short && open.noteRequired === true)}
         maxLength={500}
         onChange={(event) => onNote(event.target.value)}
         type="text"
@@ -454,7 +454,7 @@ function RequestPanel({
   const activity = data.requestable.find((item) => item.id === chosen);
   const timed = activity?.calcMode === "duration";
   const typed = parseTypedTime(duration);
-  const missingNote = activity?.noteRequired === true && note.trim() === "";
+  const missingNote = activity?.noteRequired === true && isBlankNote(note);
   const ready =
     activity !== undefined &&
     occurredOn !== "" &&

@@ -166,7 +166,8 @@ export function AdultGuide({ data }: { data: HowItWorksData }) {
         <Points>
           <li>
             <strong>Taxa ou valor de uma atividade:</strong> Configuração,
-            atividade, campo “Taxa por hora” ou “Valor”, em horas e minutos.
+            atividade, campo “Taxa por hora”, em decimal, ou “Valor”, em horas e
+            minutos.
           </li>
           <li>
             <strong>Passo do desgaste:</strong> Configuração, categoria, campo
