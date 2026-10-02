@@ -148,6 +148,10 @@ export const activities = sqliteTable(
     name: text("name").notNull(),
     /** #40: what fits under this name, shown under the boy's picker. */
     description: text("description"),
+    /** #44: the boy cannot file this activity without a note. */
+    noteRequired: integer("note_required", { mode: "boolean" })
+      .notNull()
+      .default(false),
     calcMode: text("calc_mode", {
       enum: ["duration", "fixed", "delivery", "free"],
     }).notNull(),

@@ -469,6 +469,7 @@ describe("the activity form the endpoint is handed (#27)", () => {
       categoryId: 3,
       name: "Podcast",
       description: null,
+      noteRequired: false,
       calcMode: "duration",
       value: 1.5,
       maxSessionMinutes: 90,

@@ -48,10 +48,17 @@ const GRADED = [
   { value: 1, label: "Com nota" },
 ] as const;
 
+const NOTE_REQUIRED = [
+  { value: 0, label: "Opcional" },
+  { value: 1, label: "Obrigatória" },
+] as const;
+
 export type ActivityDraft = {
   name: string;
   /** #40: optional; empty is no description. */
   description?: string;
+  /** #44. */
+  noteRequired?: boolean;
   calcMode: ActivityRow["calcMode"];
   /** D11: prefilled from the category's rate, and the adult's from then on. */
   value: string;
@@ -147,6 +154,7 @@ export function activityInputOf(
     categoryId,
     name,
     description: (draft.description ?? "").trim() || null,
+    noteRequired: draft.noteRequired === true,
     calcMode: draft.calcMode,
     value,
     maxSessionMinutes,
@@ -180,6 +188,7 @@ function draftOf(activity: ActivityRow): ActivityDraft {
   return {
     name: activity.name,
     description: activity.description ?? "",
+    noteRequired: activity.noteRequired === true,
     calcMode: activity.calcMode,
     value:
       activity.value === null ? "" : String(activity.value).replace(".", ","),
@@ -224,6 +233,10 @@ export function activitySummary(activity: ActivityRow): string {
 
   if (activity.presumedMinutes != null) {
     parts.push(`pedido vale ${formatDuration(activity.presumedMinutes)}`);
+  }
+
+  if (activity.noteRequired === true) {
+    parts.push("pede observação");
   }
 
   if (activity.repeatCooldownDays > 0) {
@@ -510,6 +523,13 @@ function ActivityFields({
         }
         type="text"
         value={draft.description ?? ""}
+      />
+
+      <ChoiceGroup
+        legend="Observação do menino"
+        onSelect={(value) => onChange({ ...draft, noteRequired: value === 1 })}
+        options={NOTE_REQUIRED}
+        value={draft.noteRequired === true ? 1 : 0}
       />
 
       <div className={"grid gap-3 lg:grid-cols-2"}>

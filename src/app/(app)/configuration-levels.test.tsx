@@ -281,6 +281,7 @@ describe("the activity's page, tapped into (#41)", () => {
       categoryId: 2,
       name: "Ler livro",
       description: null,
+      noteRequired: false,
       calcMode: "duration",
       value: 2,
       maxSessionMinutes: 120,

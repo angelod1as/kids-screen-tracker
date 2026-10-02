@@ -1,0 +1,1 @@
+ALTER TABLE `activities` ADD `note_required` integer DEFAULT false NOT NULL;

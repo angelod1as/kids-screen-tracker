@@ -20,6 +20,8 @@ export type ActivityRow = {
   name: string;
   /** #40: what fits under this name. */
   description?: string | null;
+  /** #44: the boy files it only with a note. Not a pricing field (D37). */
+  noteRequired?: boolean;
   calcMode: "duration" | "fixed" | "delivery" | "free";
   /** Null only for `free`. */
   value: number | null;
@@ -41,6 +43,8 @@ export type ActivityInput = {
   name: string;
   /** #40: optional; blank is stored as null. */
   description?: string | null;
+  /** #44: absent is off. */
+  noteRequired?: boolean;
   calcMode: ActivityRow["calcMode"];
   /** D11. */
   value: number | null;
@@ -76,6 +80,7 @@ export function listActivities(
       categoryId: activities.categoryId,
       name: activities.name,
       description: activities.description,
+      noteRequired: activities.noteRequired,
       calcMode: activities.calcMode,
       value: activities.value,
       maxSessionMinutes: activities.maxSessionMinutes,
@@ -163,6 +168,7 @@ function requireActivity(input: ActivityInput): ActivityInput {
     categoryId: input.categoryId,
     name,
     description,
+    noteRequired: input.noteRequired === true,
     calcMode: input.calcMode,
     value:
       input.value === null
@@ -237,6 +243,7 @@ export function createActivity(
         categoryId: checked.categoryId,
         name: checked.name,
         description: checked.description,
+        noteRequired: checked.noteRequired,
         calcMode: checked.calcMode,
         value: checked.value,
         maxSessionMinutes: checked.maxSessionMinutes,
@@ -287,6 +294,7 @@ export function updateActivity(
         categoryId: checked.categoryId,
         name: checked.name,
         description: checked.description,
+        noteRequired: checked.noteRequired,
         calcMode: checked.calcMode,
         value: checked.value,
         maxSessionMinutes: checked.maxSessionMinutes,
