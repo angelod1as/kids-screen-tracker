@@ -492,12 +492,19 @@ function mutate(mutation: Mutation): string {
 }
 
 describe("an approval broken on purpose", () => {
+  // The coverage case reuses these runs instead of repeating every mutant (#49).
+  const rulesCaughtBy = new Map<number, string[]>();
+
   it.each(MUTATIONS.map((mutation, index) => ({ ...mutation, index })))(
     "is caught when $name",
     async (mutation) => {
       const failures = failingQueueCases(
         await loadMutant(mutation.index, mutate(mutation)),
         freshWorld,
+      );
+      rulesCaughtBy.set(
+        mutation.index,
+        failures.map((failure) => failure.rule),
       );
 
       expect(
@@ -509,16 +516,20 @@ describe("an approval broken on purpose", () => {
   );
 
   it("covers every rule of #20 with at least one mutation", {
-    timeout: 120_000,
+    timeout: 300_000,
   }, async () => {
     const caught = new Set<string>();
 
     for (const [index, mutation] of MUTATIONS.entries()) {
-      for (const failure of failingQueueCases(
-        await loadMutant(MUTATIONS.length + index, mutate(mutation)),
-        freshWorld,
-      )) {
-        caught.add(failure.rule);
+      const rules =
+        rulesCaughtBy.get(index) ??
+        failingQueueCases(
+          await loadMutant(MUTATIONS.length + index, mutate(mutation)),
+          freshWorld,
+        ).map((failure) => failure.rule);
+
+      for (const rule of rules) {
+        caught.add(rule);
       }
     }
 

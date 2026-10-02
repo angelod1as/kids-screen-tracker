@@ -478,12 +478,19 @@ function mutate(mutation: Mutation, source: string): string {
 }
 
 describe("an activity CRUD broken on purpose", () => {
+  // The coverage case reuses these runs instead of repeating every mutant (#49).
+  const rulesCaughtBy = new Map<number, string[]>();
+
   it.each(MUTATIONS.map((mutation, index) => ({ ...mutation, index })))(
     "is caught when $name",
     async (mutation) => {
       const failures = failingActivityCases(
         await loadMutant(mutation.index, mutation),
         freshWorld,
+      );
+      rulesCaughtBy.set(
+        mutation.index,
+        failures.map((failure) => failure.rule),
       );
 
       expect(
@@ -500,11 +507,15 @@ describe("an activity CRUD broken on purpose", () => {
     const caught = new Set<string>();
 
     for (const [index, mutation] of MUTATIONS.entries()) {
-      for (const failure of failingActivityCases(
-        await loadMutant(MUTATIONS.length + index, mutation),
-        freshWorld,
-      )) {
-        caught.add(failure.rule);
+      const rules =
+        rulesCaughtBy.get(index) ??
+        failingActivityCases(
+          await loadMutant(MUTATIONS.length + index, mutation),
+          freshWorld,
+        ).map((failure) => failure.rule);
+
+      for (const rule of rules) {
+        caught.add(rule);
       }
     }
 

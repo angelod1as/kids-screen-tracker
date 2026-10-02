@@ -139,7 +139,11 @@ mergeia com bypass. Não mexa no filtro do `ci.yml`.
 - **macOS não tem `timeout` nem `setsid`.** Espere com
   `perl -e 'select(undef,undef,undef,N)'`.
 - **Mac dormindo mata agente.** Use `caffeinate -s`, não `-i`.
-- **Sabotagem precisa de folga:** limite de 3 min por mutação.
+- **Sabotagem precisa de folga:** o limite é pelo menos o dobro do pior tempo
+  medido no CI, não no Mac, que roda cerca de 2,5× mais rápido. O caso de
+  cobertura da fila levou 121,9 s contra 120 s e pulou um deploy (#49). Desde
+  então, o caso de cobertura de `src/db` reaproveita os casos por mutação; o
+  limite dele (300 s na fila) só pesa quando roda sozinho.
 - **Suíte inteira sob carga pode estourar o timeout de 5 s** de algum teste do
   motor. Rode o arquivo isolado antes de chamar de falha.
 - **Antes de culpar o CI, confira o commit.**
