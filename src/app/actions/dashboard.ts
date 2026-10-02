@@ -22,6 +22,10 @@ export async function fetchDashboardAction(request: {
 }): Promise<Dashboard> {
   await requireAdmin();
 
+  if (request.period !== "4w" && request.period !== "all") {
+    throw new Error(`there is no period ${String(request.period)}`);
+  }
+
   const connection = getConnection();
   // D33: the id comes from a URL; an admin's or a deactivated one is refused.
   if (request.kidId !== null) requireActiveKid(connection.db, request.kidId);

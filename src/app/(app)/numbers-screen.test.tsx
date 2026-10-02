@@ -10,6 +10,7 @@ import { readDashboard } from "../../db/dashboard";
 import { seedDemoData } from "../../db/demo";
 import { migrateDatabase } from "../../db/migrate";
 import { seedWithTestUsers } from "../../db/test-users";
+import { formatHours } from "../../ui/hours";
 import { TOUCH_TARGET_CLASS } from "../../ui/style";
 
 /** #9, the screen half: it renders seeded, with a week in it, and empty. The guard is `dashboard.test.ts`'s. */
@@ -44,6 +45,7 @@ vi.mock("../actions/dashboard", () => ({
 }));
 
 const NumbersPage = (await import("./admin/numeros/page")).default;
+const { bucketed } = await import("./admin/numeros/charts");
 
 let root: string;
 let connection: ReturnType<typeof openDatabase>;
@@ -104,6 +106,21 @@ describe("the numbers screen (#9)", () => {
     expect(page).not.toContain("Saldo de Kid2");
   });
 
+  it("says each category's total in its chart's label", async () => {
+    const page = await markup({});
+    const dashboard = readDashboard(connection, {
+      kidIds: [3, 4],
+      from: "2026-08-24",
+      to: TODAY,
+    });
+
+    for (const category of dashboard.categories) {
+      expect(page).toContain(
+        `aria-label="${category.name}: ${formatHours(category.earned)} ganhas no período"`,
+      );
+    }
+  });
+
   it("gives every filter the 48 px minimum", async () => {
     const page = await markup({});
     const links = page.match(/<a [^>]*>/g) ?? [];
@@ -114,5 +131,21 @@ describe("the numbers screen (#9)", () => {
         expect(link).toContain(utility);
       }
     }
+  });
+});
+
+describe("bars by week past eight weeks (#9)", () => {
+  it("keeps 56 days as days", () => {
+    const days = Array.from({ length: 56 }, (_, index) => index);
+
+    expect(bucketed(days)).toEqual(days);
+  });
+
+  it("sums 60 days into 9 weeks, the last one partial", () => {
+    const weeks = bucketed(Array.from({ length: 60 }, () => 1));
+
+    expect(weeks).toHaveLength(9);
+    expect(weeks.slice(0, 8)).toEqual(Array(8).fill(7));
+    expect(weeks[8]).toBe(4);
   });
 });

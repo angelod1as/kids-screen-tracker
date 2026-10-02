@@ -125,6 +125,17 @@ describe("an admin", () => {
     expect(dashboard.days).toHaveLength(28);
   });
 
+  it("is refused a period the screen does not offer (D33)", async () => {
+    mocked.username = "admin1";
+
+    await expect(
+      fetchDashboardAction({
+        kidId: null,
+        period: "forever" as unknown as "all",
+      }),
+    ).rejects.toThrow("no period");
+  });
+
   it("is refused an id that is not a boy's (D33)", async () => {
     mocked.username = "admin1";
 
