@@ -188,6 +188,33 @@ describe("saving without touching the time field (#55, D9)", () => {
       world.connection.sqlite.close();
     }
   });
+
+  it("keeps it across a switch between `fixed` and `delivery`, both hours", () => {
+    const world = freshWorld();
+
+    try {
+      const id = world.activityId(OUT);
+
+      world.connection.db
+        .update(activities)
+        .set({ value: 0.66 })
+        .where(eq(activities.id, id))
+        .run();
+
+      updateActivity(
+        world.connection,
+        id,
+        inputOf(activityRow(world, OUT), { calcMode: "delivery" }),
+      );
+
+      const saved = activityRow(world, OUT);
+
+      expect(saved.calcMode).toBe("delivery");
+      expect(saved.value).toBe(0.66);
+    } finally {
+      world.connection.sqlite.close();
+    }
+  });
 });
 
 describe("an off-grid value with an entry waiting (#55, D37, D55)", () => {
