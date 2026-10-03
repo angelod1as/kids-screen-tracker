@@ -9,7 +9,7 @@ export default async function KidCalculatorPage() {
   const data = await fetchCalculatorDataAction(session.userId);
 
   return (
-    <section className="flex flex-col gap-4">
+    <section className="flex flex-col gap-4 lg:max-w-2xl">
       <h1 className={HEADING_CLASS}>Calculadora</h1>
       <p className="text-lg">
         Escolha uma atividade e veja quanto ela renderia agora, com a conta

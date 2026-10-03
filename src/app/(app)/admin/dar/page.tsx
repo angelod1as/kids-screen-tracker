@@ -8,7 +8,7 @@ export default async function AdminRefundPage() {
   const kids = await listKidsAction();
 
   return (
-    <section className="flex flex-col gap-4">
+    <section className="flex flex-col gap-4 lg:max-w-2xl">
       <h1 className={HEADING_CLASS}>Dar horas</h1>
 
       <RefundForm kids={kids} today={saoPauloDay(new Date())} />

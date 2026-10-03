@@ -10,7 +10,7 @@ export default async function AdminLaunchPage() {
   ]);
 
   return (
-    <section className="flex flex-col gap-4">
+    <section className="flex flex-col gap-4 lg:max-w-2xl">
       <h1 className={HEADING_CLASS}>Lançar atividade</h1>
 
       <LaunchForm data={data} kids={kids} />

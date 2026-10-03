@@ -34,7 +34,7 @@ export default async function ActivityPage({
   }
 
   return (
-    <div className="flex flex-col gap-4 lg:gap-6">
+    <div className="flex flex-col gap-4 lg:max-w-2xl lg:gap-6">
       <LinkButton
         href={`/admin/configuracao/${category.id}`}
         variant="secondary"

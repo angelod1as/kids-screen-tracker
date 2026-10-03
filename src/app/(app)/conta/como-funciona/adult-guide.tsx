@@ -28,7 +28,7 @@ export function AdultGuide({ data }: { data: HowItWorksData }) {
     example === null ? null : returnExample(example, data.occurredOn);
 
   return (
-    <div className="flex flex-col gap-4 lg:gap-6">
+    <div className="flex flex-col gap-4 lg:max-w-2xl lg:gap-6">
       <Panel title="Como funciona" top>
         <Paragraph>
           O app guarda o saldo dos meninos e mais nada. Eles ganham horas
