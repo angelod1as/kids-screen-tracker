@@ -162,6 +162,7 @@ describe("the server actions this app has", () => {
       "fetchCategoriesAction",
       "fetchDashboardAction",
       "fetchHistoryAction",
+      "fetchHistoryDaysAction",
       "fetchHowItWorksAction",
       "fetchLaunchDataAction",
       "fetchLedgerEntriesAction",

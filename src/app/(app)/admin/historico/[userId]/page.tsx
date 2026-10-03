@@ -3,11 +3,14 @@ import { notFound } from "next/navigation";
 import {
   EntryList,
   HISTORY_LIMIT,
+  historyDays,
+  MAX_HISTORY_DAYS,
   signedHours,
 } from "../../../../../ui/entries";
+import { LinkButton } from "../../../../../ui/link-button";
 import { Panel, PanelText } from "../../../../../ui/panel";
 import { fetchBalanceAction } from "../../../../actions/balance";
-import { fetchHistoryAction } from "../../../../actions/history";
+import { fetchHistoryDaysAction } from "../../../../actions/history";
 import { listKidsAction } from "../../../../actions/people";
 import { VoidControl } from "./void-control";
 
@@ -18,18 +21,26 @@ import { VoidControl } from "./void-control";
  */
 export default async function AdminKidHistoryPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ userId: string }>;
+  searchParams: Promise<{ dias?: string | string[] }>;
 }) {
-  const [{ userId }, kids] = await Promise.all([params, listKidsAction()]);
+  const [{ userId }, { dias }, kids] = await Promise.all([
+    params,
+    searchParams,
+    listKidsAction(),
+  ]);
+  const days = historyDays(dias);
   const kid = kids.find((candidate) => String(candidate.id) === userId);
 
   if (kid === undefined) {
     notFound();
   }
 
-  const [entries, balance] = await Promise.all([
-    fetchHistoryAction(kid.id, HISTORY_LIMIT),
+  // #64: the same cut as the boy's own screen.
+  const [{ entries, more }, balance] = await Promise.all([
+    fetchHistoryDaysAction(kid.id, days),
     fetchBalanceAction(kid.id),
   ]);
 
@@ -66,11 +77,27 @@ export default async function AdminKidHistoryPage({
         />
       </Panel>
 
+      {more && days < MAX_HISTORY_DAYS ? (
+        <LinkButton
+          href={`/admin/historico/${kid.id}?dias=${days + 1}`}
+          scroll={false}
+          variant="secondary"
+        >
+          Ver mais
+        </LinkButton>
+      ) : null}
+
       {/* A list that stops must say so. */}
       {entries.length === HISTORY_LIMIT ? (
         <Panel title="Aviso">
           <PanelText>
             Mostrando os {HISTORY_LIMIT} lançamentos mais recentes.
+          </PanelText>
+        </Panel>
+      ) : more && days === MAX_HISTORY_DAYS ? (
+        <Panel title="Aviso">
+          <PanelText>
+            Mostrando os {MAX_HISTORY_DAYS} dias mais recentes com lançamentos.
           </PanelText>
         </Panel>
       ) : null}

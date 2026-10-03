@@ -19,6 +19,21 @@ export const RECENT_ENTRIES_LIMIT = 5;
 /** Years of use, not a page size: it bounds the `select`, and the screen says when it is hit. */
 export const HISTORY_LIMIT = 200;
 
+/** #64: the history opens on the two newest days with an entry. */
+export const FIRST_HISTORY_DAYS = 2;
+
+/** Bounds `?dias=`, so a typed URL cannot ask for everything. */
+export const MAX_HISTORY_DAYS = 60;
+
+/** `?dias=` is typed by anyone: garbage opens the first page, too much stops at the cap. */
+export function historyDays(param: string | string[] | undefined): number {
+  const days = Number(param);
+
+  return Number.isInteger(days)
+    ? Math.min(Math.max(days, FIRST_HISTORY_DAYS), MAX_HISTORY_DAYS)
+    : FIRST_HISTORY_DAYS;
+}
+
 /**
  * The extract of #15 and #16, drawn by one component so the two screens cannot
  * disagree. The inside of a panel, not a panel (#74). `emptyText` has no default,
