@@ -199,6 +199,14 @@ export function minutesToHours(minutes: number): number {
   return Math.floor((minutes * 10 + 3) / 6) / 100;
 }
 
+/**
+ * The stored hours when `typed` is the minute they show as (#55): a value saved
+ * before #48 off the minute grid survives a save that never touched its field.
+ */
+export function keptUnlessRetyped(typed: number, stored: number): number {
+  return minutesToHours(Math.round(stored * 60)) === typed ? stored : typed;
+}
+
 /** Floored, so the column holds an integer and `durationMinutes` rounds the stored number. */
 export function durationSeconds(seconds: number): number {
   return Math.max(0, Math.floor(seconds));

@@ -6,6 +6,7 @@ import {
   MIN_DECAY_STEP_HOURS,
   MIN_RETURN_BONUS_AFTER_DAYS,
 } from "../engine/limits";
+import { keptUnlessRetyped } from "../engine/timer";
 import type { Connection, Transaction } from "./client";
 import { writeTransaction } from "./client";
 import {
@@ -223,6 +224,13 @@ export function updateCategory(
 
   writeTransaction(connection, (tx) => {
     const found = requireCategoryRow(tx, categoryId);
+
+    if (checked.decayStepHours !== null && found.decayStepHours !== null) {
+      checked.decayStepHours = keptUnlessRetyped(
+        checked.decayStepHours,
+        found.decayStepHours,
+      );
+    }
 
     // D37. `name`, `base_rate` (D11) and `sort_order` price nothing.
     if (
