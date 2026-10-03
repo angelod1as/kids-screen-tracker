@@ -1,5 +1,6 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
+import { MAX_HISTORY_DAYS } from "../../ui/entries";
 import { TOUCH_TARGET_CLASS } from "../../ui/style";
 import type { HistoryEntry } from "../actions/history";
 
@@ -114,6 +115,20 @@ describe("the history an adult opens is the boy's own (#73)", () => {
 
     expect(mocked.historyFor).toEqual([{ userId: 4, days: 5 }]);
     expect(markup).toContain('href="/admin/historico/4?dias=6"');
+
+    mocked.more = false;
+  });
+
+  it("says where it stops at the cap, instead of offering a page it refuses (#64)", async () => {
+    mocked.entries = [];
+    mocked.more = true;
+
+    const markup = await historyMarkup("4", String(MAX_HISTORY_DAYS));
+
+    expect(markup).not.toContain("Ver mais");
+    expect(markup).toContain(
+      `Mostrando os ${MAX_HISTORY_DAYS} dias mais recentes com lançamentos.`,
+    );
 
     mocked.more = false;
   });
