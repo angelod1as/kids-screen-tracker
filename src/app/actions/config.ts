@@ -17,7 +17,7 @@ import {
   updateCategory,
 } from "../../db/categories";
 import type { HoursMinutes } from "../../db/input";
-import { hoursFromTime, requireHoursMinutes } from "../../db/input";
+import { hoursFromTime, requireHoursMinutes, requireId } from "../../db/input";
 import type { Locks } from "../../db/pending";
 import { currentLocks } from "../../db/pending";
 import type { Refused } from "../../db/refusal";
@@ -169,6 +169,8 @@ export async function updateActivityAction(
   input: ActivityRequest,
 ): Promise<ActivityRow[] | Refused> {
   await requireAdmin();
+  // #58: the list is read after the write, so a bad id would fail a saved edit.
+  requireId(categoryId, "a category");
 
   return refusedOr(() => {
     updateActivity(getConnection(), activityId, activityInputOf(input));

@@ -35,6 +35,24 @@ export function requireCalendarDay(day: string, today: string): void {
   }
 }
 
+/** A forged number reaching `.trim()` is a TypeError, not a refusal (#58). */
+export function requireString(text: string, what: string): void {
+  if (typeof text !== "string") {
+    throw new Error(
+      `${what} is text, received ${typeof text} (${String(text)})`,
+    );
+  }
+}
+
+/** Only what SQLite cannot bind: a string id keeps today's lookup (#58). */
+export function requireId(id: number, what: string): void {
+  if (typeof id === "boolean" || (typeof id === "object" && id !== null)) {
+    throw new Error(
+      `${what} is a number, received ${typeof id} (${String(id)})`,
+    );
+  }
+}
+
 export function requireText(text: string | null, what: string): void {
   if (text !== null && text.length > MAX_TEXT_LENGTH) {
     throw new Error(

@@ -6,7 +6,13 @@ import {
 } from "../engine/timer";
 import type { Connection, Transaction } from "./client";
 import { writeTransaction } from "./client";
-import { requireCount, requireNonNegativeHours, requireText } from "./input";
+import {
+  requireCount,
+  requireId,
+  requireNonNegativeHours,
+  requireString,
+  requireText,
+} from "./input";
 import { refuseWhileWaiting } from "./pending";
 import { activities, categories } from "./schema";
 
@@ -109,12 +115,19 @@ export function listActivities(
  * the sentences, since the constraints alone would refuse the same inputs.
  */
 function requireActivity(input: ActivityInput): ActivityInput {
+  requireId(input.categoryId, "a category");
+  requireString(input.name, "an activity name");
+
   const name = input.name.trim();
 
   requireText(name, "an activity name");
 
   if (name === "") {
     throw new Error("an activity needs a name: it is what the pickers show");
+  }
+
+  if (input.description != null) {
+    requireString(input.description, "an activity description");
   }
 
   const description = input.description?.trim() || null;
@@ -142,6 +155,10 @@ function requireActivity(input: ActivityInput): ActivityInput {
     throw new Error(
       `a ${input.calcMode} activity needs a value: it is what the engine reads, and it is never taken from the category (D11)`,
     );
+  }
+
+  if (input.qualityGraded === null) {
+    throw new Error("an activity is quality graded or not, received null");
   }
 
   // D16: stored as null for other modes, so a mode change leaves no stale limit.
@@ -271,6 +288,7 @@ export function updateActivity(
   activityId: number,
   input: ActivityInput,
 ): void {
+  requireId(activityId, "an activity");
   const checked = requireActivity(input);
 
   writeTransaction(connection, (tx) => {
