@@ -117,6 +117,14 @@ export function typedMinutes(time: TypedTime): number | null {
     : parsed.hours * MINUTES_PER_HOUR + parsed.minutes;
 }
 
+/** A typed zero, not a blank: the endpoint refuses it (`requireHours`), so the screen says why first. */
+export function isZeroTime(time: TypedTime): boolean {
+  return typedMinutes(time) === 0;
+}
+
+export const ZERO_TIME_TEXT =
+  "Zero não lança nada: digite pelo menos 1 minuto.";
+
 /** The fields filled from a stored number of minutes; the minutes left blank when zero. */
 export function timeFromMinutes(minutes: number | null): TypedTime {
   if (minutes === null) return EMPTY_TIME;

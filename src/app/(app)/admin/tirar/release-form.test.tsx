@@ -15,6 +15,7 @@ vi.mock("../../../actions/ledger", () => ledger);
 
 const { ReleaseForm } = await import("./release-form");
 const { UNCERTAIN_TEXT } = await import("../../../../ui/failure");
+const { ZERO_TIME_TEXT } = await import("../../../../ui/hours");
 
 (
   globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }
@@ -105,6 +106,34 @@ describe("hours and minutes, never a fraction (#48)", () => {
     await type("#tempo-minutos", "60");
 
     expect(button("Tirar").disabled).toBe(true);
+  });
+
+  it("keeps Tirar off at 0h0 and says why (#56)", async () => {
+    await type("#tempo-horas", "0");
+    await type("#tempo-minutos", "0");
+
+    expect(button("Tirar").disabled).toBe(true);
+    expect(container.textContent).toContain(ZERO_TIME_TEXT);
+
+    await act(async () => button("Tirar").click());
+
+    expect(ledger.previewReleaseAction).not.toHaveBeenCalled();
+  });
+
+  it("lets 0h01 through, with nothing to say", async () => {
+    await type("#tempo-horas", "0");
+    await type("#tempo-minutos", "1");
+
+    expect(button("Tirar").disabled).toBe(false);
+    expect(container.textContent).not.toContain(ZERO_TIME_TEXT);
+  });
+
+  it("keeps Tirar off on blank fields without calling them zero", async () => {
+    await type("#tempo-horas", "");
+    await type("#tempo-minutos", "");
+
+    expect(button("Tirar").disabled).toBe(true);
+    expect(container.textContent).not.toContain(ZERO_TIME_TEXT);
   });
 });
 

@@ -6,7 +6,14 @@ import { ConfirmMovement } from "../../../../ui/confirm-movement";
 import { failureText, previewFailureText } from "../../../../ui/failure";
 import { Field, TimeFields } from "../../../../ui/field";
 import type { TypedTime } from "../../../../ui/hours";
-import { EMPTY_TIME, formatHours, parseTypedTime } from "../../../../ui/hours";
+import {
+  EMPTY_TIME,
+  formatHours,
+  isZeroTime,
+  parseTypedTime,
+  typedMinutes,
+  ZERO_TIME_TEXT,
+} from "../../../../ui/hours";
 import { KidSelect } from "../../../../ui/kid-select";
 import { BORDER_CLASS, balanceToneClass } from "../../../../ui/style";
 import type {
@@ -31,7 +38,7 @@ export const DEFAULT_REFUND_REASON = "Não usou";
 
 /** A rule, not layout; the endpoint refuses both anyway. */
 export function canRefund(time: TypedTime, reason: string): boolean {
-  return parseTypedTime(time) !== null && reason.trim() !== "";
+  return (typedMinutes(time) ?? 0) >= 1 && reason.trim() !== "";
 }
 
 export function RefundForm({ kids, today }: { kids: Kid[]; today: string }) {
@@ -61,7 +68,7 @@ export function RefundForm({ kids, today }: { kids: Kid[]; today: string }) {
   function ask() {
     const typed = parseTypedTime(time);
 
-    if (typed === null || reason.trim() === "") return;
+    if (typed === null || !canRefund(time, reason)) return;
 
     const request: RefundRequest = {
       userId,
@@ -154,6 +161,14 @@ export function RefundForm({ kids, today }: { kids: Kid[]; today: string }) {
           onChange={(typed) => change(() => setTime(typed))}
           value={time}
         />
+
+        {isZeroTime(time) ? (
+          <p
+            className={`${BORDER_CLASS} bg-white p-3 text-base font-bold text-black`}
+          >
+            {ZERO_TIME_TEXT}
+          </p>
+        ) : null}
 
         <Field
           id="dia"

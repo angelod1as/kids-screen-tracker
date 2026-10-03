@@ -261,6 +261,12 @@ const MUTATIONS: readonly Mutation[] = [
     replace: "  if (false) return null;",
   },
   {
+    name: "a free activity is sent with zero typed",
+    file: LAUNCH_FORM,
+    find: '    activity.calcMode === "free" && !isZeroTime(form.freeValue)',
+    replace: '    activity.calcMode === "free"',
+  },
+  {
     name: "a note of nothing but spaces is sent as a note",
     file: LAUNCH_FORM,
     find: '    note: form.note.trim() === "" ? null : form.note.trim(),',
@@ -282,14 +288,20 @@ const MUTATIONS: readonly Mutation[] = [
   {
     name: "a refund with no reason is offered",
     file: REFUND_FORM,
-    find: '  return parseTypedTime(time) !== null && reason.trim() !== "";',
-    replace: "  return parseTypedTime(time) !== null;",
+    find: '  return (typedMinutes(time) ?? 0) >= 1 && reason.trim() !== "";',
+    replace: "  return (typedMinutes(time) ?? 0) >= 1;",
   },
   {
     name: "a refund with no amount is offered",
     file: REFUND_FORM,
-    find: '  return parseTypedTime(time) !== null && reason.trim() !== "";',
+    find: '  return (typedMinutes(time) ?? 0) >= 1 && reason.trim() !== "";',
     replace: '  return reason.trim() !== "";',
+  },
+  {
+    name: "a refund of zero is offered",
+    file: REFUND_FORM,
+    find: '  return (typedMinutes(time) ?? 0) >= 1 && reason.trim() !== "";',
+    replace: '  return parseTypedTime(time) !== null && reason.trim() !== "";',
   },
 ];
 

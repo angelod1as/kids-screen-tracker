@@ -15,6 +15,7 @@ vi.mock("../../../actions/ledger", () => ledger);
 
 const { DEFAULT_REFUND_REASON, RefundForm } = await import("./refund-form");
 const { UNCERTAIN_TEXT } = await import("../../../../ui/failure");
+const { ZERO_TIME_TEXT } = await import("../../../../ui/hours");
 
 (
   globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }
@@ -169,6 +170,33 @@ describe("hours and minutes, never a fraction (#48)", () => {
         "numeric",
       );
     }
+  });
+});
+
+describe("a typed zero, said before the tap (#56)", () => {
+  it("keeps Dar off at 0h0 and says why", async () => {
+    await type("#tempo-horas", "0");
+    await type("#tempo-minutos", "0");
+
+    expect(refundButton().disabled).toBe(true);
+    expect(container.textContent).toContain(ZERO_TIME_TEXT);
+
+    await act(async () => refundButton().click());
+
+    expect(ledger.previewRefundAction).not.toHaveBeenCalled();
+  });
+
+  it("lets 0h01 through, with nothing to say", async () => {
+    await type("#tempo-horas", "0");
+    await type("#tempo-minutos", "1");
+
+    expect(refundButton().disabled).toBe(false);
+    expect(container.textContent).not.toContain(ZERO_TIME_TEXT);
+  });
+
+  it("keeps Dar off on blank fields without calling them zero", () => {
+    expect(refundButton().disabled).toBe(true);
+    expect(container.textContent).not.toContain(ZERO_TIME_TEXT);
   });
 });
 
