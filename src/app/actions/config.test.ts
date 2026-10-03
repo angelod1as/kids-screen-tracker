@@ -289,3 +289,146 @@ describe("times typed as hours and minutes (#48)", () => {
     ).rejects.toThrow(/the hours of a decay step/);
   });
 });
+
+describe("a forged field of the wrong type is refused by name (#58)", () => {
+  const WRONG_TYPES: unknown[] = [5, true, {}, []];
+
+  const FIELDS: { field: string; sentence: RegExp; wrong: unknown[] }[] = [
+    {
+      field: "description",
+      sentence: /an activity description is text/,
+      wrong: WRONG_TYPES,
+    },
+    {
+      field: "name",
+      sentence: /an activity name is text/,
+      wrong: [...WRONG_TYPES, null, undefined],
+    },
+    {
+      field: "categoryId",
+      sentence: /a category is a number/,
+      wrong: [true, {}, []],
+    },
+    {
+      field: "qualityGraded",
+      sentence: /quality graded or not, received null/,
+      wrong: [null],
+    },
+  ];
+
+  const CASES = FIELDS.flatMap(({ field, sentence, wrong }) =>
+    wrong.map((value) => ({ field, value, sentence })),
+  );
+
+  function activityCount(): number {
+    return world.connection.sqlite
+      .prepare("SELECT count(*) AS n FROM activities")
+      .pluck()
+      .get() as number;
+  }
+
+  it.each(CASES)(
+    "create: $field = $value",
+    async ({ field, value, sentence }) => {
+      const before = activityCount();
+
+      await expect(
+        createActivityAction({
+          ...activityRequest(book()),
+          name: "Visita",
+          [field]: value,
+        } as ActivityRequest),
+      ).rejects.toThrow(sentence);
+
+      expect(activityCount()).toBe(before);
+    },
+  );
+
+  it.each(CASES)(
+    "update: $field = $value",
+    async ({ field, value, sentence }) => {
+      const before = book();
+
+      await expect(
+        updateActivityAction(mente().id, before.id, {
+          ...activityRequest(before),
+          [field]: value,
+        } as ActivityRequest),
+      ).rejects.toThrow(sentence);
+
+      expect(book()).toEqual(before);
+    },
+  );
+
+  it.each([true, {}, []])("update: activityId = %j", async (value) => {
+    const before = book();
+
+    await expect(
+      updateActivityAction(mente().id, value as number, {
+        ...activityRequest(before),
+        name: "Visita",
+      }),
+    ).rejects.toThrow(/an activity is a number/);
+
+    expect(book()).toEqual(before);
+  });
+
+  it.each([true, {}, []])(
+    "update: the list's categoryId = %j, before the write",
+    async (value) => {
+      const before = book();
+
+      await expect(
+        updateActivityAction(value as number, before.id, {
+          ...activityRequest(before),
+          name: "Visita",
+        }),
+      ).rejects.toThrow(/a category is a number/);
+
+      expect(book()).toEqual(before);
+    },
+  );
+
+  it("refuses an undefined id by name already, so the guard leaves it alone", async () => {
+    const before = book();
+
+    await expect(
+      updateActivityAction(mente().id, undefined as unknown as number, {
+        ...activityRequest(before),
+        name: "Visita",
+      }),
+    ).rejects.toThrow(/there is no activity undefined/);
+    await expect(
+      createActivityAction({
+        ...activityRequest(before),
+        name: "Visita",
+        categoryId: undefined as unknown as number,
+      }),
+    ).rejects.toThrow(/there is no category undefined/);
+    await expect(
+      updateActivityAction(undefined as unknown as number, before.id, {
+        ...activityRequest(before),
+        name: "Visita",
+      }),
+    ).resolves.toEqual([]);
+  });
+
+  it("still takes a missing description and a string category id as before", async () => {
+    const before = book();
+
+    await updateActivityAction(
+      String(mente().id) as unknown as number,
+      before.id,
+      {
+        ...activityRequest(before),
+        description: undefined,
+        categoryId: String(mente().id) as unknown as number,
+      },
+    );
+
+    expect(book()).toMatchObject({
+      categoryId: before.categoryId,
+      description: null,
+    });
+  });
+});
