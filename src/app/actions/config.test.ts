@@ -389,6 +389,30 @@ describe("a forged field of the wrong type is refused by name (#58)", () => {
     },
   );
 
+  it("refuses an undefined id by name already, so the guard leaves it alone", async () => {
+    const before = book();
+
+    await expect(
+      updateActivityAction(mente().id, undefined as unknown as number, {
+        ...activityRequest(before),
+        name: "Visita",
+      }),
+    ).rejects.toThrow(/there is no activity undefined/);
+    await expect(
+      createActivityAction({
+        ...activityRequest(before),
+        name: "Visita",
+        categoryId: undefined as unknown as number,
+      }),
+    ).rejects.toThrow(/there is no category undefined/);
+    await expect(
+      updateActivityAction(undefined as unknown as number, before.id, {
+        ...activityRequest(before),
+        name: "Visita",
+      }),
+    ).resolves.toEqual([]);
+  });
+
   it("still takes a missing description and a string category id as before", async () => {
     const before = book();
 
