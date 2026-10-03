@@ -11,9 +11,11 @@ import type { TypedTime } from "../../../../ui/hours";
 import {
   formatDuration,
   formatHours,
+  isZeroTime,
   parseTypedTime,
   timeFromMinutes,
   typedMinutes,
+  ZERO_TIME_TEXT,
 } from "../../../../ui/hours";
 import { KidSelect } from "../../../../ui/kid-select";
 import { BORDER_CLASS, balanceToneClass } from "../../../../ui/style";
@@ -54,7 +56,7 @@ export function ReleaseForm({ kids }: { kids: Kid[] }) {
   const [failed, setFailed] = useState<string | null>(null);
   const [busy, startAction] = useTransition();
 
-  const typed = parseTypedTime(time);
+  const typed = isZeroTime(time) ? null : parseTypedTime(time);
   const kid = kids.find((candidate) => candidate.id === userId);
 
   function change(apply: () => void) {
@@ -166,6 +168,14 @@ export function ReleaseForm({ kids }: { kids: Kid[] }) {
           onChange={(typed) => change(() => setTime(typed))}
           value={time}
         />
+
+        {isZeroTime(time) ? (
+          <p
+            className={`${BORDER_CLASS} bg-white p-3 text-base font-bold text-black`}
+          >
+            {ZERO_TIME_TEXT}
+          </p>
+        ) : null}
 
         <Field
           id="destino"

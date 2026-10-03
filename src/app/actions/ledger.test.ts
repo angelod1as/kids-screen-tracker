@@ -446,6 +446,24 @@ describe("hours and minutes, as typed (#48)", () => {
     },
   );
 
+  it("refuses 0h0 in the write when the screen is bypassed (#56, D33)", async () => {
+    const written = world.ledgerText();
+    const zero = { hours: 0, minutes: 0 };
+
+    await expect(
+      releaseHoursAction({ userId: world.kidId, time: zero }),
+    ).rejects.toThrow("what is released");
+    await expect(
+      refundHoursAction({
+        userId: world.kidId,
+        time: zero,
+        occurredOn: THAT_DAY,
+        reason: "Não usou",
+      }),
+    ).rejects.toThrow("what is refunded");
+    expect(world.ledgerText()).toBe(written);
+  });
+
   it("refuses a decimal number of hours sent the old way", async () => {
     await expect(
       refundHoursAction({

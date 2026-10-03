@@ -625,6 +625,24 @@ export const SCREEN_CASES: readonly ScreenCase[] = [
   },
   {
     rule: "the form describes an entry before it is sent",
+    name: "a free activity typed as zero is not an entry (#56)",
+    run: (rules) =>
+      entryText(
+        rules.entryOf({ ...FORM, freeValue: time("0", "0") }, FREE_ACTIVITY),
+      ),
+    expected: "nothing",
+  },
+  {
+    rule: "the form describes an entry before it is sent",
+    name: "a free activity of one minute is an entry",
+    run: (rules) =>
+      entryText(
+        rules.entryOf({ ...FORM, freeValue: time("0", "1") }, FREE_ACTIVITY),
+      ),
+    expected: "3/5 on 2026-09-10 · null min · nota null · avulso 0h1 · no note",
+  },
+  {
+    rule: "the form describes an entry before it is sent",
     name: "no activity at all is not an entry",
     run: (rules) => entryText(rules.entryOf(FORM, undefined)),
     expected: "nothing",
@@ -795,6 +813,18 @@ export const SCREEN_CASES: readonly ScreenCase[] = [
     name: "an amount that is not a number",
     run: (rules) => rules.canRefund(time("duas"), "motivo"),
     expected: false,
+  },
+  {
+    rule: "a refund says how much and why",
+    name: "zero hours and zero minutes (#56)",
+    run: (rules) => rules.canRefund(time("0", "0"), "motivo"),
+    expected: false,
+  },
+  {
+    rule: "a refund says how much and why",
+    name: "one minute",
+    run: (rules) => rules.canRefund(time("0", "1"), "motivo"),
+    expected: true,
   },
 ];
 

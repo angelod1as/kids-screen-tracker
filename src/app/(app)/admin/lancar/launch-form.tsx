@@ -14,7 +14,9 @@ import {
   EMPTY_TIME,
   formatDuration,
   formatHours,
+  isZeroTime,
   parseTypedTime,
+  ZERO_TIME_TEXT,
 } from "../../../../ui/hours";
 import { KidSelect } from "../../../../ui/kid-select";
 import { Select } from "../../../../ui/select";
@@ -69,7 +71,9 @@ export function entryOf(
   }
 
   const freeValue =
-    activity.calcMode === "free" ? parseTypedTime(form.freeValue) : null;
+    activity.calcMode === "free" && !isZeroTime(form.freeValue)
+      ? parseTypedTime(form.freeValue)
+      : null;
 
   if (activity.calcMode === "free" && freeValue === null) return null;
 
@@ -258,6 +262,14 @@ export function LaunchForm({ data, kids }: { data: LaunchData; kids: Kid[] }) {
           onChange={(typed) => change(() => setFreeValue(typed))}
           value={freeValue}
         />
+      ) : null}
+
+      {activity.calcMode === "free" && isZeroTime(freeValue) ? (
+        <p
+          className={`${BORDER_CLASS} bg-white p-3 text-base font-bold text-black`}
+        >
+          {ZERO_TIME_TEXT}
+        </p>
       ) : null}
 
       <Field
