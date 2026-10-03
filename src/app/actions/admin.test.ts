@@ -355,7 +355,7 @@ describe("a free activity's value, typed as hours and minutes (#48)", () => {
   });
 
   it("refuses 0h0 in the preview and in the write when the screen is bypassed (#56, D33)", async () => {
-    const zero = { ...free(0), freeValue: { hours: 0, minutes: 0 } };
+    const zero = { ...free(25), freeValue: { hours: 0, minutes: 0 } };
 
     await expect(previewEntryAction(zero)).rejects.toThrow(
       "a free activity's value",
