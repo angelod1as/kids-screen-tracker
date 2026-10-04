@@ -31,7 +31,7 @@ export function KidGuide({ data }: { data: HowItWorksData }) {
     example === null ? null : returnExample(example, data.occurredOn);
 
   return (
-    <div className="flex flex-col gap-4 lg:gap-6">
+    <div className="flex flex-col gap-4 lg:max-w-2xl lg:gap-6">
       <Panel title="Como funciona" top>
         <Paragraph>
           Você ganha tempo de tela fazendo coisas longe da tela. Você marca no

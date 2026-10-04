@@ -436,6 +436,28 @@ describe("desktop is the same base, opened wide (#74, D42)", () => {
     );
   });
 
+  it("caps every form column at 672 px on a desk, since the shell no longer does (#60)", () => {
+    const columns = [
+      "app/(app)/admin/tirar/page.tsx",
+      "app/(app)/admin/dar/page.tsx",
+      "app/(app)/admin/lancar/page.tsx",
+      "app/(app)/menino/calculadora/page.tsx",
+      "app/(app)/conta/como-funciona/adult-guide.tsx",
+      "app/(app)/conta/como-funciona/kid-guide.tsx",
+      "app/(app)/admin/configuracao/nova/page.tsx",
+      "app/(app)/admin/configuracao/[categoria]/nova/page.tsx",
+      "app/(app)/admin/configuracao/[categoria]/[atividade]/page.tsx",
+    ];
+
+    for (const file of columns) {
+      const root = readFileSync(join(SRC, file), "utf8").match(
+        /return \(\s*<(?:section|div) className="([^"]*)"/,
+      )?.[1];
+
+      expect(root, file).toContain("lg:max-w-2xl");
+    }
+  });
+
   it("is what both shells use", () => {
     for (const file of ["ui/app-shell.tsx", "app/entrar/page.tsx"]) {
       const source = readFileSync(join(SRC, file), "utf8");

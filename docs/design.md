@@ -328,14 +328,16 @@ inline.
 | histórico | uma coluna só, no máximo 672 px | — | duas colunas de lista cronológica obrigariam o leitor a descobrir se ela lê para baixo e depois para baixo, ou de lado |
 | fila | uma coluna só, no máximo 768 px | — | a ordem da fila é aritmética (D32), não arrumação |
 | conta | uma coluna só, no máximo 448 px | — | são poucos controles; esticar não os torna mais fáceis de achar |
+| formulários e leitura corrida: tirar, dar, lançar, calculadora, como funciona, nova categoria, nova atividade, uma atividade | uma coluna só, no máximo 672 px | — | linha longa cansa de ler e o olho perde o começo da próxima; um campo de 1.000 px não fica mais fácil de preencher (#60) |
 | configuração, categoria | os números dela | as atividades | ler a regra à esquerda, escolher o que mexer à direita |
 | configuração, lista | cards em duas colunas | — | sete cards em uma coluna de 896 px seriam faixas largas dizendo uma linha cada |
 
 A casca do app sai de `max-w-md` para a largura inteira da janela a partir de
 `lg` (`APP_SHELL_CLASS`, emenda #41 à D42). Era `max-w-4xl` (896 px), e os cards
 da Configuração ficavam apertados nela. O argumento contra a linha longa demais
-continua valendo, mas mora em cada tela: histórico, fila e conta mantêm o teto
-próprio da tabela acima. Entrar, as páginas de erro e a confirmação ficam em
+continua valendo, mas mora em cada tela: histórico, fila, conta e os
+formulários mantêm o teto próprio da tabela acima, e `design.test.ts` confere o
+dos formulários. Entrar, as páginas de erro e a confirmação ficam em
 `max-w-4xl` (`SHELL_CLASS`): são uma coluna de formulário, e esticá-la não
 ajuda ninguém.
 
