@@ -79,6 +79,7 @@ export default async function AdminKidHistoryPage({
           )}
           emptyText={`${kid.displayName} ainda não tem lançamentos. O que ele ganhar, gastar ou tiver recusado aparece aqui, do mais recente para o mais antigo.`}
           entries={entries}
+          nameDecider
         />
       </Panel>
 

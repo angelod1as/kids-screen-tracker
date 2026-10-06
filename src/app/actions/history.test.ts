@@ -224,7 +224,7 @@ describe("a kid reading his own history (#16)", () => {
     ]);
   });
 
-  it("names who decided each entry, and nobody on a spend or refund (emenda à D50)", async () => {
+  it("names the adult on every entry, the creator on a spend or refund (#71)", async () => {
     mocked.username = "kid1";
     addRejected({ username: "kid1", occurredOn: "2026-09-03", reason: "não" });
 
@@ -232,8 +232,8 @@ describe("a kid reading his own history (#16)", () => {
 
     expect(entries.map((entry) => [entry.kind, entry.decidedBy])).toEqual([
       ["rejected", "Admin1"],
-      ["refund", null],
-      ["spend", null],
+      ["refund", "Admin1"],
+      ["spend", "Admin1"],
       ["earn", "Admin1"],
     ]);
   });

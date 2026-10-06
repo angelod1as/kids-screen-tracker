@@ -185,6 +185,57 @@ describe("the history an adult opens is the boy's own (#73)", () => {
 
     mocked.entries = [];
   });
+
+  it("names who decided, including the adult who took hours (#71)", async () => {
+    mocked.entries = [
+      {
+        id: 8,
+        kind: "earn",
+        hours: 2,
+        occurredOn: "2026-09-02",
+        label: "Ler livro",
+        override: null,
+        voided: null,
+        decidedBy: "Admin1",
+      },
+      {
+        id: 9,
+        kind: "spend",
+        hours: 1.5,
+        occurredOn: "2026-09-02",
+        label: "Xbox",
+        override: null,
+        voided: null,
+        decidedBy: "Admin2",
+      },
+    ];
+
+    const markup = await historyMarkup("3");
+
+    expect(markup).toContain("Aprovado por Admin1");
+    expect(markup).toContain("Tirado por Admin2");
+
+    mocked.entries = [];
+  });
+
+  it("names who decided a value on the adult screen too (#71)", async () => {
+    mocked.entries = [
+      {
+        id: 10,
+        kind: "earn",
+        hours: 1,
+        occurredOn: "2026-09-02",
+        label: "Sair com os amigos",
+        override: { ruleHours: 3, reason: null },
+        voided: null,
+        decidedBy: "Admin1",
+      },
+    ];
+
+    expect(await historyMarkup("3")).toContain("valor decidido por Admin1");
+
+    mocked.entries = [];
+  });
 });
 
 describe("voiding from the boy's history (D52)", () => {

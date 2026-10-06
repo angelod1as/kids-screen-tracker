@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
 import { isValidElement, type ReactNode } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 
 import type { Session } from "../../auth/access";
@@ -259,6 +260,52 @@ describe("the rest of the boy's home screen (#15)", () => {
     );
 
     expect(link).toBeDefined();
+  });
+
+  it("names no decider on the home recents, which stay balance-first (#15, #71)", async () => {
+    const markup = renderToStaticMarkup(
+      await kidHome({
+        balance: 1,
+        entries: [
+          {
+            id: 1,
+            kind: "earn",
+            hours: 1,
+            occurredOn: "2026-09-02",
+            label: "Ler livro",
+            override: { ruleHours: 3, reason: null },
+            voided: null,
+            decidedBy: "Admin1",
+          },
+          {
+            id: 2,
+            kind: "spend",
+            hours: 1.5,
+            occurredOn: "2026-09-02",
+            label: "Xbox",
+            override: null,
+            voided: null,
+            decidedBy: "Admin1",
+          },
+          {
+            id: 3,
+            kind: "refund",
+            hours: 0.25,
+            occurredOn: "2026-09-02",
+            label: "Não usou",
+            override: null,
+            voided: null,
+            decidedBy: "Admin2",
+          },
+        ],
+      }),
+    );
+
+    expect(markup).toContain("Ler livro");
+    expect(markup).not.toContain("Aprovado por");
+    expect(markup).not.toContain("Tirado por");
+    expect(markup).not.toContain("Dado por");
+    expect(markup).not.toContain("valor decidido");
   });
 });
 
