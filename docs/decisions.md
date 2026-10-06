@@ -1718,9 +1718,13 @@ O que o valor arbitrado carrega:
 - **O motivo é opcional** (decisão do dono, 24/09/2026). `override_reason`, até
   500 caracteres, só ao lado de um valor arbitrado. Fica numa coluna própria,
   não anexado ao `note` como o da recusa.
-- **O histórico do menino diz** "valor decidido por um adulto" na linha, e,
-  quando existem, "Pela regra: 3h" e "Motivo: …". Um número que não bate com a
-  tabela não é lido como erro do app.
+- **O histórico nomeia quem decidiu** (emenda do dono, 06/10/2026): a linha diz
+  "valor decidido por {nome}" em vez de "por um adulto", e os dois históricos, o
+  do menino e o do admin, mostram o nome. Pela mesma emenda, toda entrada
+  decidida diz quem: "Aprovado por {nome}" no ganho e no zero, "Recusado por
+  {nome}" na recusa. A fonte é sempre o `reviewed_by`. Quando existem, a linha
+  ainda traz "Pela regra: 3h" e "Motivo: …"; um número que não bate com a tabela
+  não é lido como erro do app.
 - **Zero é valor.** A entrada é aprovada com 0 h e sem linha no ledger (D10), e
   o histórico a mostra, lida do registro como a recusa (#72). Vale para todo
   zero aprovado, inclusive o da regra (a nota zero), que é o que a D10 já

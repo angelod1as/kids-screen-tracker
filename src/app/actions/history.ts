@@ -22,6 +22,8 @@ export type LedgerEntry = {
   override: AdultValue | null;
   /** D52: null while it counts. */
   voided: VoidMark | null;
+  /** Who approved it (emenda à D50). Null on a spend or refund, which has no log. */
+  decidedBy: string | null;
 };
 
 /** D52: shown, not hidden, so the boy can see why the balance moved. */
@@ -51,6 +53,8 @@ export type RejectedEntry = {
   label: string;
   durationMinutes: number | null;
   reason: string | null;
+  /** Who refused it (emenda à D50). */
+  decidedBy: string | null;
 };
 
 /** D10: an approved zero has no ledger row, so it is read off the log, like a refusal. */
@@ -62,6 +66,8 @@ export type ZeroEntry = {
   label: string;
   override: AdultValue | null;
   voided: VoidMark | null;
+  /** Who approved it (emenda à D50). */
+  decidedBy: string | null;
 };
 
 export type HistoryEntry = LedgerEntry | RejectedEntry | ZeroEntry;
@@ -223,11 +229,13 @@ function ledgerEntries(
         number | null
       >`coalesce(${ledger.voidedAt}, ${activityLogs.voidedAt})`,
       voidedBy: voider.displayName,
+      reviewedBy: reviewer.displayName,
     })
     .from(ledger)
     // Left joins: `activity_log_id` is null on every `spend` and `refund` (D10).
     .leftJoin(activityLogs, eq(ledger.activityLogId, activityLogs.id))
     .leftJoin(activities, eq(activityLogs.activityId, activities.id))
+    .leftJoin(reviewer, eq(reviewer.id, activityLogs.reviewedBy))
     .leftJoin(
       voider,
       eq(
@@ -259,6 +267,7 @@ function ledgerEntries(
       label: row.activityName ?? row.destination ?? row.note ?? NO_LABEL,
       override: adultValue(row),
       voided: voidMark(row.voidedAt, row.voidedBy),
+      decidedBy: row.reviewedBy,
     },
   }));
 }
@@ -277,9 +286,11 @@ function rejectedEntries(
       note: activityLogs.note,
       createdAt: activityLogs.createdAt,
       activityName: activities.name,
+      reviewedBy: reviewer.displayName,
     })
     .from(activityLogs)
     .innerJoin(activities, eq(activityLogs.activityId, activities.id))
+    .leftJoin(reviewer, eq(reviewer.id, activityLogs.reviewedBy))
     .where(
       and(
         eq(activityLogs.userId, targetUserId),
@@ -307,11 +318,13 @@ function rejectedEntries(
       durationMinutes: row.durationMinutes,
       // The boy's own note stays out: #72 asks for the adult's sentence.
       reason: rejectionReason(row.note),
+      decidedBy: row.reviewedBy,
     },
   }));
 }
 
 const voider = alias(users, "voider");
+const reviewer = alias(users, "reviewer");
 
 /** D52. `at` is epoch ms: the `coalesce` above comes back unmapped. */
 function voidMark(at: number | null, by: string | null): VoidMark | null {
@@ -349,10 +362,12 @@ function zeroEntries(
       ...ADULT_VALUE_COLUMNS,
       voidedAt: activityLogs.voidedAt,
       voidedBy: voider.displayName,
+      reviewedBy: reviewer.displayName,
     })
     .from(activityLogs)
     .innerJoin(activities, eq(activityLogs.activityId, activities.id))
     .leftJoin(voider, eq(voider.id, activityLogs.voidedBy))
+    .leftJoin(reviewer, eq(reviewer.id, activityLogs.reviewedBy))
     .where(
       and(
         eq(activityLogs.userId, targetUserId),
@@ -380,6 +395,7 @@ function zeroEntries(
       label: row.activityName,
       override: adultValue(row),
       voided: voidMark(row.voidedAt?.getTime() ?? null, row.voidedBy),
+      decidedBy: row.reviewedBy,
     },
   }));
 }

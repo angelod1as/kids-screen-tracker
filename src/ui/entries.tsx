@@ -72,11 +72,20 @@ export function EntryList({
               </span>
               <span className={`${META_CLASS} text-black`}>
                 {kindLabel(entry.kind)} · {formatDay(entry.occurredOn)}
-                {entry.override === null ? "" : ` · ${OVERRIDDEN_TEXT}`}
+                {entry.override === null
+                  ? ""
+                  : ` · ${overriddenText(entry.decidedBy)}`}
               </span>
               {entry.override === null ? null : (
                 <AdultValueText override={entry.override} />
               )}
+              {entry.override === null && entry.decidedBy !== null ? (
+                <ReviewerLine
+                  by={entry.decidedBy}
+                  className="text-black"
+                  verb="Aprovado"
+                />
+              ) : null}
               {entry.voided === null ? (
                 action?.(entry)
               ) : (
@@ -117,6 +126,13 @@ function RejectedRow({ entry }: { entry: RejectedEntry }) {
             Motivo: {entry.reason}
           </span>
         )}
+        {entry.decidedBy === null ? null : (
+          <ReviewerLine
+            by={entry.decidedBy}
+            className="text-white"
+            verb="Recusado"
+          />
+        )}
       </span>
       <span className={`${READOUT_CLASS} shrink-0 text-white`}>
         {formatHours(0)}
@@ -125,8 +141,27 @@ function RejectedRow({ entry }: { entry: RejectedEntry }) {
   );
 }
 
-/** D50: said on the row, so a number that differs from the rule is not read as a bug. */
-const OVERRIDDEN_TEXT = "valor decidido por um adulto";
+/** D50: said on the row, so a number that differs from the rule is not read as a bug. Names the adult (emenda à D50). */
+function overriddenText(decidedBy: string | null): string {
+  return `valor decidido por ${decidedBy ?? "um adulto"}`;
+}
+
+/** Who decided the entry (emenda à D50): named on both screens, under the kind and date. */
+function ReviewerLine({
+  by,
+  verb,
+  className,
+}: {
+  by: string;
+  verb: string;
+  className: string;
+}) {
+  return (
+    <span className={`${META_CLASS} ${className}`}>
+      {verb} por {by}
+    </span>
+  );
+}
 
 /** No invented line: the rule's number only where it could price, the reason only if written. */
 function AdultValueText({ override }: { override: AdultValue }) {
@@ -165,11 +200,20 @@ function ZeroRow({ entry, action }: { entry: ZeroEntry; action: ReactNode }) {
         </span>
         <span className={`${META_CLASS} text-black`}>
           {kindLabel("earn")} · {formatDay(entry.occurredOn)}
-          {entry.override === null ? "" : ` · ${OVERRIDDEN_TEXT}`}
+          {entry.override === null
+            ? ""
+            : ` · ${overriddenText(entry.decidedBy)}`}
         </span>
         {entry.override === null ? null : (
           <AdultValueText override={entry.override} />
         )}
+        {entry.override === null && entry.decidedBy !== null ? (
+          <ReviewerLine
+            by={entry.decidedBy}
+            className="text-black"
+            verb="Aprovado"
+          />
+        ) : null}
         {entry.voided === null ? action : <VoidedText voided={entry.voided} />}
       </span>
       <span

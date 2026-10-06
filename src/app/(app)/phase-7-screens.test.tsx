@@ -2,7 +2,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 import { MAX_HISTORY_DAYS } from "../../ui/entries";
 import { TOUCH_TARGET_CLASS } from "../../ui/style";
-import type { HistoryEntry } from "../actions/history";
+import type { HistoryEntry, LedgerEntry } from "../actions/history";
 
 /**
  * The screen half (#73): the balance is the tap target, it leads to the right
@@ -137,6 +137,13 @@ describe("the history an adult opens is the boy's own (#73)", () => {
     expect(await historyMarkup("4")).toContain("Histórico de Kid2");
   });
 
+  it("offers a shortcut to take hours from the boy being read", async () => {
+    const markup = await historyMarkup("4");
+
+    expect(markup).toContain('href="/admin/tirar?menino=4"');
+    expect(markup).toContain("Tirar horas");
+  });
+
   it("is a 404 for an address that names nobody, and asks nothing", async () => {
     // An empty list would imply the app looked and found nothing.
     for (const userId of ["1", "99", "abc", ""]) {
@@ -166,6 +173,7 @@ describe("the history an adult opens is the boy's own (#73)", () => {
         label: "Ler livro",
         durationMinutes: 90,
         reason: "Você estava no celular",
+        decidedBy: "Admin1",
       },
     ];
 
@@ -180,7 +188,7 @@ describe("the history an adult opens is the boy's own (#73)", () => {
 });
 
 describe("voiding from the boy's history (D52)", () => {
-  const counting: HistoryEntry = {
+  const counting: LedgerEntry = {
     id: 8,
     kind: "earn",
     hours: 3,
@@ -188,6 +196,7 @@ describe("voiding from the boy's history (D52)", () => {
     label: "Ler livro",
     override: null,
     voided: null,
+    decidedBy: "Admin1",
   };
 
   it("offers the control under each entry that still counts, and under no refusal", async () => {
@@ -200,6 +209,7 @@ describe("voiding from the boy's history (D52)", () => {
         label: "Ler livro",
         durationMinutes: 90,
         reason: null,
+        decidedBy: "Admin1",
       },
     ];
 

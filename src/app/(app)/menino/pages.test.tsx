@@ -81,6 +81,7 @@ function entry(id: number): HistoryEntry {
     label: `Linha ${id}`,
     override: null,
     voided: null,
+    decidedBy: "Admin1",
   };
 }
 
@@ -154,6 +155,7 @@ describe("the refusal the boy used to watch vanish (#72)", () => {
       label: "Ler livro",
       durationMinutes: 90,
       reason,
+      decidedBy: "Admin1",
     };
   }
 
@@ -210,6 +212,7 @@ describe("a value an adult decided says so on the boy's history (D50)", () => {
       label: "Sair com os amigos",
       override,
       voided: null,
+      decidedBy: "Admin1",
     };
   }
 
@@ -219,7 +222,15 @@ describe("a value an adult decided says so on the boy's history (D50)", () => {
       entry(2),
     ]);
 
-    expect(markup.match(/valor decidido por um adulto/g)).toHaveLength(1);
+    expect(markup.match(/valor decidido por Admin1/g)).toHaveLength(1);
+  });
+
+  it("names who approved, both on the row and in the override line", async () => {
+    const markup = await markupOf([earn(null), entry(2)]);
+
+    // Emenda à D50: a plain approval names the adult; no anonymous wording.
+    expect(markup.match(/Aprovado por Admin1/g)).toHaveLength(2);
+    expect(markup).not.toContain("por um adulto");
   });
 
   it("says what the rule would have paid, and the reason", async () => {
@@ -247,13 +258,14 @@ describe("a value an adult decided says so on the boy's history (D50)", () => {
         label: "Lavar o carro",
         override: null,
         voided: null,
+        decidedBy: "Admin1",
       },
     ]);
 
     expect(markup).toContain("Lavar o carro");
     expect(markup).toContain("0 min");
     expect(markup).not.toContain("+0 min");
-    expect(markup).not.toContain("valor decidido por um adulto");
+    expect(markup).not.toContain("valor decidido");
   });
 
   it("marks a zero an adult decided", async () => {
@@ -265,10 +277,11 @@ describe("a value an adult decided says so on the boy's history (D50)", () => {
         label: "Sair com os amigos",
         override: { ruleHours: 3, reason: null },
         voided: null,
+        decidedBy: "Admin1",
       },
     ]);
 
-    expect(markup).toContain("valor decidido por um adulto");
+    expect(markup).toContain("valor decidido por Admin1");
     expect(markup).toContain("Pela regra: 3h");
   });
 });

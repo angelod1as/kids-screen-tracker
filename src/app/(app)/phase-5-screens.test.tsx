@@ -173,7 +173,9 @@ describe("launching an activity (#22)", () => {
 
 describe("releasing hours (#23)", () => {
   it("asks for a boy, an amount and where it went", async () => {
-    const drawn = await markup(AdminReleasePage);
+    const drawn = await markup(() =>
+      AdminReleasePage({ searchParams: Promise.resolve({}) }),
+    );
 
     expect(drawn).toContain("Tirar horas");
     expect(drawn).toContain("Quanto");
@@ -182,9 +184,11 @@ describe("releasing hours (#23)", () => {
   });
 
   it("says nothing about the devices until something has been released", async () => {
-    expect(await markup(AdminReleasePage)).not.toContain(
-      "nos aparelhos: ligue",
-    );
+    expect(
+      await markup(() =>
+        AdminReleasePage({ searchParams: Promise.resolve({}) }),
+      ),
+    ).not.toContain("nos aparelhos: ligue");
   });
 });
 

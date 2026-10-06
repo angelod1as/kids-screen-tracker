@@ -224,6 +224,20 @@ describe("a kid reading his own history (#16)", () => {
     ]);
   });
 
+  it("names who decided each entry, and nobody on a spend or refund (emenda à D50)", async () => {
+    mocked.username = "kid1";
+    addRejected({ username: "kid1", occurredOn: "2026-09-03", reason: "não" });
+
+    const entries = await fetchHistoryAction(idOf("kid1"), 10);
+
+    expect(entries.map((entry) => [entry.kind, entry.decidedBy])).toEqual([
+      ["rejected", "Admin1"],
+      ["refund", null],
+      ["spend", null],
+      ["earn", "Admin1"],
+    ]);
+  });
+
   it("names an entry that has neither, rather than leaving the line blank", async () => {
     connection.db
       .insert(ledger)
