@@ -42,8 +42,14 @@ const MINUTE_CHOICES: readonly Choice[] = [30, 60, 90, 120, 180, 240].map(
 
 const DEFAULT_TIME: TypedTime = { hours: "1", minutes: "" };
 
-export function ReleaseForm({ kids }: { kids: Kid[] }) {
-  const [userId, setUserId] = useState(kids[0]?.id ?? 0);
+export function ReleaseForm({
+  initialUserId,
+  kids,
+}: {
+  initialUserId?: number;
+  kids: Kid[];
+}) {
+  const [userId, setUserId] = useState(initialUserId ?? kids[0]?.id ?? 0);
   const [time, setTime] = useState(DEFAULT_TIME);
   const [destination, setDestination] = useState("");
 

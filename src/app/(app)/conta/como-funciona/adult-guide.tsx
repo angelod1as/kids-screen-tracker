@@ -241,9 +241,8 @@ export function AdultGuide({ data }: { data: HowItWorksData }) {
             dizer quanto a entrada vale, em horas e minutos, em qualquer
             atividade, fixa inclusive. A regra não é consultada. O desgaste do
             dia continua contando o tempo que a atividade durou, e a repetição e
-            o bônus a contam como feita. O menino vê no histórico que o valor
-            foi decidido por um adulto, quanto a regra daria e o motivo, se você
-            escrever um.
+            o bônus a contam como feita. O menino vê no histórico quem decidiu o
+            valor, quanto a regra daria e o motivo, se você escrever um.
           </li>
           <li>
             <strong>Ordem:</strong> uma entrada não pode ser aprovada enquanto

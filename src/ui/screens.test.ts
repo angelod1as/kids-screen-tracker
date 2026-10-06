@@ -84,6 +84,7 @@ const ENTRIES: LedgerEntry[] = [
     label: "Xbox",
     override: null,
     voided: null,
+    decidedBy: null,
   },
   {
     id: 20,
@@ -93,6 +94,7 @@ const ENTRIES: LedgerEntry[] = [
     label: "Ler livro",
     override: null,
     voided: null,
+    decidedBy: "Admin1",
   },
   {
     id: 10,
@@ -102,6 +104,7 @@ const ENTRIES: LedgerEntry[] = [
     label: "Não usou",
     override: null,
     voided: null,
+    decidedBy: null,
   },
 ];
 

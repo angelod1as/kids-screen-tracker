@@ -290,3 +290,25 @@ describe("the confirmation (D53)", () => {
     expect(ledger.releaseHoursAction).not.toHaveBeenCalled();
   });
 });
+
+describe("the shortcut from a boy's history preselects him", () => {
+  it("starts on the given boy, not the first", async () => {
+    await act(async () =>
+      root.render(
+        <ReleaseForm
+          initialUserId={7}
+          kids={[
+            { id: 5, displayName: "Kid1" },
+            { id: 7, displayName: "Kid2" },
+          ]}
+        />,
+      ),
+    );
+
+    await act(async () => button("Tirar").click());
+
+    expect(ledger.previewReleaseAction).toHaveBeenCalledWith(
+      expect.objectContaining({ userId: 7 }),
+    );
+  });
+});

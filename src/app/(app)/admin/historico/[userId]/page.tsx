@@ -46,6 +46,11 @@ export default async function AdminKidHistoryPage({
 
   return (
     <div className="flex flex-col gap-4 lg:max-w-2xl lg:gap-6">
+      {/* Shortcut for the common case: the adult spots a wrong entry here and debits at once. */}
+      <LinkButton href={`/admin/tirar?menino=${kid.id}`}>
+        Tirar horas
+      </LinkButton>
+
       <Panel
         note={
           entries.length === 1
