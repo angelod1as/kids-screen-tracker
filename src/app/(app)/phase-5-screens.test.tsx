@@ -190,6 +190,28 @@ describe("releasing hours (#23)", () => {
       ),
     ).not.toContain("nos aparelhos: ligue");
   });
+
+  /** A button carries its boy's name and `aria-pressed` tells which is chosen. */
+  const chosen = (markup: string, name: string): boolean =>
+    new RegExp(`aria-pressed="true"[^>]*>${name}</button>`).test(markup);
+
+  it("opens on the boy named in the shortcut from his history", async () => {
+    const drawn = await markup(() =>
+      AdminReleasePage({ searchParams: Promise.resolve({ menino: "4" }) }),
+    );
+
+    expect(chosen(drawn, "Kid2")).toBe(true);
+    expect(chosen(drawn, "Kid1")).toBe(false);
+  });
+
+  it("falls back to the first boy when the shortcut names nobody", async () => {
+    const drawn = await markup(() =>
+      AdminReleasePage({ searchParams: Promise.resolve({ menino: "999" }) }),
+    );
+
+    expect(chosen(drawn, "Kid1")).toBe(true);
+    expect(chosen(drawn, "Kid2")).toBe(false);
+  });
 });
 
 describe("refunding hours (#24)", () => {
