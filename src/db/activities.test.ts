@@ -11,6 +11,10 @@ import {
 } from "./activities";
 import type { ActivityModule, ActivityWorld } from "./activities.rules";
 import { ACTIVITY_CASES, makeActivityWorld } from "./activities.rules";
+import {
+  auditDisabledActivities,
+  deleteNeverUsedActivities,
+} from "./activity-audit";
 import type { Connection } from "./client";
 import { openDatabase } from "./client";
 import { migrateDatabase } from "./migrate";
@@ -460,6 +464,116 @@ describe("an activity's description (#40)", () => {
       updateActivity(world.connection, id, { ...book, description: "" });
       expect(descriptionOf(world, id)).toBeNull();
       expect(world.logRow(world.newestLogId()).status).toBe("pending");
+    } finally {
+      world.connection.sqlite.close();
+    }
+  });
+});
+
+describe("auditing and deleting never-used disabled activities (#83)", () => {
+  function fileALog(world: ActivityWorld, name: string): void {
+    startTimer(
+      world.connection,
+      world.kidId,
+      world.activityId(name),
+      new Date("2026-09-13T12:00:00.000Z"),
+    );
+    stopTimer(
+      world.connection,
+      world.kidId,
+      null,
+      new Date("2026-09-13T12:05:00.000Z"),
+    );
+  }
+
+  it("counts the logs and timers pointing at each disabled activity", () => {
+    const world = freshWorld();
+
+    try {
+      fileALog(world, "Ler livro");
+      world.startSession("Bicicleta");
+      // forceActivity: a raw switch-off, so D37's waiting guard does not block it.
+      world.forceActivity("Ler livro", { active: false });
+      world.forceActivity("Bicicleta", { active: false });
+
+      const byName = new Map(
+        auditDisabledActivities(world.connection).map((row) => [row.name, row]),
+      );
+
+      // A stopped session keeps its timer row beside the log it produced.
+      expect(byName.get("Ler livro")).toMatchObject({
+        logCount: 1,
+        timerCount: 1,
+      });
+      expect(byName.get("Bicicleta")).toMatchObject({
+        logCount: 0,
+        timerCount: 1,
+      });
+      expect(byName.has("Academia")).toBe(false);
+    } finally {
+      world.connection.sqlite.close();
+    }
+  });
+
+  it("never deletes a disabled activity that has a log (D14)", () => {
+    const world = freshWorld();
+
+    try {
+      fileALog(world, "Ler livro");
+      world.forceActivity("Ler livro", { active: false });
+
+      const removed = deleteNeverUsedActivities(world.connection);
+
+      expect(removed.map((row) => row.name)).not.toContain("Ler livro");
+      expect(
+        auditDisabledActivities(world.connection).map((row) => row.name),
+      ).toContain("Ler livro");
+    } finally {
+      world.connection.sqlite.close();
+    }
+  });
+
+  it("never deletes a disabled activity that has an open timer (FK safety)", () => {
+    const world = freshWorld();
+
+    try {
+      world.startSession("Bicicleta");
+      world.forceActivity("Bicicleta", { active: false });
+
+      const removed = deleteNeverUsedActivities(world.connection);
+
+      expect(removed.map((row) => row.name)).not.toContain("Bicicleta");
+    } finally {
+      world.connection.sqlite.close();
+    }
+  });
+
+  it("deletes a disabled activity that was never logged or timed", () => {
+    const world = freshWorld();
+
+    try {
+      world.forceActivity("Bicicleta", { active: false });
+
+      const removed = deleteNeverUsedActivities(world.connection);
+
+      expect(removed.map((row) => row.name)).toContain("Bicicleta");
+      expect(
+        auditDisabledActivities(world.connection).map((row) => row.name),
+      ).not.toContain("Bicicleta");
+    } finally {
+      world.connection.sqlite.close();
+    }
+  });
+
+  it("leaves an active never-used activity untouched", () => {
+    const world = freshWorld();
+
+    try {
+      const before = world.activityId("Bicicleta");
+
+      deleteNeverUsedActivities(world.connection);
+
+      expect(world.activityId("Bicicleta")).toBe(before);
     } finally {
       world.connection.sqlite.close();
     }
