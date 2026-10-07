@@ -6,6 +6,9 @@ import { eq } from "drizzle-orm";
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+// D57: the guides are rendered with the bonus ON; the shipped default is off.
+vi.mock("../../../../engine/flags", () => ({ BONUS_ENABLED: true }));
+
 import { openDatabase } from "../../../../db/client";
 import { migrateDatabase } from "../../../../db/migrate";
 import { activities, categories } from "../../../../db/schema";
@@ -89,12 +92,14 @@ function football() {
   return { activity, category };
 }
 
-function engineHours(minutes: number, returnBonusPct?: number): number {
+// Mirrors `alternationExample`: a reading (Mente) earlier today unlocks Corpo
+// (D56). `bonusPct` undefined keeps the category's own; 0 turns the bonus off.
+function engineHours(minutes: number, bonusPct?: number): number {
   const { activity, category } = football();
   const occurredOn = saoPauloDay(new Date());
   const priced = {
     ...category,
-    returnBonusPct: returnBonusPct ?? category.returnBonusPct,
+    alternationBonusPct: bonusPct ?? category.alternationBonusPct,
   };
 
   return calculateEarnedHours({
@@ -103,17 +108,27 @@ function engineHours(minutes: number, returnBonusPct?: number): number {
     category: priced,
     occurredOn,
     durationMinutes: minutes,
-    history: [],
-    historyFrom: historyWindowStart(occurredOn, activity, priced),
-    historyTo: historyWindowEnd(occurredOn, activity, priced),
-    categoryFirstDay: "2000-01-01",
+    history: [
+      {
+        id: 1,
+        userId: 0,
+        status: "approved",
+        occurredOn,
+        activityId: 5,
+        durationMinutes: null,
+        createdAt: new Date(`${occurredOn}T12:00:00Z`),
+        categoryId: 2,
+      },
+    ],
+    historyFrom: historyWindowStart(occurredOn, activity),
+    historyTo: historyWindowEnd(occurredOn, activity),
+    participatingCategoryIds: [category.id, 2],
   }).hours;
 }
 
 function changeCorpo(values: {
   decayStepHours: number;
-  returnBonusPct: number;
-  returnBonusAfterDays: number;
+  alternationBonusPct: number;
   value: number;
 }) {
   const { category } = football();
@@ -122,8 +137,7 @@ function changeCorpo(values: {
     .update(categories)
     .set({
       decayStepHours: values.decayStepHours,
-      returnBonusPct: values.returnBonusPct,
-      returnBonusAfterDays: values.returnBonusAfterDays,
+      alternationBonusPct: values.alternationBonusPct,
     })
     .where(eq(categories.id, category.id))
     .run();
@@ -196,28 +210,31 @@ describe("the numbers come from the configuration (#107)", () => {
       `Exemplo: ${formatDuration(SHORT_SESSION_MINUTES)} de ${activity.name}`,
     );
     expect(markup).toContain(formatHours(engineHours(SHORT_SESSION_MINUTES)));
-    expect(markup).toContain("+50%, faz mais de 3 dias que você não faz Corpo");
+    expect(markup).toContain("+50%, você variou de atividade hoje");
   });
 
-  it("shows the seed's Corpo: 2h step, +50% after 3 days, 6h asymptote", async () => {
+  it("shows the seed's Corpo: 2h step, +50% on alternating, 6h asymptote", async () => {
     const markup = await markupFor("kid2");
 
     expect(markup).toContain(`a cada ${formatDuration(120)} no`);
-    expect(markup).toContain("faz mais de 3 dias sem nada de");
+    expect(markup).toContain("outra categoria que dá bônus");
     expect(markup).toContain(`perto de ${formatHours(6)}`);
     expect(markup).toContain(`cada hora vale ${formatHours(1.5)} de tela`);
   });
 
-  it("says the debut of a category earns no bonus, on both versions (D47)", async () => {
-    expect(await markupFor("kid2")).toContain("só volta quem já esteve");
-    expect(await markupFor("admin1")).toContain("A estreia da");
+  it("says the first entry of the day earns no bonus, on both versions (D56)", async () => {
+    expect(await markupFor("kid2")).toContain(
+      "a primeira coisa do dia nunca ganha",
+    );
+    expect(await markupFor("admin1")).toContain(
+      "a primeira entrada do dia nunca ganha",
+    );
   });
 
   it("follows an edited configuration on both versions", async () => {
     changeCorpo({
       decayStepHours: 1,
-      returnBonusPct: 1,
-      returnBonusAfterDays: 5,
+      alternationBonusPct: 1,
       value: 3,
     });
 
@@ -225,16 +242,14 @@ describe("the numbers come from the configuration (#107)", () => {
       const markup = await markupFor(username);
 
       expect(markup).toContain(formatHours(engineHours(SHORT_SESSION_MINUTES)));
-      expect(markup).toContain(
-        "+100%, faz mais de 5 dias que você não faz Corpo",
-      );
+      expect(markup).toContain("+100%, você variou de atividade hoje");
       expect(markup).toContain(`cada hora vale ${formatHours(3)} de tela`);
       expect(markup).toContain(formatHours(engineHours(60, 0)));
     }
 
     const kid = await markupFor("kid2");
     expect(kid).toContain(`perto de ${formatHours(6)}`);
-    expect(kid).toContain("faz mais de 5 dias sem nada de");
+    expect(kid).toContain("ganha +100%");
     expect(kid).not.toContain(`perto de ${formatHours(8)}`);
   });
 

@@ -112,7 +112,7 @@ function requireNumber(value: number, what: string): void {
 }
 
 /**
- * Like `requireHours` but zero is allowed: a `base_rate` or `return_bonus_pct`
+ * Like `requireHours` but zero is allowed: a `base_rate` or `alternation_bonus_pct`
  * of zero means something (D12). Infinity is refused.
  */
 export function requireNonNegativeHours(hours: number, what: string): number {

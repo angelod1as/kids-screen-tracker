@@ -7,12 +7,11 @@ import type { ActivityRow } from "../../../../db/activities";
 import type { CategoryRow } from "../../../../db/categories";
 import type { Locks } from "../../../../db/pending";
 import type { Refused } from "../../../../db/refusal";
+import { BONUS_ENABLED } from "../../../../engine/flags";
 import {
   asymptoteHours,
   isUsableDecayStep,
-  isUsableReturnBonus,
   MIN_DECAY_STEP_HOURS,
-  MIN_RETURN_BONUS_AFTER_DAYS,
 } from "../../../../engine/limits";
 import { keptUnlessRetyped, minutesToHours } from "../../../../engine/timer";
 import { Button } from "../../../../ui/button";
@@ -95,8 +94,7 @@ export type CategoryDraft = {
   /** What the column holds, so an untouched field previews what the endpoint keeps (#55). */
   savedDecayStepHours?: number | null;
   /** Percentage points ("50"); the column is a fraction, converted once in `categoryInputOf`. */
-  returnBonusPct: string;
-  returnBonusAfterDays: string;
+  alternationBonusPct: string;
   sortOrder: string;
 };
 
@@ -104,8 +102,7 @@ export const EMPTY_CATEGORY: CategoryDraft = {
   name: "",
   baseRate: "",
   decayStep: EMPTY_TIME,
-  returnBonusPct: "0",
-  returnBonusAfterDays: "0",
+  alternationBonusPct: "0",
   sortOrder: "0",
 };
 
@@ -123,25 +120,20 @@ export function categoryInputOf(draft: CategoryDraft): CategoryRequest | null {
   const decayStepHours = typedStepHours(draft);
   const baseRate =
     draft.baseRate.trim() === "" ? null : parseTypedHours(draft.baseRate);
-  const returnBonusPct = typedBonusFraction(draft.returnBonusPct);
-  const returnBonusAfterDays = parseTypedCount(draft.returnBonusAfterDays);
+  const alternationBonusPct = typedBonusFraction(draft.alternationBonusPct);
   const sortOrder = parseTypedCount(draft.sortOrder);
 
   if (
     name === "" ||
     (!isBlankTime(draft.decayStep) && decayStep === null) ||
     (draft.baseRate.trim() !== "" && baseRate === null) ||
-    returnBonusPct === null ||
-    returnBonusAfterDays === null ||
+    alternationBonusPct === null ||
     sortOrder === null
   ) {
     return null;
   }
 
-  if (
-    !isUsableDecayStep(decayStepHours) ||
-    !isUsableReturnBonus(returnBonusPct, returnBonusAfterDays)
-  ) {
+  if (!isUsableDecayStep(decayStepHours)) {
     return null;
   }
 
@@ -149,8 +141,7 @@ export function categoryInputOf(draft: CategoryDraft): CategoryRequest | null {
     name,
     baseRate,
     decayStep,
-    returnBonusPct,
-    returnBonusAfterDays,
+    alternationBonusPct,
     sortOrder,
   };
 }
@@ -211,32 +202,22 @@ export function baseRateWarning(draft: CategoryDraft): string | null {
     : null;
 }
 
-export function returnBonusWarning(draft: CategoryDraft): string | null {
-  const pct = typedBonusFraction(draft.returnBonusPct);
-  const afterDays = parseTypedCount(draft.returnBonusAfterDays);
+export function alternationBonusWarning(draft: CategoryDraft): string | null {
+  const pct = typedBonusFraction(draft.alternationBonusPct);
 
   // A field the parser cannot read leaves Save dead; say why.
   if (pct === null) {
     return "Digite o bônus em porcentagem. Ex.: 50 para metade a mais.";
   }
 
-  if (afterDays === null) {
-    return "Digite os dias em número inteiro. Ex.: 3";
-  }
   // Below a hundredth of a point there is nothing to store; say so instead of dropping it.
-  const typedPoints = parseTypedHours(draft.returnBonusPct);
+  const typedPoints = parseTypedHours(draft.alternationBonusPct);
 
   if (typedPoints !== null && typedPoints > 0 && pct === 0) {
     return "Menor que 0,01% é guardado como sem bônus. Digite 0,01 ou mais.";
   }
 
-  if (isUsableReturnBonus(pct, afterDays)) return null;
-
-  return (
-    `Com bônus, o mínimo é ${MIN_RETURN_BONUS_AFTER_DAYS} dia. Em zero a janela é o próprio dia, ` +
-    "então o primeiro lançamento de todo dia conta como volta e o bônus vira permanente. " +
-    "Para uma categoria sem bônus, use 0%."
-  );
+  return null;
 }
 
 /** Rounded the way the endpoint rounds before it judges, so screen and server agree on 0h20. */
@@ -275,8 +256,7 @@ function draftOf(category: CategoryRow): CategoryDraft {
     baseRate: category.baseRate === null ? "" : decimal(category.baseRate),
     decayStep: timeFromHours(category.decayStepHours),
     savedDecayStepHours: category.decayStepHours,
-    returnBonusPct: percentText(category.returnBonusPct),
-    returnBonusAfterDays: String(category.returnBonusAfterDays),
+    alternationBonusPct: percentText(category.alternationBonusPct),
     sortOrder: String(category.sortOrder),
   };
 }
@@ -309,12 +289,13 @@ export function categorySummary(category: CategoryRow): string {
       : asymptote === null
         ? `passo de ${formatHours(category.decayStepHours)}`
         : `até ${formatDecimalHours(asymptote)} por dia`;
+  // D57: while the bonus is off, the summary says nothing about it.
+  if (!BONUS_ENABLED) return decay;
+
   const bonus =
-    category.returnBonusPct <= 0
+    category.alternationBonusPct <= 0
       ? "sem bônus"
-      : `+${percentText(category.returnBonusPct)}% após ${category.returnBonusAfterDays} ${
-          category.returnBonusAfterDays === 1 ? "dia" : "dias"
-        }`;
+      : `+${percentText(category.alternationBonusPct)}% ao alternar`;
 
   return `${decay} · ${bonus}`;
 }
@@ -391,11 +372,9 @@ function LockBanner({ locks }: { locks: Locks }) {
 }
 
 function bonusText(category: CategoryRow): string {
-  return category.returnBonusPct <= 0
+  return category.alternationBonusPct <= 0
     ? "sem bônus"
-    : `+${percentText(category.returnBonusPct)}% após ${category.returnBonusAfterDays} ${
-        category.returnBonusAfterDays === 1 ? "dia" : "dias"
-      }`;
+    : `+${percentText(category.alternationBonusPct)}% ao alternar`;
 }
 
 /**
@@ -478,10 +457,12 @@ export function CategoryDetail({
                 : formatHours(category.decayStepHours)}
             </span>
           </li>
-          <li className={ROW_CLASS}>
-            <span className="text-base text-black">Bônus de retorno</span>
-            <span className={READOUT_CLASS}>{bonusText(category)}</span>
-          </li>
+          {BONUS_ENABLED ? (
+            <li className={ROW_CLASS}>
+              <span className="text-base text-black">Bônus de alternância</span>
+              <span className={READOUT_CLASS}>{bonusText(category)}</span>
+            </li>
+          ) : null}
           <li className={ROW_CLASS}>
             <span className="text-base text-black">Ordem na lista</span>
             <span className={READOUT_CLASS}>{category.sortOrder}</span>
@@ -584,10 +565,20 @@ export function CategoryDetail({
 
 /** What each number does, in the adult guide's words, under the numbers themselves (#41). */
 function NumbersHelp() {
+  // D57: while the bonus is off, its own entry goes, and the asymptote line
+  // stops mentioning it.
+  const entries = NUMBERS_HELP.filter(
+    ([term]) => BONUS_ENABLED || term !== "Bônus de alternância",
+  ).map(([term, text]): readonly [string, string] =>
+    BONUS_ENABLED
+      ? [term, text]
+      : [term, text.replace(", sem contar o bônus de alternância", "")],
+  );
+
   return (
     <Panel title="O que cada número faz">
       <dl>
-        {NUMBERS_HELP.map(([term, text]) => (
+        {entries.map(([term, text]) => (
           <div
             className="flex flex-col gap-1 border-t border-black px-3 py-3 first:border-t-0"
             key={term}
@@ -618,15 +609,15 @@ const NUMBERS_HELP: readonly (readonly [string, string])[] = [
   [
     "Rende no máximo",
     "Taxa × passo × 2. É o que um dia inteiro na categoria se aproxima de " +
-      "render, sem nunca chegar lá, sem contar o bônus de retorno. A conta " +
+      "render, sem nunca chegar lá, sem contar o bônus de alternância. A conta " +
       "usa a taxa sugerida; uma atividade com taxa própria tem o próprio teto.",
   ],
   [
-    "Bônus de retorno",
-    "A entrada que volta à categoria depois de mais dias sem ela do que o " +
-      "limiar ganha essa porcentagem a mais, sobre o que sobrou depois do " +
-      "desgaste. Só a primeira do dia ganha, e a estreia da categoria nunca " +
-      `ganha. 0%: sem bônus. Com bônus, o limiar mínimo é ${MIN_RETURN_BONUS_AFTER_DAYS} dia.`,
+    "Bônus de alternância",
+    "Quando outra categoria que também dá bônus veio antes no mesmo dia, a " +
+      "primeira entrada desta categoria depois dela ganha essa porcentagem a " +
+      "mais, sobre o que sobrou depois do desgaste. Uma vez por categoria no " +
+      "dia; a primeira entrada do dia nunca ganha. 0%: sem bônus.",
   ],
   [
     "Ordem na lista",
@@ -693,7 +684,7 @@ function CategoryFields({
 }) {
   const rateWarning = baseRateWarning(draft);
   const stepWarning = decayStepWarning(draft);
-  const bonusWarning = returnBonusWarning(draft);
+  const bonusWarning = alternationBonusWarning(draft);
 
   return (
     <div className="flex flex-col gap-3">
@@ -742,37 +733,31 @@ function CategoryFields({
         )}
       </p>
 
-      <div className={FIELD_PAIR_CLASS}>
-        <Field
-          id={`${prefix}-bonus`}
-          inputMode="decimal"
-          label="Bônus de retorno (%)"
-          onChange={(event) =>
-            onChange({ ...draft, returnBonusPct: event.target.value })
-          }
-          type="text"
-          value={draft.returnBonusPct}
-        />
+      {/* D57: the owner neither sees nor edits the bonus while it is off. */}
+      {BONUS_ENABLED ? (
+        <>
+          <div className={FIELD_PAIR_CLASS}>
+            <Field
+              id={`${prefix}-bonus`}
+              inputMode="decimal"
+              label="Bônus de alternância (%)"
+              onChange={(event) =>
+                onChange({ ...draft, alternationBonusPct: event.target.value })
+              }
+              type="text"
+              value={draft.alternationBonusPct}
+            />
+          </div>
 
-        <Field
-          id={`${prefix}-bonus-dias`}
-          inputMode="numeric"
-          label="Bônus a partir de quantos dias sem fazer"
-          onChange={(event) =>
-            onChange({ ...draft, returnBonusAfterDays: event.target.value })
-          }
-          type="text"
-          value={draft.returnBonusAfterDays}
-        />
-      </div>
-
-      {bonusWarning === null ? null : (
-        <p
-          className={`${BORDER_CLASS} bg-white p-3 text-base font-bold text-black`}
-        >
-          {bonusWarning}
-        </p>
-      )}
+          {bonusWarning === null ? null : (
+            <p
+              className={`${BORDER_CLASS} bg-white p-3 text-base font-bold text-black`}
+            >
+              {bonusWarning}
+            </p>
+          )}
+        </>
+      ) : null}
 
       <div className={FIELD_PAIR_CLASS}>
         <Field

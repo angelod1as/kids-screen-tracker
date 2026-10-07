@@ -1,4 +1,7 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+
+// D57: these cases prove the bonus ON; the shipped default is off.
+vi.mock("./flags", () => ({ BONUS_ENABLED: true }));
 
 import {
   type ApprovedLog,
@@ -14,33 +17,36 @@ import {
 } from "./calculate";
 
 /**
- * Mente with and without the return bonus: a bonus firing on the day's first
- * entry would turn 2h into 3h and hide the decay being measured.
+ * Mente without the bonus: with no earlier participating category in history,
+ * alternation never fires, so the decay being measured is not hidden.
  */
 
 const menteNoBonus: EngineCategory = {
   id: 1,
   name: "Mente",
   decayStepHours: 1,
-  returnBonusPct: 0,
-  returnBonusAfterDays: 0,
+  alternationBonusPct: 0,
 };
 
-/** `return_bonus_pct` is a fraction, the way the seed (#9) stores it: 0,5 = +50%. */
+/** Mente that takes the bonus, for the alternation cases. */
+const menteBonus: EngineCategory = {
+  ...menteNoBonus,
+  alternationBonusPct: 0.5,
+};
+
+/** `alternation_bonus_pct` is a fraction, the way the seed (#9) stores it: 0,5 = +50%. */
 const corpo: EngineCategory = {
   id: 2,
   name: "Corpo",
   decayStepHours: 2,
-  returnBonusPct: 0.5,
-  returnBonusAfterDays: 3,
+  alternationBonusPct: 0.5,
 };
 
 const casa: EngineCategory = {
   id: 3,
   name: "Casa",
   decayStepHours: null,
-  returnBonusPct: 0,
-  returnBonusAfterDays: 0,
+  alternationBonusPct: 0,
 };
 
 const lerLivro: EngineActivity = {
@@ -104,8 +110,6 @@ const DAY = "2026-09-01";
 const WINDOW = shiftDate(DAY, -7);
 /** The far end of the same window (D34). */
 const WINDOW_END = shiftDate(DAY, 7);
-/** A category done long before any window here: every entry can be a return (D47). */
-const LONG_AGO = "2000-01-01";
 const KID1 = 1;
 const KID2 = 2;
 
@@ -158,7 +162,7 @@ describe("decay", () => {
           durationMinutes: 60,
           historyFrom: WINDOW,
           historyTo: WINDOW_END,
-          categoryFirstDay: LONG_AGO,
+          participatingCategoryIds: [],
           history,
         }).hours,
       );
@@ -177,7 +181,7 @@ describe("decay", () => {
       durationMinutes: 120,
       historyFrom: WINDOW,
       historyTo: WINDOW_END,
-      categoryFirstDay: LONG_AGO,
+      participatingCategoryIds: [],
       history: [],
     });
 
@@ -201,7 +205,7 @@ describe("decay", () => {
       durationMinutes: 360,
       historyFrom: WINDOW,
       historyTo: WINDOW_END,
-      categoryFirstDay: LONG_AGO,
+      participatingCategoryIds: [],
       history: [],
     });
 
@@ -221,7 +225,7 @@ describe("decay", () => {
         durationMinutes: 60,
         historyFrom: WINDOW,
         historyTo: WINDOW_END,
-        categoryFirstDay: LONG_AGO,
+        participatingCategoryIds: [],
         history,
       }).hours;
       history.push(log(lerLivro));
@@ -246,7 +250,7 @@ describe("decay", () => {
         durationMinutes,
         historyFrom: WINDOW,
         historyTo: WINDOW_END,
-        categoryFirstDay: LONG_AGO,
+        participatingCategoryIds: [],
         history,
       }).hours;
 
@@ -274,7 +278,7 @@ describe("decay", () => {
         durationMinutes: 60,
         historyFrom: WINDOW,
         historyTo: WINDOW_END,
-        categoryFirstDay: LONG_AGO,
+        participatingCategoryIds: [],
         history: [log(lerLivro, { durationMinutes: 30 })],
       }).lines,
     ).toEqual([
@@ -301,7 +305,7 @@ describe("decay", () => {
         durationMinutes: 60,
         historyFrom: WINDOW,
         historyTo: WINDOW_END,
-        categoryFirstDay: LONG_AGO,
+        participatingCategoryIds: [],
         history,
       }).hours;
 
@@ -322,7 +326,7 @@ describe("decay", () => {
       // A different activity, the same category: the bucket is shared.
       historyFrom: WINDOW,
       historyTo: WINDOW_END,
-      categoryFirstDay: LONG_AGO,
+      participatingCategoryIds: [],
       history: [log(xadrez)],
     });
 
@@ -336,7 +340,7 @@ describe("decay", () => {
       durationMinutes: 60,
       historyFrom: WINDOW,
       historyTo: WINDOW_END,
-      categoryFirstDay: LONG_AGO,
+      participatingCategoryIds: [],
       history: [log(futebol)],
     });
 
@@ -356,7 +360,7 @@ describe("decay", () => {
         durationMinutes,
         historyFrom: WINDOW,
         historyTo: WINDOW_END,
-        categoryFirstDay: LONG_AGO,
+        participatingCategoryIds: [],
         history: [],
       }).lines[0];
 
@@ -402,7 +406,7 @@ describe("decay", () => {
     const fourThirties = Array.from({ length: 4 }, () =>
       log(futebol, { durationMinutes: 30 }),
     );
-    const corpoNoBonus: EngineCategory = { ...corpo, returnBonusPct: 0 };
+    const corpoNoBonus: EngineCategory = { ...corpo, alternationBonusPct: 0 };
     const expected = [
       {
         step: "base",
@@ -426,7 +430,7 @@ describe("decay", () => {
           durationMinutes: 60,
           historyFrom: WINDOW,
           historyTo: WINDOW_END,
-          categoryFirstDay: LONG_AGO,
+          participatingCategoryIds: [],
           history,
         }).lines,
       ).toEqual(expected);
@@ -443,7 +447,7 @@ describe("decay", () => {
         durationMinutes: 60,
         historyFrom: WINDOW,
         historyTo: WINDOW_END,
-        categoryFirstDay: LONG_AGO,
+        participatingCategoryIds: [],
         history: Array.from({ length: 60 }, () =>
           log(lerLivro, { durationMinutes: 1 }),
         ),
@@ -471,7 +475,7 @@ describe("decay", () => {
       durationMinutes: 60,
       historyFrom: WINDOW,
       historyTo: WINDOW_END,
-      categoryFirstDay: LONG_AGO,
+      participatingCategoryIds: [],
       history: [log(lerLivro, { occurredOn: "2026-08-31" })],
     });
 
@@ -489,7 +493,7 @@ describe("decay", () => {
       durationMinutes: 2000 * 60,
       historyFrom: WINDOW,
       historyTo: WINDOW_END,
-      categoryFirstDay: LONG_AGO,
+      participatingCategoryIds: [],
       history: [],
     });
 
@@ -514,7 +518,7 @@ describe("decay", () => {
         durationMinutes: 60,
         historyFrom: WINDOW,
         historyTo: WINDOW_END,
-        categoryFirstDay: LONG_AGO,
+        participatingCategoryIds: [],
         history: [log(lerLivro, { durationMinutes: 2000 * 60 })],
       }).lines.at(-1)?.text,
       // 2000,01h, not 2000h: the fold starts at band 2.000.007, which opens at
@@ -531,7 +535,7 @@ describe("decay", () => {
           durationMinutes,
           historyFrom: WINDOW,
           historyTo: WINDOW_END,
-          categoryFirstDay: LONG_AGO,
+          participatingCategoryIds: [],
           history: [],
         });
 
@@ -555,7 +559,7 @@ describe("decay", () => {
       durationMinutes: 360,
       historyFrom: WINDOW,
       historyTo: WINDOW_END,
-      categoryFirstDay: LONG_AGO,
+      participatingCategoryIds: [],
       history: [],
     });
 
@@ -575,7 +579,7 @@ describe("decay", () => {
       occurredOn: DAY,
       historyFrom: WINDOW,
       historyTo: WINDOW_END,
-      categoryFirstDay: LONG_AGO,
+      participatingCategoryIds: [],
       history: bucketed,
     });
 
@@ -586,12 +590,12 @@ describe("decay", () => {
     const afterFixed = earn({
       userId: KID1,
       activity: futebol,
-      category: { ...corpo, returnBonusPct: 0 },
+      category: { ...corpo, alternationBonusPct: 0 },
       occurredOn: DAY,
       durationMinutes: 60,
       historyFrom: WINDOW,
       historyTo: WINDOW_END,
-      categoryFirstDay: LONG_AGO,
+      participatingCategoryIds: [],
       history: [log({ ...sairComAmigos, categoryId: 2 })],
     });
 
@@ -613,7 +617,7 @@ describe("rounding", () => {
       quality: 0.5,
       historyFrom: WINDOW,
       historyTo: WINDOW_END,
-      categoryFirstDay: LONG_AGO,
+      participatingCategoryIds: [],
       history: [log(estudo, { occurredOn: "2026-08-28", durationMinutes: 60 })],
     });
 
@@ -632,7 +636,7 @@ describe("rounding", () => {
   });
 
   it("closes the sum over every duration of a day, at every step", () => {
-    const noBonusCorpo: EngineCategory = { ...corpo, returnBonusPct: 0 };
+    const noBonusCorpo: EngineCategory = { ...corpo, alternationBonusPct: 0 };
 
     for (const category of [menteNoBonus, noBonusCorpo]) {
       for (const value of [0.5, 1, 2, 3]) {
@@ -650,7 +654,7 @@ describe("rounding", () => {
             durationMinutes,
             historyFrom: WINDOW,
             historyTo: WINDOW_END,
-            categoryFirstDay: LONG_AGO,
+            participatingCategoryIds: [],
             history: [log(lerLivro, { durationMinutes: 37 })],
           });
         }
@@ -659,7 +663,7 @@ describe("rounding", () => {
   });
 });
 
-describe("quality, cooldown and the return bonus", () => {
+describe("quality, cooldown and the alternation bonus", () => {
   it("applies the grade once, and a zero grade earns zero (D10)", () => {
     const graded = earn({
       userId: KID1,
@@ -669,7 +673,7 @@ describe("quality, cooldown and the return bonus", () => {
       quality: 0.7,
       historyFrom: WINDOW,
       historyTo: WINDOW_END,
-      categoryFirstDay: LONG_AGO,
+      participatingCategoryIds: [],
       history: [],
     });
 
@@ -683,7 +687,7 @@ describe("quality, cooldown and the return bonus", () => {
       quality: 0,
       historyFrom: WINDOW,
       historyTo: WINDOW_END,
-      categoryFirstDay: LONG_AGO,
+      participatingCategoryIds: [],
       history: [],
     });
 
@@ -694,8 +698,7 @@ describe("quality, cooldown and the return bonus", () => {
     // D10's "0h is noise" holds for the explanation too.
     const bonusCasa: EngineCategory = {
       ...casa,
-      returnBonusPct: 0.5,
-      returnBonusAfterDays: 3,
+      alternationBonusPct: 0.5,
     };
     const zero = earn({
       userId: KID1,
@@ -705,7 +708,7 @@ describe("quality, cooldown and the return bonus", () => {
       quality: 0,
       historyFrom: WINDOW,
       historyTo: WINDOW_END,
-      categoryFirstDay: LONG_AGO,
+      participatingCategoryIds: [],
       history: [],
     });
 
@@ -725,7 +728,7 @@ describe("quality, cooldown and the return bonus", () => {
       quality: 1,
       historyFrom: WINDOW,
       historyTo: WINDOW_END,
-      categoryFirstDay: LONG_AGO,
+      participatingCategoryIds: [],
       history: [log(lavarOCarro)],
     });
 
@@ -739,7 +742,7 @@ describe("quality, cooldown and the return bonus", () => {
       quality: 1,
       historyFrom: WINDOW,
       historyTo: WINDOW_END,
-      categoryFirstDay: LONG_AGO,
+      participatingCategoryIds: [],
       history: [log(lavarOCarro, { occurredOn: "2026-08-29" })],
     });
 
@@ -756,7 +759,7 @@ describe("quality, cooldown and the return bonus", () => {
         quality: 1,
         historyFrom: WINDOW,
         historyTo: WINDOW_END,
-        categoryFirstDay: LONG_AGO,
+        participatingCategoryIds: [],
         history: [log(lavarOCarro, { occurredOn: "2026-08-25" })],
       }).hours,
     ).toBe(1.5);
@@ -770,7 +773,7 @@ describe("quality, cooldown and the return bonus", () => {
         quality: 1,
         historyFrom: WINDOW,
         historyTo: WINDOW_END,
-        categoryFirstDay: LONG_AGO,
+        participatingCategoryIds: [],
         history: [log(lavarOCarro, { occurredOn: "2026-08-24" })],
       }).hours,
     ).toBe(3);
@@ -784,28 +787,33 @@ describe("quality, cooldown and the return bonus", () => {
       occurredOn: DAY,
       historyFrom: WINDOW,
       historyTo: WINDOW_END,
-      categoryFirstDay: LONG_AGO,
+      participatingCategoryIds: [],
       history: [log(sairComAmigos)],
     });
 
     expect(result.hours).toBe(3);
   });
 
-  it("bonuses the already decayed value, not the base (D7)", () => {
+  // A same-day marker of another category, with no duration so it never fills a
+  // bucket — only its `category_id` and D8 order matter to alternation.
+  const marker = (activity: EngineActivity, id: number): ApprovedLog =>
+    log(activity, { id, createdAt: new Date(id), durationMinutes: null });
+
+  it("bonuses the already decayed value, not the base (D56/D7)", () => {
     // Corpo, step 2h, 4h of football on an empty bucket: 2h at ×1 and 2h at
-    // ×0,5, so 3h of activity are paid at 2,0 = 6h. The bonus is half of that
-    // 6h, not half of the undecayed 8h.
+    // ×0,5, so 3h of activity are paid at 2,0 = 6h. The alternation bonus is
+    // half of that 6h, not half of the undecayed 8h.
     const result = earn({
       userId: KID1,
       activity: futebol,
       category: corpo,
       occurredOn: DAY,
       durationMinutes: 240,
-      // Exactly the window the rules ask for, which is what a caller fetches.
-      historyFrom: historyWindowStart(DAY, futebol, corpo),
-      historyTo: historyWindowEnd(DAY, futebol, corpo),
-      categoryFirstDay: LONG_AGO,
-      history: [],
+      historyFrom: historyWindowStart(DAY, futebol),
+      historyTo: historyWindowEnd(DAY, futebol),
+      participatingCategoryIds: [menteBonus.id, corpo.id],
+      // Reading came earlier today, so Corpo now alternates off it.
+      history: [marker(lerLivro, 1)],
     });
 
     expect(result.hours).toBe(9);
@@ -818,13 +826,13 @@ describe("quality, cooldown and the return bonus", () => {
       },
       {
         step: "bonus",
-        text: "+50%, faz mais de 3 dias que você não faz Corpo",
+        text: "+50%, você variou de atividade hoje",
         hours: 3,
       },
     ]);
   });
 
-  it("pays 50% and not 5000% for a return_bonus_pct of 0,5", () => {
+  it("pays 50% and not 5000% for an alternation_bonus_pct of 0,5", () => {
     // A fraction, the seed's convention. Read as a percentage it would be × 1,005,
     // small and invisible; a stored 50 would be × 51.
     const base: CalculationInput = {
@@ -833,38 +841,38 @@ describe("quality, cooldown and the return bonus", () => {
       category: corpo,
       occurredOn: DAY,
       durationMinutes: 60,
-      historyFrom: historyWindowStart(DAY, futebol, corpo),
-      historyTo: historyWindowEnd(DAY, futebol, corpo),
-      categoryFirstDay: LONG_AGO,
-      history: [],
+      historyFrom: historyWindowStart(DAY, futebol),
+      historyTo: historyWindowEnd(DAY, futebol),
+      participatingCategoryIds: [menteBonus.id, corpo.id],
+      history: [marker(lerLivro, 1)],
     };
 
     // 1h of football on an empty Corpo bucket is 2h before the bonus.
     expect(earn(base).hours).toBe(3);
     expect(earn(base).lines.at(-1)).toEqual({
       step: "bonus",
-      text: "+50%, faz mais de 3 dias que você não faz Corpo",
+      text: "+50%, você variou de atividade hoje",
       hours: 1,
     });
 
     // A different fraction, to show the 100 is not hidden anywhere.
     expect(
-      earn({ ...base, category: { ...corpo, returnBonusPct: 0.25 } }).lines.at(
-        -1,
-      ),
+      earn({
+        ...base,
+        category: { ...corpo, alternationBonusPct: 0.25 },
+      }).lines.at(-1),
     ).toEqual({
       step: "bonus",
-      text: "+25%, faz mais de 3 dias que você não faz Corpo",
+      text: "+25%, você variou de atividade hoje",
       hours: 0.5,
     });
   });
 
-  it("pays the bonus only on the first entry of the return (D6)", () => {
-    const returned = log(futebol, { occurredOn: "2026-08-30" });
-
-    // Two days back is inside `[occurredOn − 3, occurredOn]`, so there was no
-    // absence to reward.
-    expect(
+  it("unlocks only after an earlier, different, participating category (D56)", () => {
+    const at = (
+      history: ApprovedLog[],
+      participatingCategoryIds: number[],
+    ): string | undefined =>
       earn({
         userId: KID1,
         activity: futebol,
@@ -873,27 +881,64 @@ describe("quality, cooldown and the return bonus", () => {
         durationMinutes: 60,
         historyFrom: WINDOW,
         historyTo: WINDOW_END,
-        categoryFirstDay: LONG_AGO,
-        history: [log(futebol, { occurredOn: "2026-08-30" })],
-      }).hours,
-    ).toBe(2);
+        participatingCategoryIds,
+        history,
+      }).lines.at(-1)?.text;
 
-    // Older than the window, and the history reaches far enough to name the day.
-    const result = earn({
+    // The first entry of the day has nothing before it.
+    expect(at([], [menteBonus.id, corpo.id])).toBe("Futebol, 1h × 2,0 — cheio");
+    // A non-participating category (Casa, pct 0) does not unlock.
+    expect(at([marker(sairComAmigos, 1)], [menteBonus.id, corpo.id])).toBe(
+      "Futebol, 1h × 2,0 — cheio",
+    );
+    // The same category is not alternation (D3): an earlier Corpo entry does
+    // not unlock Corpo, however many there are.
+    expect(at([marker(futebol, 1)], [menteBonus.id, corpo.id])).toBe(
+      "Futebol, 1h × 2,0 — cheio",
+    );
+    // A different participating category before it does unlock.
+    expect(at([marker(lerLivro, 1)], [menteBonus.id, corpo.id])).toBe(
+      "+50%, você variou de atividade hoje",
+    );
+  });
+
+  it("earns the bonus once per category per day, and A→B→A rewards the return (D56)", () => {
+    // A→B→A: book, football, then book again. The return to reading earns —
+    // Mente had not earned yet, and Corpo came before it.
+    const backToReading = earn({
       userId: KID1,
-      activity: futebol,
-      category: corpo,
+      activity: lerLivro,
+      category: menteBonus,
       occurredOn: DAY,
       durationMinutes: 60,
       historyFrom: WINDOW,
       historyTo: WINDOW_END,
-      categoryFirstDay: LONG_AGO,
-      history: [{ ...returned, occurredOn: "2026-08-28" }],
+      participatingCategoryIds: [menteBonus.id, corpo.id],
+      history: [marker(lerLivro, 1), marker(futebol, 2)],
     });
 
-    expect(result.hours).toBe(3);
-    expect(result.lines.at(-1)?.text).toBe(
-      "+50%, faz 4 dias que você não faz Corpo",
+    expect(backToReading.lines.at(-1)).toEqual({
+      step: "bonus",
+      text: "+50%, você variou de atividade hoje",
+      hours: 1,
+    });
+
+    // Once Mente has already earned (a Mente entry after the first Corpo), a
+    // later Mente entry pays without the bonus — ping-pong does not farm.
+    const secondReading = earn({
+      userId: KID1,
+      activity: lerLivro,
+      category: menteBonus,
+      occurredOn: DAY,
+      durationMinutes: 60,
+      historyFrom: WINDOW,
+      historyTo: WINDOW_END,
+      participatingCategoryIds: [menteBonus.id, corpo.id],
+      history: [marker(futebol, 1), marker(lerLivro, 2)],
+    });
+
+    expect(secondReading.lines.some((line) => line.step === "bonus")).toBe(
+      false,
     );
   });
 });
@@ -915,7 +960,7 @@ describe("the contract with the caller", () => {
         durationMinutes: 60,
         historyFrom: WINDOW,
         historyTo: WINDOW_END,
-        categoryFirstDay: LONG_AGO,
+        participatingCategoryIds: [],
         history,
       }).hours;
 
@@ -946,7 +991,7 @@ describe("the contract with the caller", () => {
       quality: 1,
       historyFrom: WINDOW,
       historyTo: WINDOW_END,
-      categoryFirstDay: LONG_AGO,
+      participatingCategoryIds: [],
       history: [later],
     });
 
@@ -965,7 +1010,7 @@ describe("the contract with the caller", () => {
         quality: 1,
         historyFrom: WINDOW,
         historyTo: shiftDate(DAY, 8),
-        categoryFirstDay: LONG_AGO,
+        participatingCategoryIds: [],
         history: [{ ...later, occurredOn: shiftDate(DAY, 8) }],
       }).hours,
     ).toBe(3);
@@ -983,7 +1028,7 @@ describe("the contract with the caller", () => {
         quality: 1,
         historyFrom: WINDOW,
         historyTo: DAY,
-        categoryFirstDay: LONG_AGO,
+        participatingCategoryIds: [],
         history: [],
       }),
     ).toThrow(/reads forward to/);
@@ -1001,9 +1046,9 @@ describe("the contract with the caller", () => {
         category: casa,
         occurredOn: DAY,
         quality: 1,
-        historyFrom: historyWindowStart(DAY, lavarOCarro, casa),
-        historyTo: historyWindowEnd(DAY, lavarOCarro, casa),
-        categoryFirstDay: LONG_AGO,
+        historyFrom: historyWindowStart(DAY, lavarOCarro),
+        historyTo: historyWindowEnd(DAY, lavarOCarro),
+        participatingCategoryIds: [],
         history: [washed],
       }).hours,
     ).toBe(1.5);
@@ -1017,36 +1062,30 @@ describe("the contract with the caller", () => {
         quality: 1,
         historyFrom: shiftDate(DAY, -3),
         historyTo: WINDOW_END,
-        categoryFirstDay: LONG_AGO,
+        participatingCategoryIds: [],
         history: [],
       }),
     ).toThrow(/reads back to 2026-08-25/);
   });
 
-  it("counts the absence only as far as the history reaches", () => {
-    const away = (historyFrom: string, history: ApprovedLog[]) =>
-      earn({
-        userId: KID1,
-        activity: futebol,
-        category: corpo,
-        occurredOn: DAY,
-        durationMinutes: 60,
-        historyFrom,
-        historyTo: WINDOW_END,
-        categoryFirstDay: LONG_AGO,
-        history,
-      }).lines.at(-1)?.text;
+  it("reads alternation off the same day only, never an earlier day (D3/D56)", () => {
+    // A different participating category, but yesterday: the trigger zeroes at
+    // midnight, so today's first entry still earns nothing.
+    const yesterday = earn({
+      userId: KID1,
+      activity: futebol,
+      category: corpo,
+      occurredOn: DAY,
+      durationMinutes: 60,
+      historyFrom: WINDOW,
+      historyTo: WINDOW_END,
+      participatingCategoryIds: [menteBonus.id, corpo.id],
+      history: [
+        log(lerLivro, { occurredOn: "2026-08-31", durationMinutes: null }),
+      ],
+    });
 
-    // The minimum window never names the day: a log inside it would cancel the bonus.
-    expect(away(historyWindowStart(DAY, futebol, corpo), [])).toBe(
-      "+50%, faz mais de 3 dias que você não faz Corpo",
-    );
-    expect(away(shiftDate(DAY, -10), [])).toBe(
-      "+50%, faz mais de 10 dias que você não faz Corpo",
-    );
-    expect(
-      away(shiftDate(DAY, -10), [log(futebol, { occurredOn: "2026-08-28" })]),
-    ).toBe("+50%, faz 4 dias que você não faz Corpo");
+    expect(yesterday.lines.some((line) => line.step === "bonus")).toBe(false);
   });
 
   it("refuses history that is not this user's, or not approved", () => {
@@ -1060,7 +1099,7 @@ describe("the contract with the caller", () => {
       durationMinutes: 60,
       historyFrom: WINDOW,
       historyTo: WINDOW_END,
-      categoryFirstDay: LONG_AGO,
+      participatingCategoryIds: [],
     };
 
     expect(earn({ ...own, history: [] }).hours).toBe(2);
@@ -1070,7 +1109,7 @@ describe("the contract with the caller", () => {
         ...own,
         historyFrom: WINDOW,
         historyTo: WINDOW_END,
-        categoryFirstDay: LONG_AGO,
+        participatingCategoryIds: [],
         history: [log(lerLivro, { userId: KID2 })],
       }),
     ).toThrow(/user 2/);
@@ -1088,21 +1127,13 @@ describe("the contract with the caller", () => {
   });
 
   it("says how far back the history has to reach", () => {
-    expect(historyLookbackDays(lavarOCarro, casa)).toBe(7);
-    expect(historyLookbackDays(lerLivro, corpo)).toBe(3);
-    expect(historyLookbackDays(lerLivro, menteNoBonus)).toBe(0);
-    // The bonus window is irrelevant while the bonus is off.
-    expect(
-      historyLookbackDays(lerLivro, {
-        ...menteNoBonus,
-        returnBonusAfterDays: 9,
-      }),
-    ).toBe(0);
+    // Only the cooldown reaches across days now; alternation is same-day (D56).
+    expect(historyLookbackDays(lavarOCarro)).toBe(7);
+    expect(historyLookbackDays(lerLivro)).toBe(0);
 
     // And the same window as a date, so no caller writes the arithmetic again.
-    expect(historyWindowStart(DAY, lavarOCarro, casa)).toBe("2026-08-25");
-    expect(historyWindowStart(DAY, lerLivro, corpo)).toBe("2026-08-29");
-    expect(historyWindowStart(DAY, lerLivro, menteNoBonus)).toBe(DAY);
+    expect(historyWindowStart(DAY, lavarOCarro)).toBe("2026-08-25");
+    expect(historyWindowStart(DAY, lerLivro)).toBe(DAY);
     expect(shiftDate("2026-03-01", -1)).toBe("2026-02-28");
     expect(shiftDate("2026-12-31", 1)).toBe("2027-01-01");
   });
@@ -1128,7 +1159,7 @@ describe("the contract with the caller", () => {
         occurredOn: DAY,
         historyFrom: WINDOW,
         historyTo: WINDOW_END,
-        categoryFirstDay: LONG_AGO,
+        participatingCategoryIds: [],
         history: [],
       }),
     ).toThrow(/durationMinutes/);
@@ -1141,7 +1172,7 @@ describe("the contract with the caller", () => {
         occurredOn: DAY,
         historyFrom: WINDOW,
         historyTo: WINDOW_END,
-        categoryFirstDay: LONG_AGO,
+        participatingCategoryIds: [],
         history: [],
       }),
     ).toThrow(/quality/);
@@ -1158,7 +1189,7 @@ describe("the contract with the caller", () => {
         occurredOn: DAY,
         historyFrom: WINDOW,
         historyTo: WINDOW_END,
-        categoryFirstDay: LONG_AGO,
+        participatingCategoryIds: [],
         history: [],
       }),
     ).toThrow(/freeValue/);
@@ -1175,7 +1206,7 @@ describe("the contract with the caller", () => {
         durationMinutes: 60,
         historyFrom: WINDOW,
         historyTo: WINDOW_END,
-        categoryFirstDay: LONG_AGO,
+        participatingCategoryIds: [],
         history: [],
       }),
     ).toThrow(/decay_step_hours/);
@@ -1189,7 +1220,7 @@ describe("the contract with the caller", () => {
         durationMinutes: Number.POSITIVE_INFINITY,
         historyFrom: WINDOW,
         historyTo: WINDOW_END,
-        categoryFirstDay: LONG_AGO,
+        participatingCategoryIds: [],
         history: [],
       }),
     ).toThrow(/durationMinutes/);
@@ -1205,7 +1236,7 @@ describe("the contract with the caller", () => {
         quality,
         historyFrom: WINDOW,
         historyTo: WINDOW_END,
-        categoryFirstDay: LONG_AGO,
+        participatingCategoryIds: [],
         history: [],
       });
 
@@ -1228,7 +1259,7 @@ describe("the contract with the caller", () => {
       freeValue: 1.25,
       historyFrom: WINDOW,
       historyTo: WINDOW_END,
-      categoryFirstDay: LONG_AGO,
+      participatingCategoryIds: [],
       history: [],
     });
 

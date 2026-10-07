@@ -94,6 +94,8 @@ export function shiftDay(date: string, days: number): string {
 
 export const BOOK = "Ler livro";
 export const COMIC = "Ler quadrinhos ou HQ";
+/** Corpo, a different participating category: it unlocks Mente's bonus (D56). */
+export const FOOTBALL = "Futebol ou outro esporte coletivo";
 export const CAR = "Lavar o carro";
 /** `fixed`: nothing to time. */
 export const FRIENDS = "Sair com os amigos";
@@ -292,14 +294,14 @@ function refused(body: () => void): string {
 export const QUEUE_CASES: readonly QueueCase[] = [
   {
     rule: "approving freezes the value and credits the ledger",
-    name: "one hour of Ler livro is an hour and a half, and a debut has no return bonus",
+    name: "one hour of Ler livro is an hour and a half, the first of the day with no bonus",
     run: (queue, world) => {
       const id = world.addPending({ activity: BOOK });
       queue.approveLog(world.connection, id, world.adminId, {}, REVIEWED_AT);
 
       return logText(world, id);
     },
-    // 1h × 1,5, and no bonus: nothing of Mente before it (D47).
+    // 1h × 1,5, and no bonus: nothing earlier the same day to alternate off (D56).
     expected: `approved · 1.5 h · 60 min · ${BOOK} · by 1 · no note`,
   },
   {
@@ -393,10 +395,40 @@ export const QUEUE_CASES: readonly QueueCase[] = [
   },
   {
     rule: "the value comes from the day the entry happened",
+    name: "a wash reads a later one frozen first, inside the cooldown's two-sided window (D34)",
+    run: (queue, world) => {
+      // Monday's wash, priced against a Tuesday wash already frozen: a later day
+      // the seven-day cooldown reaches forward to (D34), so Monday is halved.
+      world.addApproved({
+        activity: CAR,
+        occurredOn: "2026-09-08",
+        durationMinutes: null,
+        quality: 1,
+      });
+      const monday = world.addPending({
+        activity: CAR,
+        occurredOn: "2026-09-07",
+        durationMinutes: null,
+        quality: 1,
+      });
+      queue.approveLog(
+        world.connection,
+        monday,
+        world.adminId,
+        {},
+        REVIEWED_AT,
+      );
+
+      return world.logRow(monday).computedHours;
+    },
+    expected: 1.5,
+  },
+  {
+    rule: "the value comes from the day the entry happened",
     name: "a session that crossed midnight reads today, if today was frozen first (D31, D34)",
     run: (queue, world) => {
       // D31 settles a 23:50 session onto yesterday, reaching the queue after
-      // today's entry froze (D34). The August hour makes it a return (D47).
+      // today's entry froze (D34). The bucket is still per day (D3).
       world.addApproved({ activity: BOOK, occurredOn: "2026-08-01" });
       world.addApproved({ activity: BOOK, occurredOn: TODAY });
 
@@ -412,8 +444,30 @@ export const QUEUE_CASES: readonly QueueCase[] = [
         REVIEWED_AT,
       );
 
-      // Today's hour froze first and sits in the bonus window; the bucket is per day.
+      // Today's hour froze first but is another day; the bucket is per day.
       return world.logRow(yesterday).computedHours;
+    },
+    expected: 1.5,
+  },
+
+  {
+    rule: "the value comes from the day the entry happened",
+    name: "a book after football earns no bonus while it is off (D57)",
+    run: (queue, world) => {
+      // Football (Corpo) then a book (Mente): the alternation that would pay
+      // +50% (D56) is off by default (D57), so the book is a plain 1,5h.
+      const football = world.addPending({ activity: FOOTBALL });
+      const book = world.addPending({ activity: BOOK });
+      queue.approveLog(
+        world.connection,
+        football,
+        world.adminId,
+        {},
+        REVIEWED_AT,
+      );
+      queue.approveLog(world.connection, book, world.adminId, {}, REVIEWED_AT);
+
+      return world.logRow(book).computedHours;
     },
     expected: 1.5,
   },
@@ -548,81 +602,17 @@ export const QUEUE_CASES: readonly QueueCase[] = [
   },
   {
     rule: "an entry is not frozen while an earlier one is undecided",
-    name: "an entry outside the calculation's window does not block anything",
+    name: "a pending entry before the calculation's window does not block anything",
     run: (queue, world) => {
-      // Outside the three-day bonus window, and Mente already has an approved past (D47).
-      world.addApproved({ activity: BOOK, occurredOn: "2026-08-01" });
+      // Ler livro has no cooldown, so the window is the day itself (D56): an old
+      // pending entry of the same category is outside it and blocks nothing.
       world.addPending({ activity: BOOK, occurredOn: "2026-08-27" });
       const today = world.addPending({ activity: BOOK });
       queue.approveLog(world.connection, today, world.adminId, {}, REVIEWED_AT);
 
       return world.logRow(today).computedHours;
     },
-    expected: 2.25,
-  },
-  {
-    rule: "an entry is not frozen while an earlier one is undecided",
-    name: "a pending debut blocks the category however old it is (D47)",
-    run: (queue, world) => {
-      // Approved first, it makes today a return; refused, today is the debut.
-      world.addPending({ activity: BOOK, occurredOn: "2026-08-27" });
-      const today = world.addPending({ activity: BOOK });
-
-      return refused(() =>
-        queue.approveLog(
-          world.connection,
-          today,
-          world.adminId,
-          {},
-          REVIEWED_AT,
-        ),
-      );
-    },
-    expected: `refused: Não dá para aprovar a entrada 2 ainda: a entrada 1 (${BOOK}, 2026-08-27) vem antes dela e está esperando na fila. Decida essa primeiro.`,
-  },
-  {
-    rule: "an entry is not frozen while an earlier one is undecided",
-    name: "another category's past does not make a return (D47)",
-    run: (queue, world) => {
-      world.addApproved({
-        activity: CAR,
-        occurredOn: "2026-08-01",
-        quality: 1,
-      });
-      const today = world.addPending({ activity: BOOK });
-      queue.approveLog(world.connection, today, world.adminId, {}, REVIEWED_AT);
-
-      return world.logRow(today).computedHours;
-    },
     expected: 1.5,
-  },
-  {
-    rule: "an entry is not frozen while an earlier one is undecided",
-    name: "a pending debut of another category blocks nothing",
-    run: (queue, world) => {
-      world.addPending({ activity: CAR, occurredOn: "2026-08-27", quality: 1 });
-      const today = world.addPending({ activity: BOOK });
-      queue.approveLog(world.connection, today, world.adminId, {}, REVIEWED_AT);
-
-      return world.logRow(today).computedHours;
-    },
-    expected: 1.5,
-  },
-  {
-    rule: "an entry is not frozen while an earlier one is undecided",
-    name: "decided in order, the debut pays no bonus and the return does (D47)",
-    run: (queue, world) => {
-      const debut = world.addPending({
-        activity: BOOK,
-        occurredOn: "2026-08-27",
-      });
-      const today = world.addPending({ activity: BOOK });
-      queue.approveLog(world.connection, debut, world.adminId, {}, REVIEWED_AT);
-      queue.approveLog(world.connection, today, world.adminId, {}, REVIEWED_AT);
-
-      return `${world.logRow(debut).computedHours} · ${world.logRow(today).computedHours}`;
-    },
-    expected: "1.5 · 2.25",
   },
   {
     rule: "an entry is not frozen while an earlier one is undecided",

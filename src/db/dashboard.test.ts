@@ -2,8 +2,11 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import { eq } from "drizzle-orm";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { and, eq } from "drizzle-orm";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+// D57: the bonus split is measured with the bonus ON; default ships off.
+vi.mock("../engine/flags", () => ({ BONUS_ENABLED: true }));
 
 import { launchEntry } from "./admin";
 import { openDatabase } from "./client";
@@ -72,10 +75,13 @@ beforeEach(() => {
   seedWithTestUsers(connection);
   clock = Date.parse("2026-09-07T15:00:00Z");
 
-  // Mente: 1,5 per hour, step 1 h, +50% after 3 days without.
-  launch(KID1, "Ler livro", "2026-09-01", 60); // 1,50: the debut
+  // Mente: 1,5 per hour, step 1 h, +50% when it alternates off another
+  // participant (D56).
+  launch(KID1, "Ler livro", "2026-09-01", 60); // 1,50: first of the day
   launch(KID1, "Ler livro", "2026-09-01", 60); // 0,75: one step deep
-  launch(KID1, "Ler livro", "2026-09-06", 60); // 2,25: a return
+  // Criativo earlier on the 6th, so the reading after it alternates (D56): 0,75.
+  launch(KID1, "Praticar instrumento", "2026-09-06", 30);
+  launch(KID1, "Ler livro", "2026-09-06", 60); // 2,25: 1,50 + the alternation bonus
   launch(KID2, "Futebol ou outro esporte coletivo", "2026-09-02", 60);
   releaseHours(
     connection,
@@ -130,18 +136,17 @@ describe("hours per category (#9)", () => {
   });
 });
 
-describe("decay and the return bonus, off the engine's own lines (#9, #54)", () => {
+describe("decay and the alternation bonus, off the engine's own lines (#9, #54)", () => {
   it("splits the credited hours into the table, the decay and the bonus", () => {
     expect(mente().split).toEqual({ rule: 4.5, decay: -0.75, bonus: 0.75 });
   });
 
-  it("counts the days past one step, and the gap before each return", () => {
+  it("counts the days past one step, and the entries that took a bonus", () => {
     const category = mente();
 
     expect(category.kidDays).toBe(2);
     expect(category.kidDaysPastStep).toBe(1);
-    expect(category.gapsBeforeReturn).toEqual([4]);
-    expect(category.returnsWithBonus).toBe(1);
+    expect(category.bonusEntries).toBe(1);
   });
 
   it("leaves out an entry today's table no longer gives, rather than recompute it (D15)", () => {
@@ -162,7 +167,12 @@ describe("decay and the return bonus, off the engine's own lines (#9, #54)", () 
     connection.db
       .update(activityLogs)
       .set({ overridden: true })
-      .where(eq(activityLogs.computedHours, 0.75))
+      .where(
+        and(
+          eq(activityLogs.activityId, activityId("Ler livro")),
+          eq(activityLogs.computedHours, 0.75),
+        ),
+      )
       .run();
 
     expect(week().overridden).toBe(1);
@@ -170,17 +180,21 @@ describe("decay and the return bonus, off the engine's own lines (#9, #54)", () 
     expect(mente().excluded).toBe(1);
   });
 
-  it("keeps an overridden return among the returns, and says it is out of the bonus count", () => {
+  it("keeps an overridden entry in the category, and out of the bonus count", () => {
     connection.db
       .update(activityLogs)
       .set({ overridden: true })
-      .where(eq(activityLogs.occurredOn, "2026-09-06"))
+      .where(
+        and(
+          eq(activityLogs.activityId, activityId("Ler livro")),
+          eq(activityLogs.occurredOn, "2026-09-06"),
+        ),
+      )
       .run();
 
     const category = mente();
 
-    expect(category.gapsBeforeReturn).toEqual([4]);
-    expect(category.returnsWithBonus).toBe(0);
+    expect(category.bonusEntries).toBe(0);
     expect(category.excluded).toBe(1);
   });
 });
@@ -190,9 +204,9 @@ describe("balance over time (#9)", () => {
     const [kid1] = week().balances;
 
     expect(kid1?.points.map((point) => point.balance)).toEqual([
-      2.25, 2.25, 1.25, 1.25, 1.25, 3.5, 3.5,
+      2.25, 2.25, 1.25, 1.25, 1.25, 4.25, 4.25,
     ]);
-    expect(kid1?.earned).toBe(4.5);
+    expect(kid1?.earned).toBe(5.25);
     expect(kid1?.spent).toBe(1);
   });
 
@@ -204,9 +218,9 @@ describe("balance over time (#9)", () => {
     }).balances;
 
     expect(kid1?.points.map((point) => point.balance)).toEqual([
-      1.25, 3.5, 3.5,
+      1.25, 4.25, 4.25,
     ]);
-    expect(kid1?.earned).toBe(2.25);
+    expect(kid1?.earned).toBe(3);
   });
 
   it("drops a voided entry from the balance and every count (D52)", () => {
@@ -229,6 +243,7 @@ describe("activities used and unused (#9)", () => {
 
     expect(dashboard.used.map((use) => [use.name, use.entries])).toEqual([
       ["Ler livro", 3],
+      ["Praticar instrumento", 1],
     ]);
     expect(dashboard.unused.map((use) => use.name)).toContain(
       "Futebol ou outro esporte coletivo",

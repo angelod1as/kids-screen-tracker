@@ -2,7 +2,15 @@ import { asc, eq } from "drizzle-orm";
 import type { EntryPreview, LaunchResult, NewEntry } from "./admin";
 import type { Connection } from "./client";
 import type { World } from "./queue.rules";
-import { BOOK, CAR, COMIC, FRIENDS, makeWorld, THAT_DAY } from "./queue.rules";
+import {
+  BOOK,
+  CAR,
+  COMIC,
+  FOOTBALL,
+  FRIENDS,
+  makeWorld,
+  THAT_DAY,
+} from "./queue.rules";
 import { activities, activityLogs, categories, ledger, users } from "./schema";
 
 /**
@@ -196,7 +204,7 @@ function entry(world: AdminWorld, overrides: Partial<NewEntry> = {}): NewEntry {
 export const ADMIN_CASES: readonly AdminCase[] = [
   {
     rule: "an admin's entry is born approved and credited",
-    name: "one hour of Ler livro is an hour and a half, and a debut has no return bonus",
+    name: "one hour of Ler livro is an hour and a half, the first of the day with no bonus",
     run: (admin, world) => {
       const { logId } = admin.launchEntry(
         world.connection,
@@ -207,7 +215,7 @@ export const ADMIN_CASES: readonly AdminCase[] = [
 
       return world.entryText(logId);
     },
-    // 1h × 1,5, and no bonus: nothing of Mente before it (D47).
+    // 1h × 1,5, and no bonus: nothing earlier the same day to alternate off (D56).
     expected: `approved admin · 1.5 h · 60 min · nota null · avulso null · ${BOOK} · ${THAT_DAY} · by 1/1 · no note`,
   },
   {
@@ -454,11 +462,10 @@ export const ADMIN_CASES: readonly AdminCase[] = [
   },
   {
     rule: "an entry is not frozen out of the canonical order",
-    name: "a pending entry one day outside the window does not block",
+    name: "a pending entry of another day does not block (Ler livro has no cooldown)",
     run: (admin, world) => {
-      // The day before the bonus window opens; the approved past keeps it
-      // from being a debut (D47).
-      world.addApproved({ activity: BOOK, occurredOn: "2026-08-01" });
+      // Ler livro has no cooldown, so its window is the day itself (D56): a
+      // pending entry of another day is outside it and blocks nothing.
       world.addPending({ activity: BOOK, occurredOn: "2026-09-06" });
 
       const { hours } = admin.launchEntry(
@@ -470,47 +477,33 @@ export const ADMIN_CASES: readonly AdminCase[] = [
 
       return hours;
     },
-    expected: 2.25,
-  },
-  {
-    rule: "an entry is not frozen out of the canonical order",
-    name: "a pending debut of the category blocks a launch however old it is (D47)",
-    run: (admin, world) => {
-      world.addPending({ activity: BOOK, occurredOn: "2026-09-06" });
-
-      return refused(() =>
-        admin.launchEntry(
-          world.connection,
-          entry(world),
-          world.adminId,
-          LAUNCHED_AT,
-        ),
-      );
-    },
-    expected: `refused: Não dá para lançar esta entrada ainda: a entrada 1 (${BOOK}, 2026-09-06) vem antes dela e está esperando na fila. Decida essa primeiro.`,
-  },
-  {
-    rule: "an entry is not frozen out of the canonical order",
-    name: "a launch after an approved past older than the window is a return (D47)",
-    run: (admin, world) => {
-      world.addApproved({ activity: BOOK, occurredOn: "2026-09-06" });
-
-      const { hours } = admin.launchEntry(
-        world.connection,
-        entry(world),
-        world.adminId,
-        LAUNCHED_AT,
-      );
-
-      return hours;
-    },
-    expected: 2.25,
+    expected: 1.5,
   },
   {
     rule: "a launch reads what its window has already spent",
-    name: "a launch onto a past day before the category's first entry is its debut (D34, D47)",
+    name: "a book launched after football earns no bonus while it is off (D57)",
     run: (admin, world) => {
-      // Frozen first, but nine days later: nothing of Mente came before the 1st.
+      // Football (Corpo) earlier today would unlock the alternation (D56), but
+      // the bonus is off by default (D57), so the book is a plain 1,5h.
+      world.addApproved({ activity: FOOTBALL, occurredOn: THAT_DAY });
+
+      const { hours } = admin.launchEntry(
+        world.connection,
+        entry(world),
+        world.adminId,
+        LAUNCHED_AT,
+      );
+
+      return hours;
+    },
+    expected: 1.5,
+  },
+  {
+    rule: "a launch reads what its window has already spent",
+    name: "a launch onto a past day earns no bonus with nothing earlier that day (D34/D56)",
+    run: (admin, world) => {
+      // Frozen first, but nine days later: it reads 2026-09-01's own day, which
+      // is empty, so no decay and no alternation.
       world.addApproved({ activity: BOOK, occurredOn: THAT_DAY });
 
       const { hours } = admin.launchEntry(
@@ -523,24 +516,6 @@ export const ADMIN_CASES: readonly AdminCase[] = [
       return hours;
     },
     expected: 1.5,
-  },
-  {
-    rule: "an entry is not frozen out of the canonical order",
-    name: "a pending entry on the first day of the window does block",
-    run: (admin, world) => {
-      // Inside the window by a day.
-      world.addPending({ activity: BOOK, occurredOn: "2026-09-07" });
-
-      return refused(() =>
-        admin.launchEntry(
-          world.connection,
-          entry(world),
-          world.adminId,
-          LAUNCHED_AT,
-        ),
-      );
-    },
-    expected: `refused: Não dá para lançar esta entrada ainda: a entrada 1 (${BOOK}, 2026-09-07) vem antes dela e está esperando na fila. Decida essa primeiro.`,
   },
   {
     rule: "an entry is not frozen out of the canonical order",
@@ -1183,6 +1158,19 @@ export const ADMIN_CASES: readonly AdminCase[] = [
     run: (admin, world) =>
       admin.previewEntry(world.connection, entry(world), LAUNCHED_AT)
         .calculation.hours,
+    expected: 1.5,
+  },
+  {
+    rule: "the preview says what it would pay and writes nothing",
+    name: "the preview shows no bonus even after a different category, while off (D57)",
+    run: (admin, world) => {
+      // Football (Corpo) earlier today would unlock the alternation (D56); the
+      // preview still shows a plain 1,5h because the bonus is off (D57).
+      world.addApproved({ activity: FOOTBALL, occurredOn: THAT_DAY });
+
+      return admin.previewEntry(world.connection, entry(world), LAUNCHED_AT)
+        .calculation.hours;
+    },
     expected: 1.5,
   },
   {

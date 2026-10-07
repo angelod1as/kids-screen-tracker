@@ -1,4 +1,7 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+
+// D57: the case table runs with the bonus ON; the shipped default is off.
+vi.mock("./flags", () => ({ BONUS_ENABLED: true }));
 
 import {
   type Calculation,
@@ -109,8 +112,8 @@ describe("the acceptance criteria of #11", () => {
   const { activity: xadrez } = seedRow(7);
 
   /**
-   * Mente done yesterday, so the seed's 50% return bonus stays out of the way of
-   * the decay table being measured.
+   * Mente done yesterday: harmless history that keeps the alternation bonus (D56)
+   * out of the way, since it is neither same-day nor another category.
    */
   const yesterdayMente = [
     approved({
@@ -318,21 +321,27 @@ describe("the acceptance criteria of #11", () => {
     expect(steps(outside)).not.toContain("cooldown");
   });
 
-  it("pays the return bonus once, on the already decayed value (D7)", () => {
+  it("pays the alternation bonus once, on the already decayed value (D56/D7)", () => {
     const { category: corpo, activity: futebol } = seedRow(1);
 
     // Corpo's step is 2h, so a three-hour match crosses one band: 2h at full and
     // 1h at half, on a rate of 1,5 — 3h + 0,75h = 3,75h before the bonus,
     // 5,63h after. The bonus multiplies the decayed 3,75h and not the undecayed
-    // 4,5h, which would have come to 6,75h. Corpo was last done a month ago,
-    // outside the history: a return, not a debut (D47).
+    // 4,5h, which would have come to 6,75h. A book earlier today (Mente, a
+    // different participant) unlocks it (D56).
     const first = run({
       activity: futebol,
       category: corpo,
       occurredOn: SATURDAY,
       durationMinutes: 3 * ONE_HOUR_MINUTES,
-      history: [],
-      categoryFirstDay: day(SATURDAY, -30),
+      history: [
+        approved({
+          id: 59,
+          occurredOn: SATURDAY,
+          activity: lerLivro,
+          durationMinutes: null,
+        }),
+      ],
     });
 
     expect(first.hours).toBe(5.63);
@@ -341,13 +350,19 @@ describe("the acceptance criteria of #11", () => {
     // base: it adds 1,88h, half of the decayed 3,75h, not half of the base 4,5h.
     expect(first.lines.at(-1)?.hours).toBe(1.88);
 
-    // Second entry of the same return: the bonus is gone.
+    // Second Corpo entry of the day: Corpo already earned, so no bonus.
     const second = run({
       activity: futebol,
       category: corpo,
       occurredOn: SATURDAY,
       durationMinutes: ONE_HOUR_MINUTES,
       history: [
+        approved({
+          id: 58,
+          occurredOn: SATURDAY,
+          activity: lerLivro,
+          durationMinutes: null,
+        }),
         approved({
           id: 60,
           occurredOn: SATURDAY,
@@ -552,39 +567,71 @@ describe("the seed of src/db/seed.ts, every row", () => {
     expect(new Set(SEED_ROWS.map(({ category }) => category.id)).size).toBe(7);
   });
 
-  it("pays the first entry of the day the value the table promises", () => {
-    // Every category last done a month ago: only the return bonus fires.
-    let bonused = 0;
-
+  it("pays the first entry of the day the value the table promises, with no bonus (D56)", () => {
+    // The first entry of the day has nothing before it, so alternation never
+    // fires on a fresh day, whatever the category's bonus is.
     for (const { category, activity } of SEED_ROWS) {
       const calculation = run({
         activity,
         category,
         occurredOn: SATURDAY,
         ...modeInputs(activity),
-        categoryFirstDay: day(SATURDAY, -30),
       });
 
       const base =
         activity.calcMode === "free"
           ? TYPED_FREE_VALUE
           : present(activity.value, `a value on ${activity.name}`);
-      const bonus = 1 + category.returnBonusPct;
 
-      expect(calculation.hours).toBe(Math.round(base * bonus * 100) / 100);
+      expect(calculation.hours).toBe(base);
       expect(steps(calculation)).not.toContain("cooldown");
       expect(steps(calculation)).not.toContain("decay");
+      expect(steps(calculation)).not.toContain("bonus");
+    }
+  });
 
-      if (category.returnBonusPct > 0) {
+  it("pays the alternation bonus to every participating row, once unlocked (D56)", () => {
+    // Each row priced after a different participating category earlier the same
+    // day: the fourteen rows with a bonus earn it, the rest do not.
+    const otherCorpo = seedRow(1).activity;
+    const otherMente = seedRow(5).activity;
+    let bonused = 0;
+
+    for (const { category, activity } of SEED_ROWS) {
+      const unlocker = category.id === 1 ? otherMente : otherCorpo;
+      const calculation = run({
+        activity,
+        category,
+        occurredOn: SATURDAY,
+        ...modeInputs(activity),
+        history: [
+          approved({
+            id: 400 + activity.id,
+            occurredOn: SATURDAY,
+            activity: unlocker,
+            durationMinutes: null,
+          }),
+        ],
+      });
+
+      const base =
+        activity.calcMode === "free"
+          ? TYPED_FREE_VALUE
+          : present(activity.value, `a value on ${activity.name}`);
+
+      if (category.alternationBonusPct > 0) {
         bonused += 1;
         expect(steps(calculation)).toContain("bonus");
+        expect(calculation.hours).toBe(
+          Math.round(base * (1 + category.alternationBonusPct) * 100) / 100,
+        );
       } else {
         expect(steps(calculation)).not.toContain("bonus");
+        expect(calculation.hours).toBe(base);
       }
     }
 
-    // Corpo's four, Mente's four and Criativo's six: the fourteen rows that
-    // carry a return bonus at all.
+    // Corpo's four, Mente's four and Criativo's six.
     expect(bonused).toBe(14);
   });
 
@@ -618,8 +665,7 @@ describe("the seed of src/db/seed.ts, every row", () => {
 
       if (hasCooldown) halved += 1;
 
-      // The entry of yesterday is a log of the category, so the return bonus is
-      // out of the window for all fourteen rows that have one.
+      // The only other entry is yesterday's, so no same-day alternation (D56).
       expect(steps(calculation)).not.toContain("bonus");
       expect(steps(calculation)).not.toContain("decay");
       expect(calculation.hours).toBe(hasCooldown ? base / 2 : base);
@@ -644,7 +690,7 @@ describe("the seed of src/db/seed.ts, every row", () => {
         category,
         occurredOn: SATURDAY,
         durationMinutes: 24 * ONE_HOUR_MINUTES,
-        // Blocks the bonus, which is not what is being measured here.
+        // Only a same-day other participant would add a bonus; there is none.
         history: [
           approved({
             id: 200 + activity.id,
@@ -700,8 +746,7 @@ describe("the four rules composed, all sixteen ways", () => {
     id: 90,
     name: "Composto",
     decayStepHours: 1,
-    returnBonusPct: 0.5,
-    returnBonusAfterDays: 3,
+    alternationBonusPct: 0.5,
   };
 
   const composedActivity: EngineActivity = {
@@ -714,9 +759,21 @@ describe("the four rules composed, all sixteen ways", () => {
     repeatCooldownDays: 7,
   };
 
+  /** A second participating category, to unlock the alternation bonus (D56). */
+  const unlockerActivity: EngineActivity = {
+    id: 91,
+    categoryId: 91,
+    name: "Outra atividade",
+    calcMode: "fixed",
+    value: 1,
+    qualityGraded: false,
+    repeatCooldownDays: 0,
+  };
+  const participatingCategoryIds = [composed.id, unlockerActivity.categoryId];
+
   /**
-   * Five days ago: inside the seven-day cooldown, outside the three-day bonus
-   * window, and in another day's bucket.
+   * Five days ago: inside the seven-day cooldown, in another day's bucket, and
+   * — being another day — no part of same-day alternation.
    */
   const fiveDaysAgo = [
     approved({
@@ -726,6 +783,14 @@ describe("the four rules composed, all sixteen ways", () => {
       durationMinutes: ONE_HOUR_MINUTES,
     }),
   ];
+
+  /** The other participating category, earlier today: what unlocks the bonus. */
+  const earlierOther = approved({
+    id: 92,
+    occurredOn: SATURDAY,
+    activity: unlockerActivity,
+    durationMinutes: null,
+  });
 
   const cases = [
     { quality: 1, cooldown: false, decay: false, bonus: false, hours: 4 },
@@ -760,8 +825,7 @@ describe("the four rules composed, all sixteen ways", () => {
       const category: EngineCategory = {
         ...composed,
         decayStepHours: testCase.decay ? 1 : null,
-        returnBonusPct: testCase.bonus ? 0.5 : 0,
-        returnBonusAfterDays: testCase.bonus ? 3 : 0,
+        alternationBonusPct: testCase.bonus ? 0.5 : 0,
       };
       const activity: EngineActivity = {
         ...composedActivity,
@@ -774,7 +838,8 @@ describe("the four rules composed, all sixteen ways", () => {
         occurredOn: SATURDAY,
         durationMinutes: 2 * ONE_HOUR_MINUTES,
         quality: testCase.quality,
-        history: fiveDaysAgo,
+        history: [...fiveDaysAgo, earlierOther],
+        participatingCategoryIds,
       });
 
       expect(calculation.hours).toBe(testCase.hours);
@@ -816,7 +881,8 @@ describe("the four rules composed, all sixteen ways", () => {
       occurredOn: SATURDAY,
       durationMinutes: 3 * ONE_HOUR_MINUTES,
       quality: 0.7,
-      history: fiveDaysAgo,
+      history: [...fiveDaysAgo, earlierOther],
+      participatingCategoryIds,
     });
 
     expect(steps(calculation).filter((step) => step === "decay").length).toBe(
@@ -837,7 +903,8 @@ describe("the four rules composed, all sixteen ways", () => {
       occurredOn: SATURDAY,
       durationMinutes: 2 * ONE_HOUR_MINUTES,
       quality: 0.5,
-      history: fiveDaysAgo,
+      history: [...fiveDaysAgo, earlierOther],
+      participatingCategoryIds,
     };
 
     const all = run({ ...base, category: composed }).hours;
@@ -907,7 +974,8 @@ describe("Kid1's Saturday", () => {
     );
 
     // 15:00 — an hour and a half of reading. The first hour is full, the last
-    // half hour is halved: 2,25h − 0,375h = 1,88h.
+    // half hour is halved: 1,88h, and then the alternation bonus off the
+    // morning's football (a different participant) makes it 2,81h (D56).
     const book = entry(
       {
         activity: lerLivro,
@@ -948,11 +1016,11 @@ describe("Kid1's Saturday", () => {
       book.hours,
       homework.hours,
       comics.hours,
-    ]).toStrictEqual([3, 1.88, 0.7, 0.56]);
+    ]).toStrictEqual([3, 2.81, 0.7, 0.56]);
 
     const total = results.reduce((sum, entry) => sum + entry.hours, 0);
 
-    expect(Math.round(total * 100) / 100).toBe(6.14);
+    expect(Math.round(total * 100) / 100).toBe(7.07);
     expect(total).toBeLessThan(12);
   });
 
@@ -1007,6 +1075,7 @@ describe("Kid1's Saturday", () => {
     expect(texts(book)).toStrictEqual([
       "Ler livro, 1,5h × 1,5 — cheio",
       "metade, de 1h a 2h de Mente no dia",
+      "+50%, você variou de atividade hoje",
     ]);
     expect(texts(comics)).toStrictEqual([
       "Ler quadrinhos ou HQ, 1h × 1,5 — você já fez 1,5h de Mente hoje",
@@ -1387,47 +1456,34 @@ describe("the explanation, read as product", () => {
     );
   });
 
-  it("says how long the boy has been away, and never invents the number", () => {
+  it("names the alternation plainly, without inventing a day (D56)", () => {
     const { category: corpo, activity: futebol } = seedRow(1);
+    const { activity: lerLivro } = seedRow(5);
 
-    const known = run({
+    const bonused = run({
       activity: futebol,
       category: corpo,
       occurredOn: SATURDAY,
       durationMinutes: 60,
+      // A book earlier today: a different participant, so Corpo alternates (D56).
       history: [
         approved({
           id: 70,
-          occurredOn: day(SATURDAY, -5),
-          activity: futebol,
-          durationMinutes: 60,
+          occurredOn: SATURDAY,
+          activity: lerLivro,
+          durationMinutes: null,
         }),
       ],
     });
 
-    expect(texts(known).at(-1)).toBe("+50%, faz 5 dias que você não faz Corpo");
-
-    const unknown = run({
-      activity: futebol,
-      category: corpo,
-      occurredOn: SATURDAY,
-      durationMinutes: 60,
-      history: [],
-      historyFrom: day(SATURDAY, -10),
-      categoryFirstDay: day(SATURDAY, -40),
-    });
-
-    // Nothing in the input says when the last Corpo entry was, so the line says
-    // what the input does say and not a day it would have had to invent.
-    expect(texts(unknown).at(-1)).toBe(
-      "+50%, faz mais de 10 dias que você não faz Corpo",
-    );
+    expect(texts(bonused).at(-1)).toBe("+50%, você variou de atividade hoje");
   });
 });
 
-describe("the return bonus needs a return (#113, D47)", () => {
+describe("the alternation bonus needs an earlier, different participant (D56)", () => {
   const { category: mente, activity: lerLivro } = seedRow(5);
   const { activity: futebol } = seedRow(1);
+  const { activity: licaoDeCasa } = seedRow(23);
 
   const mente1h = (history: ReturnType<typeof approved>[]) =>
     run({
@@ -1438,81 +1494,69 @@ describe("the return bonus needs a return (#113, D47)", () => {
       history,
     });
 
-  it("pays no bonus on the category's debut", () => {
-    const debut = mente1h([]);
+  const todayMarker = (id: number, activity: EngineActivity) =>
+    approved({ id, occurredOn: SATURDAY, activity, durationMinutes: null });
 
-    expect(debut.hours).toBe(1.5);
-    expect(steps(debut)).toStrictEqual(["base"]);
+  it("pays no bonus on the first entry of the day", () => {
+    const first = mente1h([]);
+
+    expect(first.hours).toBe(1.5);
+    expect(steps(first)).toStrictEqual(["base"]);
   });
 
-  it("pays no bonus on a debut, whatever other categories were done before", () => {
-    const debut = mente1h([
+  it("does not unlock from a category that was done yesterday (D3/D56)", () => {
+    const yesterday = mente1h([
       approved({
         id: 1,
-        occurredOn: day(SATURDAY, -20),
+        occurredOn: day(SATURDAY, -1),
         activity: futebol,
-        durationMinutes: 60,
+        durationMinutes: null,
       }),
     ]);
 
-    expect(steps(debut)).toStrictEqual(["base"]);
+    expect(steps(yesterday)).toStrictEqual(["base"]);
   });
 
-  it("pays no bonus on the second entry of the debut day", () => {
-    const second = mente1h([
-      approved({
-        id: 1,
-        occurredOn: SATURDAY,
-        activity: lerLivro,
-        durationMinutes: 60,
-      }),
+  it("does not unlock from the same category, however many entries (D3)", () => {
+    const sameCategory = mente1h([todayMarker(1, lerLivro)]);
+
+    // Same category, no duration: no alternation, no bucket, so a plain 1,5h.
+    expect(sameCategory.hours).toBe(1.5);
+    expect(steps(sameCategory)).toStrictEqual(["base"]);
+  });
+
+  it("does not unlock from a non-participating category (D56)", () => {
+    const afterChores = mente1h([todayMarker(1, licaoDeCasa)]);
+
+    expect(steps(afterChores)).toStrictEqual(["base"]);
+  });
+
+  it("unlocks after a different participating category earlier today", () => {
+    const afterFootball = mente1h([todayMarker(1, futebol)]);
+
+    expect(afterFootball.hours).toBe(2.25);
+    expect(texts(afterFootball).at(-1)).toBe(
+      "+50%, você variou de atividade hoje",
+    );
+  });
+
+  it("earns once per category; A→B→A rewards the return (D56)", () => {
+    // book → football → book: Mente had not earned yet, so the return earns.
+    const backToReading = mente1h([
+      todayMarker(1, lerLivro),
+      todayMarker(2, futebol),
     ]);
 
-    expect(second.hours).toBe(0.75);
-    expect(steps(second)).toStrictEqual(["base", "decay"]);
-  });
+    expect(texts(backToReading).at(-1)).toBe(
+      "+50%, você variou de atividade hoje",
+    );
 
-  it("pays no bonus exactly the window after the debut: the window's first day counts (D6)", () => {
-    const back = mente1h([
-      approved({
-        id: 1,
-        occurredOn: day(SATURDAY, -mente.returnBonusAfterDays),
-        activity: lerLivro,
-        durationMinutes: 60,
-      }),
+    // football → book → book: Mente earned at the first book, so this one does not.
+    const secondReading = mente1h([
+      todayMarker(1, futebol),
+      todayMarker(2, lerLivro),
     ]);
 
-    expect(back.hours).toBe(1.5);
-    expect(steps(back)).toStrictEqual(["base"]);
-  });
-
-  it("pays the bonus one day past the window", () => {
-    const back = mente1h([
-      approved({
-        id: 1,
-        occurredOn: day(SATURDAY, -mente.returnBonusAfterDays - 1),
-        activity: lerLivro,
-        durationMinutes: 60,
-      }),
-    ]);
-
-    expect(back.hours).toBe(2.25);
-    expect(texts(back).at(-1)).toBe("+50%, faz 4 dias que você não faz Mente");
-  });
-
-  it("pays no bonus on a past day whose only earlier-frozen entry is on a later day (D34)", () => {
-    // Launched onto Saturday after Thursday-week was approved: frozen after it,
-    // but nothing of Mente happened before Saturday, so it is still the debut.
-    const later = approved({
-      id: 1,
-      occurredOn: day(SATURDAY, 5),
-      activity: lerLivro,
-      durationMinutes: 60,
-    });
-
-    const launched = mente1h([later]);
-
-    expect(launched.hours).toBe(1.5);
-    expect(steps(launched)).toStrictEqual(["base"]);
+    expect(steps(secondReading)).not.toContain("bonus");
   });
 });

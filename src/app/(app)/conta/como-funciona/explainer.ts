@@ -1,11 +1,9 @@
-import type { Calculation } from "../../../../engine/calculate";
+import type { ApprovedLog, Calculation } from "../../../../engine/calculate";
 import {
   calculateEarnedHours,
   historyWindowEnd,
   historyWindowStart,
-  returnBonusWindowStart,
 } from "../../../../engine/calculate";
-import { shiftDate } from "../../../../engine/day";
 import { asymptoteHours } from "../../../../engine/limits";
 import type {
   HowItWorksActivity,
@@ -34,7 +32,7 @@ export type DecayRow = {
 
 /**
  * The activity the examples are about: the first timed one in a category that
- * decays, preferring one with a return bonus so both rules can be shown.
+ * decays, preferring one that takes the alternation bonus so both rules show.
  */
 export function exampleOf(data: HowItWorksData): Example | null {
   const candidates = data.categories.flatMap((category) => {
@@ -59,7 +57,7 @@ export function exampleOf(data: HowItWorksData): Example | null {
   });
 
   return (
-    candidates.find((example) => example.category.returnBonusPct > 0) ??
+    candidates.find((example) => example.category.alternationBonusPct > 0) ??
     candidates[0] ??
     null
   );
@@ -70,30 +68,28 @@ function calculate(
   category: HowItWorksCategory,
   minutes: number,
   occurredOn: string,
+  history: ApprovedLog[] = [],
+  participatingCategoryIds: number[] = [],
 ): Calculation {
   const { activity } = example;
 
   return calculateEarnedHours({
-    // An empty history belongs to nobody; the id only has to match its rows.
+    // History belongs to nobody; the id only has to match its rows.
     userId: 0,
     activity,
     category,
     occurredOn,
     durationMinutes: minutes,
-    history: [],
-    historyFrom: historyWindowStart(occurredOn, activity, category),
-    historyTo: historyWindowEnd(occurredOn, activity, category),
-    // The example is a return: the category was done before its window (D47).
-    categoryFirstDay: shiftDate(
-      returnBonusWindowStart(occurredOn, category),
-      -1,
-    ),
+    history,
+    historyFrom: historyWindowStart(occurredOn, activity),
+    historyTo: historyWindowEnd(occurredOn, activity),
+    participatingCategoryIds,
   });
 }
 
-/** A day of one activity, band by band, without the return bonus. */
+/** A day of one activity, band by band, without the alternation bonus. */
 export function decayRows(example: Example, occurredOn: string): DecayRow[] {
-  const withoutBonus = { ...example.category, returnBonusPct: 0 };
+  const withoutBonus = { ...example.category, alternationBonusPct: 0 };
   const rows: DecayRow[] = [];
   let previous = 0;
 
@@ -112,19 +108,47 @@ export function decayRows(example: Example, occurredOn: string): DecayRow[] {
   return rows;
 }
 
-/** The owner's case: a short session, first of its category in days. */
-export function returnExample(
+/** A short session of the example category, right after a different one (D56). */
+export function alternationExample(
+  data: HowItWorksData,
   example: Example,
   occurredOn: string,
-): Calculation | null {
-  if (example.category.returnBonusPct <= 0) return null;
+): (Calculation & { unlockedBy: string }) | null {
+  if (example.category.alternationBonusPct <= 0) return null;
 
-  return calculate(
-    example,
-    example.category,
-    SHORT_SESSION_MINUTES,
-    occurredOn,
+  const other = data.categories.find(
+    (category) =>
+      category.alternationBonusPct > 0 && category.id !== example.category.id,
   );
+  const unlockingActivity =
+    other === undefined
+      ? undefined
+      : data.activities.find((activity) => activity.categoryId === other.id);
+  if (other === undefined || unlockingActivity === undefined) return null;
+
+  // An earlier entry of a different participating category: what unlocks C.
+  const earlier: ApprovedLog = {
+    id: 1,
+    userId: 0,
+    status: "approved",
+    occurredOn,
+    activityId: unlockingActivity.id,
+    durationMinutes: null,
+    createdAt: new Date(`${occurredOn}T12:00:00Z`),
+    categoryId: other.id,
+  };
+
+  return {
+    ...calculate(
+      example,
+      example.category,
+      SHORT_SESSION_MINUTES,
+      occurredOn,
+      [earlier],
+      [example.category.id, other.id],
+    ),
+    unlockedBy: other.name,
+  };
 }
 
 /** What a whole day of the example activity approaches, bonus aside. */
@@ -151,7 +175,7 @@ export function activitiesOf(
   return data.activities.filter((row) => row.categoryId === category.id);
 }
 
-/** `0,5` is +50% (see `returnBonusMultiplier` in the engine). */
+/** `0,5` is +50% (see `alternationBonusMultiplier` in the engine). */
 export function formatPercent(fraction: number): string {
   return `${(fraction * 100).toLocaleString("pt-BR", { maximumFractionDigits: 2 })}%`;
 }

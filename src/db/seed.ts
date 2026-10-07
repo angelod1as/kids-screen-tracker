@@ -22,8 +22,8 @@ type SeedActivity = Omit<NewActivity, "categoryId" | "sortOrder" | "active"> & {
 };
 
 /**
- * In the pickers' order. `return_bonus_pct` is a fraction (0,5 is +50%), and
- * `(0, 0)` is written out anyway: a bonus left implicit is a bonus nobody checks.
+ * In the pickers' order. `alternation_bonus_pct` is a fraction (0,5 is +50%),
+ * written out even at 0: a bonus left implicit is a bonus nobody checks.
  */
 export const SEED_CATEGORIES: readonly SeedCategory[] = [
   {
@@ -32,8 +32,7 @@ export const SEED_CATEGORIES: readonly SeedCategory[] = [
     baseRate: 1.5,
     // Twice Mente's step so a two-hour match pays in full. Asymptote ~6h a day.
     decayStepHours: 2,
-    returnBonusPct: 0.5,
-    returnBonusAfterDays: 3,
+    alternationBonusPct: 0.5,
     activities: [
       {
         id: 1,
@@ -70,8 +69,7 @@ export const SEED_CATEGORIES: readonly SeedCategory[] = [
     baseRate: 1.5,
     // Asymptote 1.5 × 1 × 2 = ~3h a day.
     decayStepHours: 1,
-    returnBonusPct: 0.5,
-    returnBonusAfterDays: 3,
+    alternationBonusPct: 0.5,
     activities: [
       {
         id: 5,
@@ -111,8 +109,7 @@ export const SEED_CATEGORIES: readonly SeedCategory[] = [
     baseRate: 1.5,
     // Asymptote 1.5 × 1 × 2 = ~3h a day.
     decayStepHours: 1,
-    returnBonusPct: 0.5,
-    returnBonusAfterDays: 3,
+    alternationBonusPct: 0.5,
     activities: [
       {
         id: 9,
@@ -164,8 +161,7 @@ export const SEED_CATEGORIES: readonly SeedCategory[] = [
     name: "Convívio",
     baseRate: null,
     decayStepHours: null,
-    returnBonusPct: 0,
-    returnBonusAfterDays: 0,
+    alternationBonusPct: 0,
     activities: [
       {
         id: 15,
@@ -217,8 +213,7 @@ export const SEED_CATEGORIES: readonly SeedCategory[] = [
     name: "Escola",
     baseRate: 1,
     decayStepHours: 2,
-    returnBonusPct: 0,
-    returnBonusAfterDays: 0,
+    alternationBonusPct: 0,
     activities: [
       {
         id: 23,
@@ -248,8 +243,7 @@ export const SEED_CATEGORIES: readonly SeedCategory[] = [
     name: "Casa",
     baseRate: null,
     decayStepHours: null,
-    returnBonusPct: 0,
-    returnBonusAfterDays: 0,
+    alternationBonusPct: 0,
     activities: [
       {
         id: 26,
@@ -307,8 +301,7 @@ export const SEED_CATEGORIES: readonly SeedCategory[] = [
     name: "Curinga",
     baseRate: null,
     decayStepHours: null,
-    returnBonusPct: 0,
-    returnBonusAfterDays: 0,
+    alternationBonusPct: 0,
     activities: [
       { id: 32, name: "Atividade avulsa", calcMode: "free", value: null },
     ],
@@ -339,8 +332,7 @@ export function seedDatabase(connection: Connection): SeedResult {
       name: category.name,
       baseRate: category.baseRate,
       decayStepHours: category.decayStepHours,
-      returnBonusPct: category.returnBonusPct,
-      returnBonusAfterDays: category.returnBonusAfterDays,
+      alternationBonusPct: category.alternationBonusPct,
       sortOrder: index + 1,
     })).filter((category) => !existingCategoryIds.has(category.id));
     if (missingCategories.length > 0) {

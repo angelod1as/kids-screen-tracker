@@ -41,9 +41,8 @@ type DemoSpend = {
   kind: "spend" | "refund";
 };
 
-/** A week, not a pile: decay (D1–D3), return bonus (D7) and "últimos cinco" need sequence. */
+/** A week, not a pile: decay (D1–D3), alternation (D56) and "últimos cinco" need sequence. */
 const KID1_LOGS: readonly DemoLog[] = [
-  // A week ago: football, so today's football has a gap to come back from.
   { username: "kid1", activityId: 1, daysAgo: 6, durationMinutes: 90 },
   { username: "kid1", activityId: 5, daysAgo: 5, durationMinutes: 45 },
   { username: "kid1", activityId: 23, daysAgo: 5, quality: 0.7 },
@@ -52,8 +51,9 @@ const KID1_LOGS: readonly DemoLog[] = [
   { username: "kid1", activityId: 10, daysAgo: 3, durationMinutes: 60 },
   { username: "kid1", activityId: 5, daysAgo: 2, durationMinutes: 60 },
   { username: "kid1", activityId: 23, daysAgo: 1, quality: 1 },
-  // Today: two hours of football that pay in full (Corpo's step is 2h) and
-  // take the return bonus, then two hours of Mente where the second is halved.
+  // Today: two hours of football that pay in full (Corpo's step is 2h), then
+  // reading that alternates off Corpo and takes the bonus (D56); the second
+  // hour of Mente is halved and no longer earns it.
   { username: "kid1", activityId: 1, daysAgo: 0, durationMinutes: 120 },
   { username: "kid1", activityId: 5, daysAgo: 0, durationMinutes: 60 },
   { username: "kid1", activityId: 6, daysAgo: 0, durationMinutes: 60 },
@@ -180,12 +180,14 @@ export function seedDemoData(
         id: categories.id,
         name: categories.name,
         decayStepHours: categories.decayStepHours,
-        returnBonusPct: categories.returnBonusPct,
-        returnBonusAfterDays: categories.returnBonusAfterDays,
+        alternationBonusPct: categories.alternationBonusPct,
       })
       .from(categories)
       .all();
     const categoryById = new Map(categoryRows.map((row) => [row.id, row]));
+    const participating = categoryRows
+      .filter((row) => row.alternationBonusPct > 0)
+      .map((row) => row.id);
 
     // Each log is calculated against the ones already written, in D8's order.
     const history = new Map<string, ApprovedLog[]>();
@@ -223,17 +225,12 @@ export function seedDemoData(
         // D34: written in order, so `own` is exactly what was frozen before.
         history: own.filter(
           (log) =>
-            log.occurredOn >=
-              historyWindowStart(occurredOn, activity, category) &&
-            log.occurredOn <= historyWindowEnd(occurredOn, activity, category),
+            log.occurredOn >= historyWindowStart(occurredOn, activity) &&
+            log.occurredOn <= historyWindowEnd(occurredOn, activity),
         ),
-        historyFrom: historyWindowStart(occurredOn, activity, category),
-        historyTo: historyWindowEnd(occurredOn, activity, category),
-        categoryFirstDay:
-          own
-            .filter((log) => log.categoryId === category.id)
-            .map((log) => log.occurredOn)
-            .sort()[0] ?? null,
+        historyFrom: historyWindowStart(occurredOn, activity),
+        historyTo: historyWindowEnd(occurredOn, activity),
+        participatingCategoryIds: participating,
       });
 
       const createdAt = demoCreatedAt(occurredOn, index);

@@ -7,12 +7,11 @@ import {
   historyWindowEnd,
   historyWindowStart,
   isEarlier,
-  returnBonusWindowStart,
 } from "../engine/calculate";
 import type { Connection, Transaction } from "./client";
 import { writeTransaction } from "./client";
-import { categoryFirstDay, pendingDebutBefore } from "./debut";
 import { requireHours, requireNonNegativeHours, requireText } from "./input";
+import { participatingCategoryIds } from "./participating";
 import { RefusalError } from "./refusal";
 import { activities, activityLogs, categories, ledger, users } from "./schema";
 
@@ -118,8 +117,7 @@ function activityFor(db: Db, log: PendingLog) {
         id: categories.id,
         name: categories.name,
         decayStepHours: categories.decayStepHours,
-        returnBonusPct: categories.returnBonusPct,
-        returnBonusAfterDays: categories.returnBonusAfterDays,
+        alternationBonusPct: categories.alternationBonusPct,
       },
     })
     .from(activities)
@@ -140,17 +138,9 @@ function activityFor(db: Db, log: PendingLog) {
 function calculationFor(db: Db, log: PendingLog): Calculation {
   const found = activityFor(db, log);
 
-  const historyFrom = historyWindowStart(
-    log.occurredOn,
-    found.activity,
-    found.category,
-  );
+  const historyFrom = historyWindowStart(log.occurredOn, found.activity);
   // D34: what was frozen before this entry can sit on a later day (D31).
-  const historyTo = historyWindowEnd(
-    log.occurredOn,
-    found.activity,
-    found.category,
-  );
+  const historyTo = historyWindowEnd(log.occurredOn, found.activity);
 
   const history = db
     .select({
@@ -191,21 +181,17 @@ function calculationFor(db: Db, log: PendingLog): Calculation {
     history: approvedOnly(history),
     historyFrom,
     historyTo,
-    categoryFirstDay: categoryFirstDay(db, log.userId, found.category.id),
+    participatingCategoryIds: participatingCategoryIds(db),
   });
 }
 
 /**
- * The pending entry that has to be decided before `log` can be (D32, D47).
- * The window is read off the edited activity, which may move it.
+ * The pending entry that has to be decided before `log` can be (D32). The
+ * window is read off the edited activity, which may move it.
  */
 function pendingBefore(db: Db, log: PendingLog): BlockingEntry | undefined {
   const found = activityFor(db, log);
-  const historyFrom = historyWindowStart(
-    log.occurredOn,
-    found.activity,
-    found.category,
-  );
+  const historyFrom = historyWindowStart(log.occurredOn, found.activity);
 
   const blocking = db
     .select({
@@ -238,15 +224,7 @@ function pendingBefore(db: Db, log: PendingLog): BlockingEntry | undefined {
     );
 
   return blocking === undefined
-    ? pendingDebutBefore(
-        db,
-        {
-          userId: log.userId,
-          categoryId: found.category.id,
-          returnBonusPct: found.category.returnBonusPct,
-        },
-        returnBonusWindowStart(log.occurredOn, found.category),
-      )
+    ? undefined
     : {
         id: blocking.id,
         activityName: blocking.activityName,

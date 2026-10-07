@@ -5,6 +5,9 @@ import { join } from "node:path";
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
+// D57: the numbers screen is read with the bonus ON; the shipped default is off.
+vi.mock("../../engine/flags", () => ({ BONUS_ENABLED: true }));
+
 import { openDatabase } from "../../db/client";
 import { readDashboard } from "../../db/dashboard";
 import { seedDemoData } from "../../db/demo";

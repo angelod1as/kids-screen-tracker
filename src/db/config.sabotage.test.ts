@@ -96,16 +96,16 @@ const MUTATIONS: readonly Mutation[] = [
   {
     name: "an edit writes the name and leaves every number as it was",
     file: "categories.ts",
-    find: "        name: checked.name,\n        baseRate: checked.baseRate,\n        decayStepHours: checked.decayStepHours,\n        returnBonusPct: checked.returnBonusPct,\n        returnBonusAfterDays: checked.returnBonusAfterDays,\n        sortOrder: checked.sortOrder,\n      })\n      .where(eq(categories.id, categoryId))",
+    find: "        name: checked.name,\n        baseRate: checked.baseRate,\n        decayStepHours: checked.decayStepHours,\n        alternationBonusPct: checked.alternationBonusPct,\n        sortOrder: checked.sortOrder,\n      })\n      .where(eq(categories.id, categoryId))",
     replace:
       "        name: checked.name,\n      })\n      .where(eq(categories.id, categoryId))",
   },
   {
     name: "an edit drops the decay step it was given",
     file: "categories.ts",
-    find: "        decayStepHours: checked.decayStepHours,\n        returnBonusPct: checked.returnBonusPct,\n        returnBonusAfterDays: checked.returnBonusAfterDays,\n        sortOrder: checked.sortOrder,\n      })\n      .where(eq(categories.id, categoryId))",
+    find: "        decayStepHours: checked.decayStepHours,\n        alternationBonusPct: checked.alternationBonusPct,\n        sortOrder: checked.sortOrder,\n      })\n      .where(eq(categories.id, categoryId))",
     replace:
-      "        decayStepHours: null,\n        returnBonusPct: checked.returnBonusPct,\n        returnBonusAfterDays: checked.returnBonusAfterDays,\n        sortOrder: checked.sortOrder,\n      })\n      .where(eq(categories.id, categoryId))",
+      "        decayStepHours: null,\n        alternationBonusPct: checked.alternationBonusPct,\n        sortOrder: checked.sortOrder,\n      })\n      .where(eq(categories.id, categoryId))",
   },
 
   {
@@ -179,31 +179,6 @@ const MUTATIONS: readonly Mutation[] = [
   },
 
   {
-    name: "the return bonus pair is not checked at all",
-    file: "categories.ts",
-    find: "  if (!isUsableReturnBonus(returnBonusPct, returnBonusAfterDays)) {",
-    replace: "  if (false) {",
-  },
-  {
-    name: "any bonus and any threshold go together",
-    file: "limits.ts",
-    find: "  return returnBonusAfterDays >= MIN_RETURN_BONUS_AFTER_DAYS;",
-    replace: "  return true;",
-  },
-  {
-    name: "the threshold may be zero after all",
-    file: "limits.ts",
-    find: "export const MIN_RETURN_BONUS_AFTER_DAYS = 1;",
-    replace: "export const MIN_RETURN_BONUS_AFTER_DAYS = 0;",
-  },
-  {
-    name: "a bonus of zero now needs a threshold too, which the seed does not have",
-    file: "limits.ts",
-    find: "  if (returnBonusPct <= 0) return true;",
-    replace: "  if (returnBonusPct < 0) return true;",
-  },
-
-  {
     name: "a number of hours that is not a number at all is accepted",
     file: "input.ts",
     find: "  const rounded = Math.round(hours * 100) / 100;\n\n  if (!Number.isFinite(rounded) || rounded < 0 || rounded > MAX_HOURS) {",
@@ -257,16 +232,10 @@ const MUTATIONS: readonly Mutation[] = [
     replace: "      : input.decayStepHours;",
   },
   {
-    name: "the return bonus reaches the column unchecked",
+    name: "the alternation bonus reaches the column unchecked",
     file: "categories.ts",
-    find: '  const returnBonusPct = requireBonusFraction(\n    input.returnBonusPct,\n    "a return bonus",\n  );',
-    replace: "  const returnBonusPct = input.returnBonusPct;",
-  },
-  {
-    name: "the bonus threshold reaches the column unchecked",
-    file: "categories.ts",
-    find: '  const returnBonusAfterDays = requireCount(\n    input.returnBonusAfterDays,\n    "a return bonus threshold",\n  );',
-    replace: "  const returnBonusAfterDays = input.returnBonusAfterDays;",
+    find: '  const alternationBonusPct = requireBonusFraction(\n    input.alternationBonusPct,\n    "an alternation bonus",\n  );',
+    replace: "  const alternationBonusPct = input.alternationBonusPct;",
   },
   {
     name: "the base rate reaches the column unchecked",
@@ -344,30 +313,14 @@ const MUTATIONS: readonly Mutation[] = [
 ];
 
 /**
- * The control: two independent `const`s swapped. Uncaught only because no
- * case has two bad fields at once; the neighbouring rule, edited alike, is caught.
+ * The control: two already-computed fields reordered in the returned object.
+ * Pure reorder, so it is uncaught; the neighbouring rule, a real guard, is caught.
  */
 const CONTROL: Mutation = {
-  name: "the bonus and its threshold are checked in the other order",
+  name: "the decay step and the bonus are listed in the other order",
   file: "categories.ts",
-  find:
-    "  const returnBonusPct = requireBonusFraction(\n" +
-    "    input.returnBonusPct,\n" +
-    '    "a return bonus",\n' +
-    "  );\n" +
-    "  const returnBonusAfterDays = requireCount(\n" +
-    "    input.returnBonusAfterDays,\n" +
-    '    "a return bonus threshold",\n' +
-    "  );",
-  replace:
-    "  const returnBonusAfterDays = requireCount(\n" +
-    "    input.returnBonusAfterDays,\n" +
-    '    "a return bonus threshold",\n' +
-    "  );\n" +
-    "  const returnBonusPct = requireBonusFraction(\n" +
-    "    input.returnBonusPct,\n" +
-    '    "a return bonus",\n' +
-    "  );",
+  find: "    decayStepHours,\n    alternationBonusPct,\n",
+  replace: "    alternationBonusPct,\n    decayStepHours,\n",
 };
 
 /** Three minutes: the slowest mutant measured 53,7 s against the old 60 s. */
@@ -541,9 +494,9 @@ describe("the control: the matrix can still say no", () => {
     // Edited like the control, but a rule: the matrix must tell them apart.
     const failures = failingConfigCases(
       await loadMutant(2 * MUTATIONS.length + 1, {
-        name: "the guard below the control is dropped",
+        name: "the decay step floor is dropped",
         file: "categories.ts",
-        find: "  if (!isUsableReturnBonus(returnBonusPct, returnBonusAfterDays)) {",
+        find: "  if (!isUsableDecayStep(decayStepHours)) {",
         replace: "  if (false) {",
       }),
       freshWorld,

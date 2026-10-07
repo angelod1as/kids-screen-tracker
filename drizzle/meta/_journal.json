@@ -85,6 +85,13 @@
       "when": 1790820550602,
       "tag": "0011_activity_note_required",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "6",
+      "when": 1791400000000,
+      "tag": "0012_alternation_bonus",
+      "breakpoints": true
     }
   ]
 }

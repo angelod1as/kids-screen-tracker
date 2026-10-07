@@ -5,9 +5,7 @@ import { calculateEarnedHours } from "./calculate";
 import {
   asymptoteHours,
   isUsableDecayStep,
-  isUsableReturnBonus,
   MIN_DECAY_STEP_HOURS,
-  MIN_RETURN_BONUS_AFTER_DAYS,
   SEED_RATE,
 } from "./limits";
 
@@ -55,15 +53,14 @@ function paid(
       id: 1,
       name: "Probe",
       decayStepHours: step,
-      returnBonusPct: 0,
-      returnBonusAfterDays: 0,
+      alternationBonusPct: 0,
     },
     occurredOn: DAY,
     durationMinutes: minutes,
     history: bucket(bucketMinutes),
     historyFrom: DAY,
     historyTo: DAY,
-    categoryFirstDay: null,
+    participatingCategoryIds: [],
   }).hours;
 }
 
@@ -179,70 +176,5 @@ describe("the decay step floor (D35)", () => {
         `${at}min at rate ${rate}, step ${step}`,
       ).toBeGreaterThanOrEqual(paid(bucket, at - 1, rate, step));
     }
-  });
-});
-
-describe("the return bonus threshold", () => {
-  it("lets a category with no bonus keep any threshold, including zero", () => {
-    // The seed's pair for the categories with no bonus.
-    expect(isUsableReturnBonus(0, 0)).toBe(true);
-    expect(isUsableReturnBonus(0, 7)).toBe(true);
-  });
-
-  it("refuses a bonus with a threshold of zero", () => {
-    expect(isUsableReturnBonus(0.5, 0)).toBe(false);
-  });
-
-  it("accepts a bonus from one day, and from the seed's three", () => {
-    expect(isUsableReturnBonus(0.5, MIN_RETURN_BONUS_AFTER_DAYS)).toBe(true);
-    expect(isUsableReturnBonus(0.5, 3)).toBe(true);
-  });
-
-  /** D36's measurement, reproduced. */
-  it("is what stops a return bonus from being a permanent one", () => {
-    const fixed = {
-      id: 2,
-      categoryId: 1,
-      name: "Probe fixo",
-      calcMode: "fixed" as const,
-      value: 2,
-      qualityGraded: false,
-      repeatCooldownDays: 0,
-    };
-    const yesterday: ApprovedLog[] = [
-      {
-        id: 1,
-        userId: 3,
-        occurredOn: "2026-09-12",
-        activityId: 2,
-        categoryId: 1,
-        durationMinutes: null,
-        createdAt: new Date("2026-09-12T12:00:00.000Z"),
-        status: "approved",
-      },
-    ];
-
-    const pay = (afterDays: number) =>
-      calculateEarnedHours({
-        userId: 3,
-        activity: fixed,
-        category: {
-          id: 1,
-          name: "Probe",
-          decayStepHours: null,
-          returnBonusPct: 0.5,
-          returnBonusAfterDays: afterDays,
-        },
-        occurredOn: DAY,
-        history: yesterday,
-        // Wide enough for `pay(3)`: the engine refuses a shorter window.
-        historyFrom: "2026-09-10",
-        historyTo: "2026-09-16",
-        categoryFirstDay: "2026-09-12",
-      }).hours;
-
-    // Done yesterday, so not a return; at zero days it is paid as one anyway.
-    expect(pay(0)).toBe(3);
-    expect(pay(3)).toBe(2);
   });
 });

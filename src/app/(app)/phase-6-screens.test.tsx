@@ -1,6 +1,9 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 
+// D57: the configuration form is rendered with the bonus field ON; default off.
+vi.mock("../../engine/flags", () => ({ BONUS_ENABLED: true }));
+
 import type { ActivityRow } from "../../db/activities";
 import type { CategoryRow } from "../../db/categories";
 
@@ -44,7 +47,7 @@ const {
   decayStepWarning,
   EMPTY_CATEGORY,
   NewCategoryForm,
-  returnBonusWarning,
+  alternationBonusWarning,
 } = await import("./admin/configuracao/category-list");
 
 const ConfigurationPage = (await import("./admin/configuracao/page")).default;
@@ -55,8 +58,7 @@ const MENTE: CategoryRow = {
   name: "Mente",
   baseRate: 2,
   decayStepHours: 1,
-  returnBonusPct: 0.5,
-  returnBonusAfterDays: 3,
+  alternationBonusPct: 0.5,
   sortOrder: 2,
   active: true,
   activityCount: 7,
@@ -68,8 +70,7 @@ const CASA: CategoryRow = {
   name: "Casa",
   baseRate: null,
   decayStepHours: null,
-  returnBonusPct: 0,
-  returnBonusAfterDays: 0,
+  alternationBonusPct: 0,
   sortOrder: 6,
   active: true,
   activityCount: 6,
@@ -80,8 +81,7 @@ const DRAFT = {
   name: "Mente",
   baseRate: "2",
   decayStep: { hours: "1", minutes: "" },
-  returnBonusPct: "50",
-  returnBonusAfterDays: "3",
+  alternationBonusPct: "50",
 };
 
 describe("the asymptote, while the category is being edited (#26)", () => {
@@ -160,12 +160,9 @@ describe("the two floors, explained before they are hit (#26)", () => {
   });
 
   it("says something when the bonus fields are unreadable, as the step does", () => {
-    expect(returnBonusWarning({ ...DRAFT, returnBonusPct: "abc" })).toBe(
-      "Digite o bônus em porcentagem. Ex.: 50 para metade a mais.",
-    );
-    expect(returnBonusWarning({ ...DRAFT, returnBonusAfterDays: "x" })).toBe(
-      "Digite os dias em número inteiro. Ex.: 3",
-    );
+    expect(
+      alternationBonusWarning({ ...DRAFT, alternationBonusPct: "abc" }),
+    ).toBe("Digite o bônus em porcentagem. Ex.: 50 para metade a mais.");
   });
 
   it("names the floor and what to do instead", () => {
@@ -181,42 +178,36 @@ describe("the two floors, explained before they are hit (#26)", () => {
     expect(warning).toContain("deixe o campo vazio");
   });
 
-  it("says nothing while the bonus and its threshold agree", () => {
-    expect(returnBonusWarning(DRAFT)).toBeNull();
+  it("says nothing while the bonus is a readable fraction", () => {
+    expect(alternationBonusWarning(DRAFT)).toBeNull();
     expect(
-      returnBonusWarning({
+      alternationBonusWarning({
         ...DRAFT,
-        returnBonusPct: "0",
-        returnBonusAfterDays: "0",
+        alternationBonusPct: "0",
       }),
     ).toBeNull();
   });
 
   it("says when a bonus is too small to be stored at all", () => {
     // 0,004 points rounds to zero on both sides; the screen must say so.
-    expect(returnBonusWarning({ ...DRAFT, returnBonusPct: "0,004" })).toBe(
-      "Menor que 0,01% é guardado como sem bônus. Digite 0,01 ou mais.",
-    );
-
-    expect(returnBonusWarning({ ...DRAFT, returnBonusPct: "0,01" })).toBeNull();
     expect(
-      categoryInputOf({ ...DRAFT, returnBonusPct: "0,01" })?.returnBonusPct,
+      alternationBonusWarning({ ...DRAFT, alternationBonusPct: "0,004" }),
+    ).toBe("Menor que 0,01% é guardado como sem bônus. Digite 0,01 ou mais.");
+
+    expect(
+      alternationBonusWarning({ ...DRAFT, alternationBonusPct: "0,01" }),
+    ).toBeNull();
+    expect(
+      categoryInputOf({ ...DRAFT, alternationBonusPct: "0,01" })
+        ?.alternationBonusPct,
     ).toBe(0.0001);
-  });
-
-  it("explains why a bonus at zero days is a permanent bonus", () => {
-    const warning = returnBonusWarning({ ...DRAFT, returnBonusAfterDays: "0" });
-
-    expect(warning).toContain("o próprio dia");
-    expect(warning).toContain("permanente");
-    expect(warning).toContain("use 0%");
   });
 });
 
 describe("the form the endpoint is handed (#26)", () => {
   it("turns the percentage on screen into the fraction the column holds", () => {
     // A "%" field taking 0,5 would be read as half a percent.
-    expect(categoryInputOf(DRAFT)?.returnBonusPct).toBe(0.5);
+    expect(categoryInputOf(DRAFT)?.alternationBonusPct).toBe(0.5);
   });
 
   it("keeps a bonus to a hundredth of a percentage point, both ways", () => {
@@ -233,9 +224,8 @@ describe("the form the endpoint is handed (#26)", () => {
       expect(
         categoryInputOf({
           ...DRAFT,
-          returnBonusPct: typed,
-          returnBonusAfterDays: typed === "0" ? "0" : "3",
-        })?.returnBonusPct,
+          alternationBonusPct: typed,
+        })?.alternationBonusPct,
         typed,
       ).toBe(fraction);
     }
@@ -246,8 +236,7 @@ describe("the form the endpoint is handed (#26)", () => {
       name: "Mente",
       baseRate: 2,
       decayStep: { hours: 1, minutes: 0 },
-      returnBonusPct: 0.5,
-      returnBonusAfterDays: 3,
+      alternationBonusPct: 0.5,
       sortOrder: 0,
     });
   });
@@ -281,30 +270,21 @@ describe("the form the endpoint is handed (#26)", () => {
     expect(
       categoryInputOf({ ...DRAFT, decayStep: { hours: "abc", minutes: "" } }),
     ).toBeNull();
-    expect(categoryInputOf({ ...DRAFT, returnBonusPct: "" })).toBeNull();
-    expect(categoryInputOf({ ...DRAFT, returnBonusAfterDays: "" })).toBeNull();
+    expect(categoryInputOf({ ...DRAFT, alternationBonusPct: "" })).toBeNull();
     expect(categoryInputOf({ ...DRAFT, sortOrder: "" })).toBeNull();
-  });
-
-  it("refuses a whole day of cooldown written as a decimal", () => {
-    // Not rounded into shape: the column is an integer.
-    expect(
-      categoryInputOf({ ...DRAFT, returnBonusAfterDays: "1,5" }),
-    ).toBeNull();
   });
 
   it("answers nothing for a draft the endpoint would refuse", () => {
     expect(
       categoryInputOf({ ...DRAFT, decayStep: { hours: "0", minutes: "14" } }),
     ).toBeNull();
-    expect(categoryInputOf({ ...DRAFT, returnBonusAfterDays: "0" })).toBeNull();
   });
 });
 
 describe("what a category says about itself in the list (#26)", () => {
   it("names the ceiling it converges on and the bonus", () => {
     expect(categorySummary(MENTE)).toBe(
-      "até 4,00 h por dia · +50% após 3 dias",
+      "até 4,00 h por dia · +50% ao alternar",
     );
   });
 
@@ -318,20 +298,10 @@ describe("what a category says about itself in the list (#26)", () => {
     );
   });
 
-  it("says one day in the singular", () => {
-    expect(
-      categorySummary({
-        ...MENTE,
-        returnBonusPct: 0.25,
-        returnBonusAfterDays: 1,
-      }),
-    ).toBe("até 4,00 h por dia · +25% após 1 dia");
-  });
-
   it("writes a fractional percentage the way the form does, with a comma", () => {
     // The card sits right above the field: "+13%" over "12,5" is two numbers for one bonus.
-    expect(categorySummary({ ...MENTE, returnBonusPct: 0.125 })).toBe(
-      "até 4,00 h por dia · +12,5% após 3 dias",
+    expect(categorySummary({ ...MENTE, alternationBonusPct: 0.125 })).toBe(
+      "até 4,00 h por dia · +12,5% ao alternar",
     );
   });
 });
@@ -353,7 +323,7 @@ describe("the screen itself (#26)", () => {
     const markup = renderToStaticMarkup(await ConfigurationPage());
 
     expect(markup).toContain("Mente");
-    expect(markup).toContain("até 4,00 h por dia · +50% após 3 dias");
+    expect(markup).toContain("até 4,00 h por dia · +50% ao alternar");
     expect(markup).toContain("7 atividades");
     expect(markup).toContain("Casa");
     expect(markup).toContain("sem desgaste · sem bônus");
@@ -410,7 +380,7 @@ describe("the screen itself (#26)", () => {
     const markup = renderToStaticMarkup(<NewCategoryForm />);
 
     expect(markup).toContain("Passo do desgaste");
-    expect(markup).toContain("Bônus de retorno");
+    expect(markup).toContain("Bônus de alternância");
   });
 
   it("puts the asymptote on the page, under the fields it comes from", () => {

@@ -1,4 +1,5 @@
 import type { CategoryStats } from "../../../../db/dashboard";
+import { BONUS_ENABLED } from "../../../../engine/flags";
 import { ChoiceLinks } from "../../../../ui/choice-links";
 import { formatHours } from "../../../../ui/hours";
 import { Panel, PanelText } from "../../../../ui/panel";
@@ -58,9 +59,9 @@ function DecayAndBonus({ category }: { category: CategoryStats }) {
             </dd>
           </>
         )}
-        {category.returnBonusPct > 0 ? (
+        {BONUS_ENABLED && category.alternationBonusPct > 0 ? (
           <>
-            <dt>Bônus de retorno</dt>
+            <dt>Bônus de alternância</dt>
             <dd className="text-right font-mono tabular-nums">
               +{formatHours(split.bonus)}
             </dd>
@@ -80,13 +81,10 @@ function DecayAndBonus({ category }: { category: CategoryStats }) {
           .
         </p>
       )}
-      {category.returnBonusPct > 0 ? (
+      {BONUS_ENABLED && category.alternationBonusPct > 0 ? (
         <p className="text-base text-black">
-          {count(category.gapsBeforeReturn.length, "volta", "voltas")}, com
-          bônus em {category.returnsWithBonus}.
-          {category.gapsBeforeReturn.length > 0
-            ? ` Dias sem ${category.name} antes de voltar: ${category.gapsBeforeReturn.join(", ")}. O bônus vale a partir de ${count(category.returnBonusAfterDays, "dia", "dias")}.`
-            : null}
+          {count(category.bonusEntries, "entrada", "entradas")} com bônus de
+          alternância.
         </p>
       ) : null}
       {category.excluded > 0 ? (
@@ -94,8 +92,9 @@ function DecayAndBonus({ category }: { category: CategoryStats }) {
           {category.excluded === 1
             ? "1 entrada desta categoria ficou fora desta conta"
             : `${category.excluded} entradas desta categoria ficaram fora desta conta`}
-          , e o bônus e o desgaste dela{category.excluded === 1 ? "" : "s"} não
-          aparecem aqui.
+          , e o desgaste{BONUS_ENABLED ? " e o bônus" : ""} del
+          {category.excluded === 1 ? "a" : "as"} não aparece
+          {BONUS_ENABLED ? "m" : ""} aqui.
         </p>
       ) : null}
     </li>
@@ -209,7 +208,7 @@ export default async function AdminNumbersPage({
             </ul>
           </Panel>
 
-          <Panel title="Desgaste e bônus">
+          <Panel title={BONUS_ENABLED ? "Desgaste e bônus" : "Desgaste"}>
             {used.length === 0 ? (
               <PanelText>Nenhum registro no período.</PanelText>
             ) : (

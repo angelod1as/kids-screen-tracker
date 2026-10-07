@@ -1,3 +1,4 @@
+import { BONUS_ENABLED } from "../../../../engine/flags";
 import { ABANDON_AFTER_HOURS } from "../../../../engine/timer";
 import { Result } from "../../../../ui/explanation";
 import { formatDuration, formatHours } from "../../../../ui/hours";
@@ -6,13 +7,12 @@ import { Panel, PanelText } from "../../../../ui/panel";
 import type { HowItWorksData } from "../../../actions/how-it-works";
 import {
   activitiesOf,
+  alternationExample,
   categoriesThatDecay,
   decayRows,
   exampleAsymptote,
   exampleOf,
-  formatDays,
   formatPercent,
-  returnExample,
   SHORT_SESSION_MINUTES,
 } from "./explainer";
 import { ActivityValues, DecayTable, Paragraph, Points } from "./parts";
@@ -25,10 +25,12 @@ export function KidGuide({ data }: { data: HowItWorksData }) {
     (category) => category.decayStepHours === null,
   );
   const withBonus = data.categories.filter(
-    (category) => category.returnBonusPct > 0,
+    (category) => category.alternationBonusPct > 0,
   );
   const comeback =
-    example === null ? null : returnExample(example, data.occurredOn);
+    example === null
+      ? null
+      : alternationExample(data, example, data.occurredOn);
 
   return (
     <div className="flex flex-col gap-4 lg:max-w-2xl lg:gap-6">
@@ -82,7 +84,8 @@ export function KidGuide({ data }: { data: HowItWorksData }) {
                 rows={decayRows(example, data.occurredOn)}
               />
               <PanelText>
-                Você pode fazer quanto quiser. Mas, sem contar o bônus de volta,{" "}
+                Você pode fazer quanto quiser. Mas
+                {BONUS_ENABLED ? ", sem contar o bônus de alternância," : ""}{" "}
                 {example.activity.name} chega cada vez mais perto de{" "}
                 {formatHours(exampleAsymptote(example))} de tela num dia, e
                 nunca passa disso.
@@ -92,31 +95,31 @@ export function KidGuide({ data }: { data: HowItWorksData }) {
         </Panel>
       )}
 
-      {withBonus.length === 0 ? null : (
-        <Panel title="Bônus de volta">
+      {!BONUS_ENABLED || withBonus.length === 0 ? null : (
+        <Panel title="Bônus de alternância">
           <Points>
             {withBonus.map((category) => (
               <li key={category.id}>
-                <strong>{category.name}</strong>: faz mais de{" "}
-                {formatDays(category.returnBonusAfterDays)} sem nada de{" "}
-                {category.name}? A primeira vez que você voltar ganha +
-                {formatPercent(category.returnBonusPct)}.
+                <strong>{category.name}</strong>: se mais cedo no dia você já
+                fez outra categoria que dá bônus, a primeira vez de{" "}
+                {category.name} depois dela ganha +
+                {formatPercent(category.alternationBonusPct)}.
               </li>
             ))}
           </Points>
           <PanelText>
-            O bônus vem por cima do que a atividade rendeu. Depois que você
-            voltou, a próxima vez do mesmo dia já não ganha. E a primeira vez
-            que você faz uma categoria não tem bônus: só volta quem já esteve.
+            O bônus vem por cima do que a atividade rendeu. Vale uma vez por
+            categoria no dia, e a primeira coisa do dia nunca ganha: precisa ter
+            vindo outra categoria antes. Trocar de livro para HQ não conta — é a
+            mesma categoria.
           </PanelText>
 
           {example === null || comeback === null ? null : (
             <div className="flex flex-col gap-2 px-3 pb-4">
               <p className="text-base text-black">
                 Exemplo: {formatDuration(SHORT_SESSION_MINUTES)} de{" "}
-                {example.activity.name}, depois de mais de{" "}
-                {formatDays(example.category.returnBonusAfterDays)} sem{" "}
-                {example.category.name}. A conta é esta:
+                {example.activity.name}, depois de já ter feito{" "}
+                {comeback.unlockedBy} hoje. A conta é esta:
               </p>
               <Result calculation={comeback} heading="Você ganharia" />
             </div>

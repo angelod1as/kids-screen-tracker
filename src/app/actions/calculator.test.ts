@@ -259,15 +259,13 @@ describe("the history the calculator reads", () => {
       if (category === undefined) continue;
 
       expect(
-        data.historyFrom <=
-          historyWindowStart(data.occurredOn, activity, category),
-        `${activity.name} reads back ${historyLookbackDays(activity, category)} days, and the window starts on ${data.historyFrom}`,
+        data.historyFrom <= historyWindowStart(data.occurredOn, activity),
+        `${activity.name} reads back ${historyLookbackDays(activity)} days, and the window starts on ${data.historyFrom}`,
       ).toBe(true);
     }
   });
 
-  it("reaches further than the minimum, so the bonus line can name the day", async () => {
-    // Inside the minimum window the bonus line can only say "faz mais de 3 dias".
+  it("reaches a generous window, well past any cooldown", async () => {
     mocked.username = "kid1";
 
     const data = await fetchCalculatorDataAction(idOf("kid1"));
@@ -418,10 +416,9 @@ describe("the history the calculator reads", () => {
       history: data.history,
       historyFrom: data.historyFrom,
       historyTo: data.historyTo,
-      categoryFirstDay: data.categoryFirstDays[mente.id] ?? null,
+      participatingCategoryIds: data.participatingCategoryIds,
     });
 
-    expect(data.categoryFirstDays[mente.id]).toBe(today);
     expect(calculation.hours).toBe(0.38);
     expect(calculation.lines.map((line) => line.text)).toStrictEqual([
       "Ler livro, 1h × 1,5 — você já fez 2h de Mente hoje",
@@ -465,7 +462,7 @@ describe("after an adult decided the value (D50)", () => {
       history: data.history,
       historyFrom: data.historyFrom,
       historyTo: data.historyTo,
-      categoryFirstDay: data.categoryFirstDays[mente.id] ?? null,
+      participatingCategoryIds: data.participatingCategoryIds,
     });
 
     // The two hours happened; the 0,5 h the adult paid for them is not a bucket.

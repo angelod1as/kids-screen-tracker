@@ -6,13 +6,12 @@ import {
   calculateEarnedHours,
   historyWindowEnd,
   historyWindowStart,
-  returnBonusWindowStart,
   saoPauloDay,
 } from "../engine/calculate";
 import type { Connection, Transaction } from "./client";
 import { writeTransaction } from "./client";
-import { categoryFirstDay, pendingDebutBefore } from "./debut";
 import { requireCalendarDay, requireHours, requireText } from "./input";
+import { participatingCategoryIds } from "./participating";
 import { requireActiveKid } from "./people";
 import type { BlockingEntry } from "./queue";
 import { RefusalError } from "./refusal";
@@ -79,8 +78,7 @@ function activityFor(db: Db, activityId: number) {
         id: categories.id,
         name: categories.name,
         decayStepHours: categories.decayStepHours,
-        returnBonusPct: categories.returnBonusPct,
-        returnBonusAfterDays: categories.returnBonusAfterDays,
+        alternationBonusPct: categories.alternationBonusPct,
       },
       active: activities.active,
       categoryActive: categories.active,
@@ -161,16 +159,8 @@ function price(
   },
 ): Calculation {
   const found = activityFor(db, entry.activityId);
-  const historyFrom = historyWindowStart(
-    entry.occurredOn,
-    found.activity,
-    found.category,
-  );
-  const historyTo = historyWindowEnd(
-    entry.occurredOn,
-    found.activity,
-    found.category,
-  );
+  const historyFrom = historyWindowStart(entry.occurredOn, found.activity);
+  const historyTo = historyWindowEnd(entry.occurredOn, found.activity);
 
   return calculateEarnedHours({
     userId: entry.userId,
@@ -183,7 +173,7 @@ function price(
     history: historyFor(db, entry.userId, historyFrom, historyTo),
     historyFrom,
     historyTo,
-    categoryFirstDay: categoryFirstDay(db, entry.userId, found.category.id),
+    participatingCategoryIds: participatingCategoryIds(db),
   });
 }
 
@@ -197,11 +187,7 @@ function pendingBefore(
   entry: { userId: number; activityId: number; occurredOn: string },
 ): BlockingEntry | undefined {
   const found = activityFor(db, entry.activityId);
-  const historyFrom = historyWindowStart(
-    entry.occurredOn,
-    found.activity,
-    found.category,
-  );
+  const historyFrom = historyWindowStart(entry.occurredOn, found.activity);
 
   const blocking = db
     .select({
@@ -228,15 +214,7 @@ function pendingBefore(
     .all()[0];
 
   return blocking === undefined
-    ? pendingDebutBefore(
-        db,
-        {
-          userId: entry.userId,
-          categoryId: found.category.id,
-          returnBonusPct: found.category.returnBonusPct,
-        },
-        returnBonusWindowStart(entry.occurredOn, found.category),
-      )
+    ? undefined
     : {
         id: blocking.id,
         activityName: blocking.activityName,

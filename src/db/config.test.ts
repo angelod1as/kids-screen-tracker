@@ -80,10 +80,10 @@ describe("configuring the categories (#26)", () => {
       "a category can be created, edited and switched off",
       "a category's numbers are held while something is under way",
       "a decay step below the floor is refused",
-      "a return bonus with no threshold is refused",
       "editing recalculates nothing already credited",
       "every number the engine reads is checked here",
       "switching a category off deletes nothing",
+      "the alternation bonus is a checked fraction (D56)",
       "the list is the one the screen draws",
     ]);
   });
@@ -112,8 +112,7 @@ describe("editing recalculates nothing already credited (D15)", () => {
         name: "Mente",
         baseRate: 9,
         decayStepHours: 4,
-        returnBonusPct: 2,
-        returnBonusAfterDays: 30,
+        alternationBonusPct: 2,
         sortOrder: 5,
       });
       setCategoryActive(world.connection, id, false);
@@ -122,8 +121,7 @@ describe("editing recalculates nothing already credited (D15)", () => {
         name: "Mente renomeada",
         baseRate: null,
         decayStepHours: null,
-        returnBonusPct: 0,
-        returnBonusAfterDays: 0,
+        alternationBonusPct: 0,
         sortOrder: 0,
       });
 

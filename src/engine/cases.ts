@@ -46,8 +46,7 @@ export const SEED_ROWS: readonly SeedRow[] = SEED_CATEGORIES.flatMap(
       id: seedCategory.id,
       name: seedCategory.name,
       decayStepHours: seedCategory.decayStepHours ?? null,
-      returnBonusPct: seedCategory.returnBonusPct ?? 0,
-      returnBonusAfterDays: seedCategory.returnBonusAfterDays ?? 0,
+      alternationBonusPct: seedCategory.alternationBonusPct ?? 0,
     };
 
     return seedCategory.activities.map((seedActivity) => ({
@@ -121,8 +120,8 @@ export const KID1 = 3;
 export const KID2 = 4;
 
 /**
- * A month either side is further than any rule reaches (D34 reads later days);
- * computing the minimum would use the engine's own helper. Empty history: debut (D47).
+ * A month either side is further than any rule reaches (D34 reads later days).
+ * The bonus participants (D56) default to every seed category that takes it.
  */
 export function input(
   overrides: Partial<CalculationInput> &
@@ -136,11 +135,9 @@ export function input(
     history: [],
     historyFrom: day(overrides.occurredOn, -30),
     historyTo: day(overrides.occurredOn, 30),
-    categoryFirstDay:
-      (overrides.history ?? [])
-        .filter((log) => log.categoryId === overrides.category.id)
-        .map((log) => log.occurredOn)
-        .sort()[0] ?? null,
+    participatingCategoryIds: SEED_CATEGORIES.filter(
+      (category) => (category.alternationBonusPct ?? 0) > 0,
+    ).map((category) => category.id),
     ...overrides,
   };
 }

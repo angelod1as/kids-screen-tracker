@@ -147,8 +147,7 @@ describe("saving without touching the time field (#55, D9)", () => {
           name: row.name,
           baseRate: row.baseRate,
           decayStepHours: untouched(stored),
-          returnBonusPct: row.returnBonusPct,
-          returnBonusAfterDays: row.returnBonusAfterDays,
+          alternationBonusPct: row.alternationBonusPct,
           sortOrder: row.sortOrder,
         });
 
@@ -304,8 +303,7 @@ describe("an off-grid value with an entry waiting (#55, D37, D55)", () => {
         name: "Cabeça",
         baseRate: row.baseRate,
         decayStepHours: untouched(1.01),
-        returnBonusPct: row.returnBonusPct,
-        returnBonusAfterDays: row.returnBonusAfterDays,
+        alternationBonusPct: row.alternationBonusPct,
         sortOrder: row.sortOrder,
       });
 

@@ -1,11 +1,6 @@
 import { and, asc, count, desc, eq, ne } from "drizzle-orm";
 
-import {
-  isUsableDecayStep,
-  isUsableReturnBonus,
-  MIN_DECAY_STEP_HOURS,
-  MIN_RETURN_BONUS_AFTER_DAYS,
-} from "../engine/limits";
+import { isUsableDecayStep, MIN_DECAY_STEP_HOURS } from "../engine/limits";
 import { keptUnlessRetyped } from "../engine/timer";
 import type { Connection, Transaction } from "./client";
 import { writeTransaction } from "./client";
@@ -32,9 +27,8 @@ export type CategoryRow = {
   baseRate: number | null;
   /** D2: null is no decay. */
   decayStepHours: number | null;
-  /** A fraction: 0,5 is +50%. */
-  returnBonusPct: number;
-  returnBonusAfterDays: number;
+  /** A fraction: 0,5 is +50% (D56). */
+  alternationBonusPct: number;
   sortOrder: number;
   active: boolean;
   /** So switching a category off says what leaves the pickers with it (D14). */
@@ -47,8 +41,7 @@ export type CategoryInput = {
   baseRate: number | null;
   /** D2: an empty field is no decay. */
   decayStepHours: number | null;
-  returnBonusPct: number;
-  returnBonusAfterDays: number;
+  alternationBonusPct: number;
   sortOrder: number;
 };
 
@@ -62,8 +55,7 @@ export function listCategories(connection: Connection): CategoryRow[] {
       name: categories.name,
       baseRate: categories.baseRate,
       decayStepHours: categories.decayStepHours,
-      returnBonusPct: categories.returnBonusPct,
-      returnBonusAfterDays: categories.returnBonusAfterDays,
+      alternationBonusPct: categories.alternationBonusPct,
       sortOrder: categories.sortOrder,
       active: categories.active,
       // Not `count(*)`: the left join gives an empty category one null row.
@@ -81,8 +73,8 @@ export function listCategories(connection: Connection): CategoryRow[] {
 }
 
 /**
- * Each bound is also a column CHECK; this one names the field. The two floors
- * are not CHECKs: they are about the arithmetic downstream (`limits.ts`).
+ * Each bound is also a column CHECK; this one names the field. The decay floor
+ * is not a CHECK: it is about the arithmetic downstream (`limits.ts`).
  */
 function requireCategory(input: CategoryInput): CategoryInput {
   const name = input.name.trim();
@@ -108,23 +100,10 @@ function requireCategory(input: CategoryInput): CategoryInput {
     );
   }
 
-  const returnBonusPct = requireBonusFraction(
-    input.returnBonusPct,
-    "a return bonus",
+  const alternationBonusPct = requireBonusFraction(
+    input.alternationBonusPct,
+    "an alternation bonus",
   );
-  const returnBonusAfterDays = requireCount(
-    input.returnBonusAfterDays,
-    "a return bonus threshold",
-  );
-
-  if (!isUsableReturnBonus(returnBonusPct, returnBonusAfterDays)) {
-    throw new Error(
-      `a return bonus of ${returnBonusPct} needs a threshold of at least ` +
-        `${MIN_RETURN_BONUS_AFTER_DAYS} day: at zero the window is the day itself, so the ` +
-        "first entry of every day counts as coming back and the bonus is permanent. " +
-        "A category with no bonus has a bonus of 0",
-    );
-  }
 
   return {
     name,
@@ -133,8 +112,7 @@ function requireCategory(input: CategoryInput): CategoryInput {
         ? null
         : requireNonNegativeHours(input.baseRate, "a base rate"),
     decayStepHours,
-    returnBonusPct,
-    returnBonusAfterDays,
+    alternationBonusPct,
     sortOrder: requireCount(input.sortOrder, "a sort order"),
   };
 }
@@ -174,8 +152,7 @@ function requireCategoryRow(db: Db, categoryId: number) {
       name: categories.name,
       active: categories.active,
       decayStepHours: categories.decayStepHours,
-      returnBonusPct: categories.returnBonusPct,
-      returnBonusAfterDays: categories.returnBonusAfterDays,
+      alternationBonusPct: categories.alternationBonusPct,
     })
     .from(categories)
     .where(eq(categories.id, categoryId))
@@ -204,8 +181,7 @@ export function createCategory(
         name: checked.name,
         baseRate: checked.baseRate,
         decayStepHours: checked.decayStepHours,
-        returnBonusPct: checked.returnBonusPct,
-        returnBonusAfterDays: checked.returnBonusAfterDays,
+        alternationBonusPct: checked.alternationBonusPct,
         sortOrder: checked.sortOrder,
         active: true,
       })
@@ -235,8 +211,7 @@ export function updateCategory(
     // D37. `name`, `base_rate` (D11) and `sort_order` price nothing.
     if (
       checked.decayStepHours !== found.decayStepHours ||
-      checked.returnBonusPct !== found.returnBonusPct ||
-      checked.returnBonusAfterDays !== found.returnBonusAfterDays
+      checked.alternationBonusPct !== found.alternationBonusPct
     ) {
       refuseWhileWaiting(tx, activityIdsOf(tx, categoryId), found.name);
     }
@@ -252,8 +227,7 @@ export function updateCategory(
         name: checked.name,
         baseRate: checked.baseRate,
         decayStepHours: checked.decayStepHours,
-        returnBonusPct: checked.returnBonusPct,
-        returnBonusAfterDays: checked.returnBonusAfterDays,
+        alternationBonusPct: checked.alternationBonusPct,
         sortOrder: checked.sortOrder,
       })
       .where(eq(categories.id, categoryId))

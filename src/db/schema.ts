@@ -96,10 +96,8 @@ export const categories = sqliteTable(
     baseRate: real("base_rate"),
     /** D2. Null disables decay (D5, D12). */
     decayStepHours: real("decay_step_hours"),
-    returnBonusPct: real("return_bonus_pct").notNull().default(0),
-    returnBonusAfterDays: integer("return_bonus_after_days")
-      .notNull()
-      .default(0),
+    /** A fraction (0,5 is +50%): the same-day alternation bonus (D56). */
+    alternationBonusPct: real("alternation_bonus_pct").notNull().default(0),
     sortOrder: integer("sort_order").notNull().default(0),
     /** D14. */
     active: integer("active", { mode: "boolean" }).notNull().default(true),
@@ -124,16 +122,8 @@ export const categories = sqliteTable(
       numeric(table.baseRate, { min: 0, max: HOURS, nullable: true }),
     ),
     check(
-      "categories_return_bonus_pct_check",
-      numeric(table.returnBonusPct, { min: 0, max: HOURS }),
-    ),
-    check(
-      "categories_return_bonus_after_days_check",
-      numeric(table.returnBonusAfterDays, {
-        min: 0,
-        max: COUNT,
-        integers: true,
-      }),
+      "categories_alternation_bonus_pct_check",
+      numeric(table.alternationBonusPct, { min: 0, max: HOURS }),
     ),
   ],
 );

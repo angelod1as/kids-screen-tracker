@@ -1,7 +1,7 @@
+import { BONUS_ENABLED } from "../../../../engine/flags";
 import {
   asymptoteHours,
   MIN_DECAY_STEP_HOURS,
-  MIN_RETURN_BONUS_AFTER_DAYS,
 } from "../../../../engine/limits";
 import { ABANDON_AFTER_HOURS } from "../../../../engine/timer";
 import { Result } from "../../../../ui/explanation";
@@ -11,12 +11,11 @@ import { Panel, PanelText } from "../../../../ui/panel";
 import { READOUT_CLASS } from "../../../../ui/style";
 import type { HowItWorksData } from "../../../actions/how-it-works";
 import {
+  alternationExample,
   decayRows,
   exampleAsymptote,
   exampleOf,
-  formatDays,
   formatPercent,
-  returnExample,
   SHORT_SESSION_MINUTES,
 } from "./explainer";
 import { ActivityValues, DecayTable, Paragraph, Points } from "./parts";
@@ -25,7 +24,9 @@ import { ActivityValues, DecayTable, Paragraph, Points } from "./parts";
 export function AdultGuide({ data }: { data: HowItWorksData }) {
   const example = exampleOf(data);
   const comeback =
-    example === null ? null : returnExample(example, data.occurredOn);
+    example === null
+      ? null
+      : alternationExample(data, example, data.occurredOn);
 
   return (
     <div className="flex flex-col gap-4 lg:max-w-2xl lg:gap-6">
@@ -44,8 +45,10 @@ export function AdultGuide({ data }: { data: HowItWorksData }) {
       <Panel title="A conta de uma entrada">
         <Points>
           <li>
-            Na ordem: valor da atividade, nota, repetição, desgaste e bônus de
-            retorno. O bônus multiplica o que sobrou depois do desgaste.
+            Na ordem: valor da atividade, nota, repetição e desgaste
+            {BONUS_ENABLED
+              ? " e bônus de alternância. O bônus multiplica o que sobrou depois do desgaste."
+              : "."}
           </li>
           <li>
             <strong>Desgaste:</strong> a cada passo de horas de atividade
@@ -55,16 +58,18 @@ export function AdultGuide({ data }: { data: HowItWorksData }) {
           </li>
           <li>
             <strong>Assíntota:</strong> taxa × passo × 2. É o que um dia inteiro
-            de uma atividade se aproxima de render, sem contar o bônus de
-            retorno.
+            de uma atividade se aproxima de render
+            {BONUS_ENABLED ? ", sem contar o bônus de alternância" : ""}.
           </li>
-          <li>
-            <strong>Bônus de retorno:</strong> incide na entrada que volta à
-            categoria depois de mais dias sem ela do que o limiar. O próprio dia
-            conta: uma segunda entrada no mesmo dia já não ganha. A estreia da
-            categoria nunca ganha: o bônus exige uma entrada aprovada dela antes
-            da janela.
-          </li>
+          {BONUS_ENABLED ? (
+            <li>
+              <strong>Bônus de alternância:</strong> incide na primeira entrada
+              da categoria no dia que vem depois de outra categoria que também
+              dá bônus. Cada categoria ganha uma vez por dia; a primeira entrada
+              do dia nunca ganha, e quem não dá bônus não destrava. É por
+              categoria: trocar de livro para HQ não conta.
+            </li>
+          ) : null}
           <li>
             <strong>Repetição:</strong> a mesma atividade de novo dentro dos
             dias de espera vale metade.
@@ -90,9 +95,11 @@ export function AdultGuide({ data }: { data: HowItWorksData }) {
               <th className="px-1.5 py-3 text-sm font-bold" scope="col">
                 Assíntota
               </th>
-              <th className="px-1.5 py-3 text-sm font-bold" scope="col">
-                Bônus
-              </th>
+              {BONUS_ENABLED ? (
+                <th className="px-1.5 py-3 text-sm font-bold" scope="col">
+                  Bônus
+                </th>
+              ) : null}
             </tr>
           </thead>
           <tbody>
@@ -121,11 +128,13 @@ export function AdultGuide({ data }: { data: HowItWorksData }) {
                   >
                     {asymptote === null ? "—" : formatHours(asymptote)}
                   </td>
-                  <td className="px-1.5 py-3 text-base">
-                    {category.returnBonusPct > 0
-                      ? `+${formatPercent(category.returnBonusPct)}, mais de ${formatDays(category.returnBonusAfterDays)} sem`
-                      : "—"}
-                  </td>
+                  {BONUS_ENABLED ? (
+                    <td className="px-1.5 py-3 text-base">
+                      {category.alternationBonusPct > 0
+                        ? `+${formatPercent(category.alternationBonusPct)}, ao alternar`
+                        : "—"}
+                    </td>
+                  ) : null}
                 </tr>
               );
             })}
@@ -144,17 +153,17 @@ export function AdultGuide({ data }: { data: HowItWorksData }) {
             rows={decayRows(example, data.occurredOn)}
           />
           <PanelText>
-            Sem bônus, um dia inteiro de {example.activity.name} se aproxima de{" "}
+            {BONUS_ENABLED ? "Sem bônus, um" : "Um"} dia inteiro de{" "}
+            {example.activity.name} se aproxima de{" "}
             {formatHours(exampleAsymptote(example))} e nunca chega lá.
           </PanelText>
 
-          {comeback === null ? null : (
+          {!BONUS_ENABLED || comeback === null ? null : (
             <div className="flex flex-col gap-2 px-3 pb-4">
               <p className="text-base text-black">
                 {formatDuration(SHORT_SESSION_MINUTES)} de{" "}
                 {example.activity.name}, primeira entrada de{" "}
-                {example.category.name} em mais de{" "}
-                {formatDays(example.category.returnBonusAfterDays)}:
+                {example.category.name} no dia, depois de {comeback.unlockedBy}:
               </p>
               <Result calculation={comeback} heading="O menino ganharia" />
             </div>
@@ -174,12 +183,13 @@ export function AdultGuide({ data }: { data: HowItWorksData }) {
             “Passo do desgaste”, em horas e minutos. Vazio desliga o desgaste. O
             mínimo é {formatDuration(MIN_DECAY_STEP_HOURS * 60)}.
           </li>
-          <li>
-            <strong>Bônus de retorno:</strong> Configuração, categoria, campos
-            “Bônus de retorno (%)” e “Bônus a partir de quantos dias sem fazer”.
-            Com bônus, o limiar é de pelo menos{" "}
-            {formatDays(MIN_RETURN_BONUS_AFTER_DAYS)}.
-          </li>
+          {BONUS_ENABLED ? (
+            <li>
+              <strong>Bônus de alternância:</strong> Configuração, categoria,
+              campo “Bônus de alternância (%)”. Vale quando outra categoria que
+              também dá bônus veio antes no mesmo dia.
+            </li>
+          ) : null}
           <li>
             <strong>Repetição:</strong> Configuração, atividade, campo “Só
             repete depois de quantos dias”. Zero desliga.
@@ -229,8 +239,8 @@ export function AdultGuide({ data }: { data: HowItWorksData }) {
           <li>
             O que o cronômetro manda, e o que o menino pede sem cronômetro,
             chega como Pendente. Aprovar congela o valor. Recusar não gera hora,
-            não conta para desgaste, bônus nem repetição, e o motivo é anexado à
-            observação.
+            não conta para desgaste{BONUS_ENABLED ? ", bônus" : ""} nem
+            repetição, e o motivo é anexado à observação.
           </li>
           <li>
             Na aprovação dá para corrigir atividade, duração, nota e observação,
@@ -240,9 +250,10 @@ export function AdultGuide({ data }: { data: HowItWorksData }) {
             <strong>Valor final:</strong> em vez de corrigir o relato, dá para
             dizer quanto a entrada vale, em horas e minutos, em qualquer
             atividade, fixa inclusive. A regra não é consultada. O desgaste do
-            dia continua contando o tempo que a atividade durou, e a repetição e
-            o bônus a contam como feita. O menino vê no histórico quem decidiu o
-            valor, quanto a regra daria e o motivo, se você escrever um.
+            dia continua contando o tempo que a atividade durou, e a repetição
+            {BONUS_ENABLED ? " e o bônus a contam" : " a conta"} como feita. O
+            menino vê no histórico quem decidiu o valor, quanto a regra daria e
+            o motivo, se você escrever um.
           </li>
           <li>
             <strong>Ordem:</strong> uma entrada não pode ser aprovada enquanto
@@ -251,8 +262,9 @@ export function AdultGuide({ data }: { data: HowItWorksData }) {
             da mais antiga para a mais nova. Recusar a anterior também libera.
           </li>
           <li>
-            Quem é aprovado primeiro paga cheio: o desgaste e o bônus de uma
-            entrada leem o que foi aprovado antes dela.
+            Quem é aprovado primeiro paga cheio: o desgaste
+            {BONUS_ENABLED ? " e o bônus" : ""} de uma entrada
+            {BONUS_ENABLED ? " leem" : " lê"} o que foi aprovado antes dela.
           </li>
           <li>
             O que um adulto lança em Lançar atividade não passa pela fila.
