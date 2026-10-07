@@ -26,7 +26,9 @@ vi.mock("./actions/config", () => ({
 
 const { KidGuide } = await import("./conta/como-funciona/kid-guide");
 const { AdultGuide } = await import("./conta/como-funciona/adult-guide");
-const { NewCategoryForm } = await import("./admin/configuracao/category-list");
+const { NewCategoryForm, draftOf, categoryInputOf } = await import(
+  "./admin/configuracao/category-list"
+);
 
 /** Two participating categories with timed activities: enough that the bonus
  * copy would appear if the switch were on. */
@@ -106,5 +108,24 @@ describe("the bonus is invisible while it is off (D57)", () => {
     expect(markup).not.toContain("Bônus de alternância");
     // The rest of the form is still there.
     expect(markup).toContain("Passo do desgaste");
+  });
+
+  it("keeps the saved bonus through an edit, though the field is hidden (D57)", () => {
+    // Editing a category off-switch does not zero its pct: `draftOf` carries it
+    // and `categoryInputOf` sends it back, so a later re-enable finds it intact.
+    const category = {
+      id: 2,
+      name: "Mente",
+      baseRate: 1.5,
+      decayStepHours: 1,
+      alternationBonusPct: 0.5,
+      sortOrder: 2,
+      active: true,
+      activityCount: 4,
+    };
+
+    const roundTripped = categoryInputOf(draftOf(category));
+
+    expect(roundTripped?.alternationBonusPct).toBe(0.5);
   });
 });

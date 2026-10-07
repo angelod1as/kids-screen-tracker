@@ -38,10 +38,7 @@ export type CalculatorData = {
   participatingCategoryIds: number[];
 };
 
-/**
- * Wider than `historyLookbackDays` needs: inside the minimum window `awayText`
- * can only say "faz mais de 3 dias", and #17 asks for the day to be named.
- */
+/** A generous floor for the history window, wider than any cooldown reaches back. */
 const CALCULATOR_LOOKBACK_DAYS = 30;
 
 /**

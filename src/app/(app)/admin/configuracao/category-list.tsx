@@ -248,7 +248,7 @@ function percentText(fraction: number): string {
   return String(percentPointsOf(fraction)).replace(".", ",");
 }
 
-function draftOf(category: CategoryRow): CategoryDraft {
+export function draftOf(category: CategoryRow): CategoryDraft {
   const decimal = (value: number) => String(value).replace(".", ",");
 
   return {
