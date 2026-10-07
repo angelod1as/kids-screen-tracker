@@ -157,7 +157,8 @@ describe("Parar ends it as the boy would (#84, D44, D32)", () => {
     startBook("kid1");
     pass(6 * MINUTE);
 
-    await adminStopTimerAction(idOf("kid1"), "");
+    // D44: a filed stop settles to null, which is how the screen knows to refresh.
+    expect(await adminStopTimerAction(idOf("kid1"), "")).toBeNull();
 
     const [log] = logsOf("kid1");
 
@@ -168,12 +169,18 @@ describe("Parar ends it as the boy would (#84, D44, D32)", () => {
     expect(timerRows("kid1")[0]?.status).toBe("stopped");
   });
 
-  it("files nothing when the session is under the floor (D44)", async () => {
+  it("files nothing when the session is under the floor, and says so (D44)", async () => {
     startBook("kid1");
     pass(10 * SECOND);
 
-    await adminStopTimerAction(idOf("kid1"), "");
-
+    // The admin learns why nothing was filed, not only that the panel vanished.
+    expect(await adminStopTimerAction(idOf("kid1"), "")).toEqual({
+      kind: "tooShort",
+      activityName: BOOK,
+      durationMinutes: null,
+      durationSeconds: 10,
+      minSessionMinutes: 5,
+    });
     expect(logsOf("kid1")).toEqual([]);
     expect(timerRows("kid1")[0]?.status).toBe("stopped");
   });

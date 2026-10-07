@@ -4,8 +4,9 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 
 import { isBlankNote } from "../../../../../db/input";
+import type { TimerSettlement } from "../../../../../db/timers";
 import { Button } from "../../../../../ui/button";
-import { failureText } from "../../../../../ui/failure";
+import { timerFailureText } from "../../../../../ui/failure";
 import { Field } from "../../../../../ui/field";
 import { formatRecordedDuration } from "../../../../../ui/hours";
 import { META_CLASS } from "../../../../../ui/style";
@@ -14,6 +15,10 @@ import {
   adminCancelTimerAction,
   adminStopTimerAction,
 } from "../../../../actions/admin-timers";
+import {
+  noteLabel,
+  settlementText,
+} from "../../../menino/cronometro/timer-screen";
 
 /** #84: Parar reuses the boy's stop; Cancelar discards, and takes two taps. */
 export function TimerControl({ timer }: { timer: RunningTimer }) {
@@ -21,21 +26,52 @@ export function TimerControl({ timer }: { timer: RunningTimer }) {
   const [note, setNote] = useState("");
   const [cancelling, setCancelling] = useState(false);
   const [failed, setFailed] = useState<string | null>(null);
+  const [settlement, setSettlement] = useState<TimerSettlement | null>(null);
   const [busy, startAction] = useTransition();
 
-  function run(call: () => Promise<void>) {
+  function stop() {
     startAction(async () => {
       try {
-        await call();
+        const result = await adminStopTimerAction(timer.userId, note);
+
+        // D44: a filed record settles to null; anything else closed the session
+        // without filing, and the admin is told which, as the boy's screen is.
+        if (result === null) {
+          router.refresh();
+          return;
+        }
+
+        setSettlement(result);
+      } catch (error) {
+        setFailed(timerFailureText(error));
+      }
+    });
+  }
+
+  function cancel() {
+    startAction(async () => {
+      try {
+        await adminCancelTimerAction(timer.userId);
         router.refresh();
       } catch (error) {
-        setFailed(failureText(error));
+        setFailed(timerFailureText(error));
       }
     });
   }
 
   // #44: the rule the boy's screen holds too; the server refuses the forged tap.
   const stopDisabled = busy || (timer.noteRequired && isBlankNote(note));
+
+  if (settlement !== null) {
+    return (
+      <div className="flex flex-col gap-3 p-3">
+        <p className="text-base text-black">{settlementText(settlement)}</p>
+        <Button onClick={() => router.refresh()} type="button">
+          Voltar
+        </Button>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col gap-3 p-3">
@@ -53,7 +89,7 @@ export function TimerControl({ timer }: { timer: RunningTimer }) {
       {timer.noteRequired ? (
         <Field
           id={`cronometro-nota-${timer.userId}`}
-          label="Observação"
+          label={noteLabel(true)}
           maxLength={500}
           onChange={(event) => setNote(event.target.value)}
           type="text"
@@ -71,11 +107,7 @@ export function TimerControl({ timer }: { timer: RunningTimer }) {
             Descartar este cronômetro? Nada vai para a fila, e a sessão não vira
             registro.
           </p>
-          <Button
-            disabled={busy}
-            onClick={() => run(() => adminCancelTimerAction(timer.userId))}
-            type="button"
-          >
+          <Button disabled={busy} onClick={cancel} type="button">
             Confirmar descarte
           </Button>
           <Button
@@ -93,13 +125,7 @@ export function TimerControl({ timer }: { timer: RunningTimer }) {
       ) : (
         <div className="flex flex-col gap-2 lg:flex-row lg:gap-3">
           <div className="lg:flex-1">
-            <Button
-              disabled={stopDisabled}
-              onClick={() =>
-                run(() => adminStopTimerAction(timer.userId, note))
-              }
-              type="button"
-            >
+            <Button disabled={stopDisabled} onClick={stop} type="button">
               Parar
             </Button>
           </div>

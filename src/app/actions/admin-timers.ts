@@ -2,6 +2,7 @@
 
 import { requireAdmin } from "../../auth/guard";
 import { getConnection } from "../../db";
+import type { TimerSettlement } from "../../db/timers";
 import { cancelTimer, readTimer, stopTimer } from "../../db/timers";
 import { listKidsAction } from "./people";
 
@@ -62,11 +63,15 @@ export async function fetchRunningTimersAction(): Promise<RunningTimer[]> {
   return running;
 }
 
-/** Ends it as the boy would: to the normal queue, honoring D44 and D32. */
+/**
+ * Ends it as the boy would: to the normal queue, honoring D44 and D32. The
+ * settlement comes back so the admin screen can say when nothing was filed and
+ * why (D44), as the boy's own screen does; a filed record settles to `null`.
+ */
 export async function adminStopTimerAction(
   userId: number,
   note: string,
-): Promise<void> {
+): Promise<TimerSettlement | null> {
   await requireAdmin();
 
   const trimmed = note.trim();
@@ -77,12 +82,12 @@ export async function adminStopTimerAction(
     );
   }
 
-  stopTimer(
+  return stopTimer(
     getConnection(),
     userId,
     trimmed === "" ? null : trimmed,
     new Date(),
-  );
+  ).read.settlement;
 }
 
 /** Kills it (#84): the session is discarded, nothing reaches the queue. */
