@@ -91,6 +91,27 @@ describe("the numbers screen (#9)", () => {
     expect(page).toContain("Sem uso no período");
   });
 
+  it("labels each flow row with its own total, wired end to end (#87)", async () => {
+    const dashboard = readDashboard(connection, {
+      kidIds: [3, 4],
+      from: "2026-08-24",
+      to: TODAY,
+    });
+    const page = await markup({});
+
+    for (const balance of dashboard.balances) {
+      expect(page).toContain(
+        `aria-label="Lançadas: ${formatHours(balance.earned)} no período"`,
+      );
+      expect(page).toContain(
+        `aria-label="Dadas: ${formatHours(balance.refunded)} no período"`,
+      );
+      expect(page).toContain(
+        `aria-label="Tiradas: ${formatHours(balance.spent)} no período"`,
+      );
+    }
+  });
+
   it("reads the filters off the URL, and ignores an id that is not a boy's", async () => {
     mocked.requests = [];
     await markup({ menino: "4", periodo: "tudo" });

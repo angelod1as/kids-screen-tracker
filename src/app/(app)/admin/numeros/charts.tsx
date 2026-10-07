@@ -145,9 +145,9 @@ export function BalanceLine({
 }
 
 /**
- * The three ledger flows, one black bar-row each (#87). No colour per series
- * (D42): the row's label tells them apart. A bar carries its value as a
- * `<title>`, so a hover or a tap reads the number back.
+ * The three ledger flows, one black bar-row each (#87); no colour per series
+ * (D42), so the label tells them apart and one scale spans all three to keep
+ * them comparable. The total is text; a bar shows its value on hover.
  */
 export function FlowBars({
   flows,
