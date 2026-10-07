@@ -124,6 +124,14 @@ describe("the numbers screen (#9)", () => {
     }
   });
 
+  it("breaks each boy's balance into lançadas, dadas and tiradas (#87)", async () => {
+    const page = await markup({});
+
+    expect(page).toContain("Lançadas");
+    expect(page).toContain("Dadas");
+    expect(page).toContain("Tiradas");
+  });
+
   it("gives every filter the 48 px minimum", async () => {
     const page = await markup({});
     const links = page.match(/<a [^>]*>/g) ?? [];

@@ -11,7 +11,7 @@ vi.mock("../engine/flags", () => ({ BONUS_ENABLED: true }));
 import { launchEntry } from "./admin";
 import { openDatabase } from "./client";
 import { readDashboard } from "./dashboard";
-import { releaseHours } from "./ledger";
+import { refundHours, releaseHours } from "./ledger";
 import { migrateDatabase } from "./migrate";
 import { activities, activityLogs } from "./schema";
 import { seedWithTestUsers } from "./test-users";
@@ -221,6 +221,25 @@ describe("balance over time (#9)", () => {
       1.25, 4.25, 4.25,
     ]);
     expect(kid1?.earned).toBe(3);
+  });
+
+  it("splits the ledger flows per day, reconciling each with its total (#87)", () => {
+    refundHours(
+      connection,
+      { userId: KID1, hours: 0.5, occurredOn: "2026-09-04", reason: "troca" },
+      ADMIN1,
+      new Date("2026-09-04T15:00:00Z"),
+    );
+
+    const [kid1] = week().balances;
+    const sum = (values: number[]) => values.reduce((a, b) => a + b, 0);
+
+    expect(kid1?.earnedPerDay).toEqual([2.25, 0, 0, 0, 0, 3, 0]);
+    expect(kid1?.givenPerDay).toEqual([0, 0, 0, 0.5, 0, 0, 0]);
+    expect(kid1?.takenPerDay).toEqual([0, 0, 1, 0, 0, 0, 0]);
+    expect(sum(kid1?.earnedPerDay ?? [])).toBe(kid1?.earned);
+    expect(sum(kid1?.givenPerDay ?? [])).toBe(kid1?.refunded);
+    expect(sum(kid1?.takenPerDay ?? [])).toBe(kid1?.spent);
   });
 
   it("drops a voided entry from the balance and every count (D52)", () => {
