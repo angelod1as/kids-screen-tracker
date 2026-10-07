@@ -90,9 +90,16 @@ export async function adminStopTimerAction(
   ).read.settlement;
 }
 
-/** Kills it (#84): the session is discarded, nothing reaches the queue. */
-export async function adminCancelTimerAction(userId: number): Promise<void> {
+/**
+ * Kills it (#84): the session is discarded, nothing reaches the queue. Returns
+ * the settlement so the screen does not promise "nada vai para a fila" when the
+ * session had already auto-ended and `mutateOpenTimer` filed a record (D16); a
+ * real discard settles to `null`.
+ */
+export async function adminCancelTimerAction(
+  userId: number,
+): Promise<TimerSettlement | null> {
   await requireAdmin();
 
-  cancelTimer(getConnection(), userId, new Date());
+  return cancelTimer(getConnection(), userId, new Date()).read.settlement;
 }

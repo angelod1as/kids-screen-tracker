@@ -51,8 +51,16 @@ export function TimerControl({ timer }: { timer: RunningTimer }) {
   function cancel() {
     startAction(async () => {
       try {
-        await adminCancelTimerAction(timer.userId);
-        router.refresh();
+        const result = await adminCancelTimerAction(timer.userId);
+
+        // D16: a session that auto-ended before the tap was filed, not discarded;
+        // say so instead of promising the queue stayed empty.
+        if (result === null) {
+          router.refresh();
+          return;
+        }
+
+        setSettlement(result);
       } catch (error) {
         setFailed(timerFailureText(error));
       }

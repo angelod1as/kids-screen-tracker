@@ -213,14 +213,27 @@ describe("Parar ends it as the boy would (#84, D44, D32)", () => {
 });
 
 describe("Cancelar discards the session (#84)", () => {
-  it("leaves no record and marks the timer abandoned", async () => {
+  it("leaves no record, marks the timer abandoned, and settles to null", async () => {
     startBook("kid1");
     pass(6 * MINUTE);
 
-    await adminCancelTimerAction(idOf("kid1"));
+    expect(await adminCancelTimerAction(idOf("kid1"))).toBeNull();
 
     expect(logsOf("kid1")).toEqual([]);
     expect(timerRows("kid1")[0]?.status).toBe("abandoned");
+  });
+
+  it("honors a record the session already filed on its own, not a silent discard (D16)", async () => {
+    // "Ler livro" caps at 2h; crossing it before the tap files a pending record.
+    startBook("kid1");
+    pass(5 * 60 * MINUTE);
+
+    const settlement = await adminCancelTimerAction(idOf("kid1"));
+
+    expect(settlement?.kind).toBe("autoStopped");
+    expect(logsOf("kid1")).toHaveLength(1);
+    expect(logsOf("kid1")[0]?.status).toBe("pending");
+    expect(timerRows("kid1")[0]?.status).toBe("stopped");
   });
 });
 
