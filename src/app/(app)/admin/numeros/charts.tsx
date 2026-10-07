@@ -159,12 +159,12 @@ export function FlowBars({
   const scale = max > 0 ? height / max : 0;
 
   return (
-    <dl className="flex flex-col gap-2">
+    <div className="flex flex-col gap-2">
       {flows.map((flow) => (
         <div className="flex items-center gap-2" key={flow.label}>
-          <dt className={`${META_CLASS} w-16 shrink-0 text-black`}>
+          <span className={`${META_CLASS} w-16 shrink-0 text-black`}>
             {flow.label}
-          </dt>
+          </span>
           <svg
             aria-label={`${flow.label}: ${formatHours(flow.total)} no período`}
             className="block h-6 flex-1 text-black"
@@ -197,12 +197,12 @@ export function FlowBars({
               ) : null,
             )}
           </svg>
-          <dd className="w-14 shrink-0 text-right font-mono text-base tabular-nums text-black">
+          <span className="w-14 shrink-0 text-right font-mono text-base tabular-nums text-black">
             {formatHours(flow.total)}
-          </dd>
+          </span>
         </div>
       ))}
-    </dl>
+    </div>
   );
 }
 

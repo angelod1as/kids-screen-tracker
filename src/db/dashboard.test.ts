@@ -240,6 +240,17 @@ describe("balance over time (#9)", () => {
     expect(sum(kid1?.earnedPerDay ?? [])).toBe(kid1?.earned);
     expect(sum(kid1?.givenPerDay ?? [])).toBe(kid1?.refunded);
     expect(sum(kid1?.takenPerDay ?? [])).toBe(kid1?.spent);
+
+    // Kid1's refund and release must not bleed into Kid2's buckets.
+    const [, kid2] = readDashboard(connection, {
+      kidIds: [KID1, KID2],
+      from: "2026-09-01",
+      to: "2026-09-07",
+    }).balances;
+
+    expect(kid2?.givenPerDay).toEqual([0, 0, 0, 0, 0, 0, 0]);
+    expect(kid2?.takenPerDay).toEqual([0, 0, 0, 0, 0, 0, 0]);
+    expect(kid2?.earnedPerDay.filter((value) => value > 0)).toHaveLength(1);
   });
 
   it("drops a voided entry from the balance and every count (D52)", () => {
