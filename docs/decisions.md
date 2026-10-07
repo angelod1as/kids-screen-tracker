@@ -2,7 +2,7 @@
 
 Vinte e cinco ambiguidades da spec, resolvidas e justificadas antes da primeira
 linha de código, mais as que cada fase mediu depois. Hoje são cinquenta e
-cinco, D1–D55, mais dezesseis emendas e as duas declarações da Fase 4, uma delas
+seis, D1–D56, mais dezesseis emendas e as duas declarações da Fase 4, uma delas
 revogada.
 
 **Onde este documento e `spec.md` discordarem, este documento vence.**
@@ -103,8 +103,9 @@ a diária permanece.
 **Por quê.** O desgaste semanal existia para impedir a maratona que a torneira
 diária já resolve. Manter os dois obrigaria a tela do menino a explicar duas
 coisas ao mesmo tempo — "metade porque hoje" *e* "metade porque essa semana" —
-que é a explicação que ninguém lê. O bônus de retorno continua sendo o que puxa
-variedade entre dias.
+que é a explicação que ninguém lê. A variedade entre categorias passou a ser
+puxada pelo bônus de alternância (D56), dentro do dia; não há mais incentivo
+entre dias.
 
 ### D5 — Atividades `fixed` e `delivery` não desgastam
 
@@ -130,6 +131,9 @@ logs anteriores na ordenação. O mesmo dia conta.
 **Refinada pela D47 (#113):** janela vazia não basta para o bônus de retorno;
 ele exige também um registro da categoria anterior à janela.
 
+**A metade do bônus de retorno foi aposentada pela D56 (#54); a janela do
+cooldown continua.**
+
 **Por quê.** Incluir o próprio dia é o que faz o cooldown funcionar: sem isso,
 lavar o carro duas vezes na mesma tarde pagaria cheio nas duas.
 
@@ -143,6 +147,8 @@ cooldown configurado. O seed usa 0 em 26 das 32 atividades, exatamente com o
 sentido de "não se aplica".
 
 ### D7 — O bônus de retorno incide sobre o valor já degradado
+
+**Aposentada pela D56 (#54).** Fica como registro do que o bônus de retorno foi.
 
 **Decisão.** Ordem: valor base → nota de qualidade → cooldown → desgaste → bônus
 de retorno. O bônus multiplica o resultado, não o valor base.
@@ -839,6 +845,8 @@ ser configurável. Ela é a categoria que se desliga.
 
 ### D36 — Bônus de retorno exige limiar de ao menos um dia
 
+**Aposentada pela D56 (#54).** Fica como registro do que o bônus de retorno foi.
+
 **Decisão.** Se `return_bonus_pct > 0`, então `return_bonus_after_days` é ao
 menos **1**. O par (bônus > 0, limiar 0) é recusado com a frase que diz o que
 fazer. `return_bonus_pct = 0` continua sendo como se escreve "sem bônus" — é como
@@ -1484,6 +1492,8 @@ splash nem "app shell" nosso mostrando tela antes do dado.
 ## A decisão que veio da #113
 
 ### D47 — Bônus de retorno exige ter estado lá antes
+
+**Aposentada pela D56 (#54).** Fica como registro do que o bônus de retorno foi.
 
 O código concedia o bônus quando **nenhum** registro da categoria caía na janela
 da D6, e isso incluía o caso em que nunca houve registro nenhum: a primeira vez
@@ -2183,3 +2193,76 @@ cronômetro aberto, parado depois da migration, virou registro como antes.
   que o menino leu que precisa contar, não o que ele conta.
 - Nenhum `CHECK` amarra a coluna a 0 ou 1: só `updateActivity` e
   `createActivity` a escrevem, e o Drizzle grava booleano.
+
+---
+
+## A decisão que veio da #54
+
+### D56 — O bônus de retorno vira bônus de alternância, dentro do dia
+
+O bônus de retorno (D6, D7, D47) premiava *ausência*: ficar
+`return_bonus_after_days` dias sem tocar a categoria fazia a volta valer +50%. O
+dono mediu o comportamento errado — ler hoje, sumir de propósito, voltar para
+colher o bônus — e decidiu (06/10/2026) trocar o incentivo. Não se premia mais
+ficar longe; premia-se **alternar o tipo de atividade dentro do dia**. O desgaste
+(D1–D3) continua sendo o freio da repetição; a alternância passa a ser o que puxa
+variedade, no lugar do retorno.
+
+**Decisão.** Uma entrada de categoria C, no dia corrente, ganha o bônus de
+alternância quando as duas coisas valem:
+
+1. **C participa** — tem `return_bonus_pct > 0` (hoje Corpo, Mente e Criativo), e
+2. antes dela, no mesmo dia, já houve ao menos uma entrada aprovada de **outra
+   categoria que também participa** (pct > 0) e diferente de C.
+
+Sem limiar: **qualquer** registro de uma categoria participante anterior destrava
+— não é preciso acumular N horas de A para a B valer. E **cada categoria rende o
+bônus no máximo uma vez por dia**, na primeira entrada dela que satisfaz a regra;
+depois disso, tudo de C no dia paga sem bônus.
+
+- **É categoria, não atividade (D3).** Livro → xadrez dividem o balde da Mente:
+  não houve alternância. Livro → futebol houve. Trocar de livro para HQ nunca
+  conta.
+- **Só dentro do dia.** O gatilho zera à meia-noite junto com o balde (D3). Não
+  há janela que atravesse dias, e `return_bonus_after_days` deixa de ter sentido.
+- **A→B→A rende a volta, uma vez.** `livro → futebol → livro`: a volta à leitura
+  ganha (Mente ainda não rendeu hoje, e Corpo veio antes). `livro → futebol →
+  livro → futebol` não rende mais nada — as duas categorias já gastaram o bônus
+  do dia.
+- **Quem não participa não destrava.** Convívio, Casa, Escola e Curinga (pct 0)
+  nem ganham nem contam como a "categoria anterior diferente". Jantar em família
+  (Convívio) → livro não faz a leitura valer mais: Convívio não é alternância.
+- **O primeiro registro do dia nunca ganha** — não há nada antes dele.
+
+**O tamanho continua por categoria, como já era.** `return_bonus_pct` segue o
+percentual por categoria; carrega os valores de hoje — +50% em Corpo, Mente e
+Criativo, 0 nos demais. A bike de 1h que vale 1h30 é esse +50% do Corpo. Se o
+dado real (dashboard, #9) pedir peso diferente, é decisão nova com evidência, não
+um knob aberto agora.
+
+**A ordem não muda (D7).** base → nota → cooldown → desgaste → **alternância**. O
+bônus é o multiplicador de saída que o retorno já era: incide **depois** do
+desgaste, sobre o valor já degradado, e **não mexe no balde** (D3). `livro →
+futebol → livro`, Mente a 1,5 e passo 1h: a 2ª hora de leitura vale
+1,5 × 0,5 (desgaste) × 1,5 (alternância) = **1,125h**. A volta é premiada, mas a
+torneira não fura — o teto diário da categoria continua de pé. Sem isso, o menino
+intercalaria um minuto de outra coisa entre cada hora da favorita e grindaria sem
+teto.
+
+**O que isto aposenta.**
+
+- **D7 e D47 saem por inteiro.** A ordem do retorno vira a ordem da alternância
+  (acima), e a estreia deixa de ser caso especial: a regra é só do dia e não olha
+  histórico de vida nenhum. Ninguém precisa "ter estado lá antes".
+- **D6 perde a metade do bônus de retorno;** a janela do cooldown continua como
+  está.
+- **D36 sai.** Sem janela em dias, não há limiar `return_bonus_after_days` a
+  exigir.
+- **D4 deixa de valer na última frase.** Não é mais o retorno que puxa variedade
+  entre dias — é a alternância que puxa variedade entre categorias, dentro do dia.
+
+**O que não muda.** A D3 (balde por categoria, zera à meia-noite) fica intacta — é
+o freio da repetição e a razão de "alternar" ser por categoria. A D37 continua
+valendo: o percentual da categoria não pode mudar enquanto uma entrada dela
+espera na fila. A tela do menino e a Calculadora passam a explicar a alternância
+no lugar do retorno.
