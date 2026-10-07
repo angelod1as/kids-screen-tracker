@@ -18,7 +18,7 @@
     "check:secrets": "varlock run -- node scripts/check-build-secrets.mjs",
     "auth:hash": "tsx scripts/hash-password.ts",
     "db:generate": "drizzle-kit generate",
-    "db:bundle": "esbuild scripts/db-migrate.ts scripts/db-seed.ts scripts/db-backup.ts scripts/db-demo.ts --bundle --platform=node --format=esm --target=node22 --external:varlock/env --external:better-sqlite3 --outdir=dist/db --out-extension:.js=.mjs",
+    "db:bundle": "esbuild scripts/db-migrate.ts scripts/db-seed.ts scripts/db-backup.ts scripts/db-demo.ts scripts/db-audit-activities.ts --bundle --platform=node --format=esm --target=node22 --external:varlock/env --external:better-sqlite3 --outdir=dist/db --out-extension:.js=.mjs",
     "db:migrate": "varlock run -- tsx scripts/db-migrate.ts",
     "db:seed": "varlock run -- tsx scripts/db-seed.ts",
     "db:backup": "varlock run -- tsx scripts/db-backup.ts",
