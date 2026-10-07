@@ -53,6 +53,10 @@ vi.mock("../actions/void", () => ({
   voidEntryAction: async () => ({ balance: 0 }),
 }));
 
+vi.mock("../actions/admin-timers", () => ({
+  fetchRunningTimersAction: async () => [],
+}));
+
 const AdminHomePage = (await import("./admin/page")).default;
 const AdminKidHistoryPage = (await import("./admin/historico/[userId]/page"))
   .default;
