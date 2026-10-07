@@ -23,7 +23,9 @@
     "db:seed": "varlock run -- tsx scripts/db-seed.ts",
     "db:backup": "varlock run -- tsx scripts/db-backup.ts",
     "db:demo": "varlock run -- tsx scripts/db-demo.ts",
-    "db:demo:clear": "varlock run -- tsx scripts/db-demo.ts --clear"
+    "db:demo:clear": "varlock run -- tsx scripts/db-demo.ts --clear",
+    "db:audit:activities": "varlock run -- tsx scripts/db-audit-activities.ts",
+    "db:audit:activities:delete": "varlock run -- tsx scripts/db-audit-activities.ts --delete"
   },
   "dependencies": {
     "@varlock/nextjs-integration": "^1.2.2",

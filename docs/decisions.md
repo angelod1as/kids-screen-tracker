@@ -282,6 +282,11 @@ some das listas de lançamento e continua legível no histórico.
 **Estendida pela D52 (#31):** uma entrada lançada por engano também não se
 apaga. Ela é anulada: sai do saldo e do motor, e fica no histórico.
 
+**Emenda (#83):** uma atividade **desativada que nunca foi lançada** — zero
+`activity_logs` *e* zero `timers` apontando para ela — pode ser apagada de vez.
+Sem FK dependente, não há histórico nem congelamento a quebrar. O que fazer com
+uma desativada **já usada** continua fora de escopo.
+
 ### D15 — Mexer nas taxas não reescreve o passado
 
 **Decisão.** Editar categoria ou atividade não dispara recálculo nenhum. Vale só
