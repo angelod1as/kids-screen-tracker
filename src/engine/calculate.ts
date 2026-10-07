@@ -1,5 +1,5 @@
 import type { Activity, ActivityLog, Category } from "../db/schema";
-import { daysBetween, parseDate, shiftDate } from "./day";
+import { parseDate, shiftDate } from "./day";
 import {
   add,
   bandIndex,
@@ -15,6 +15,7 @@ import {
   subtract,
   toCents,
 } from "./exact";
+import { BONUS_ENABLED } from "./flags";
 
 /** Re-exported for existing callers; they live in `./day` so the stopwatch skips the engine. */
 export { daysBetween, saoPauloDay, shiftDate } from "./day";
@@ -53,7 +54,7 @@ export type EngineActivity = Pick<
 
 export type EngineCategory = Pick<
   Category,
-  "id" | "name" | "decayStepHours" | "returnBonusPct" | "returnBonusAfterDays"
+  "id" | "name" | "decayStepHours" | "alternationBonusPct"
 >;
 
 // `userId` and `status` required, so a query missing either filter fails to compile.
@@ -115,8 +116,8 @@ export type CalculationInput = {
   historyFrom: string;
   /** Declared too: under D34 a retroactive entry reads later days. */
   historyTo: string;
-  /** Earliest `occurred_on` of this category frozen before this entry (D34), over all time, not the window, or null (D47). */
-  categoryFirstDay: string | null;
+  /** Category ids that take the bonus (pct > 0); a same-day entry of one unlocks another (D56). */
+  participatingCategoryIds: readonly number[];
 };
 
 /** Signed addends, not a running total: they sum to `Calculation.hours` exactly (D9). */
@@ -136,38 +137,23 @@ export type Calculation = {
 /** Zero still means "fetch the day itself": the daily bucket (D3) lives there. */
 export function historyLookbackDays(
   activity: Pick<EngineActivity, "repeatCooldownDays">,
-  category: Pick<EngineCategory, "returnBonusPct" | "returnBonusAfterDays">,
 ): number {
-  const cooldown =
-    activity.repeatCooldownDays > 0 ? activity.repeatCooldownDays : 0;
-  const bonus = category.returnBonusPct > 0 ? category.returnBonusAfterDays : 0;
-
-  return Math.max(cooldown, bonus);
+  return activity.repeatCooldownDays > 0 ? activity.repeatCooldownDays : 0;
 }
 
 export function historyWindowStart(
   occurredOn: string,
   activity: Pick<EngineActivity, "repeatCooldownDays">,
-  category: Pick<EngineCategory, "returnBonusPct" | "returnBonusAfterDays">,
 ): string {
-  return shiftDate(occurredOn, -historyLookbackDays(activity, category));
-}
-
-/** D6's bonus window start; an entry of the category before it makes this a return (D47). */
-export function returnBonusWindowStart(
-  occurredOn: string,
-  category: Pick<EngineCategory, "returnBonusAfterDays">,
-): string {
-  return shiftDate(occurredOn, -category.returnBonusAfterDays);
+  return shiftDate(occurredOn, -historyLookbackDays(activity));
 }
 
 /** Not zero because of D34: a retroactive entry reads what later days spent. */
 export function historyWindowEnd(
   occurredOn: string,
   activity: Pick<EngineActivity, "repeatCooldownDays">,
-  category: Pick<EngineCategory, "returnBonusPct" | "returnBonusAfterDays">,
 ): string {
-  return shiftDate(occurredOn, historyLookbackDays(activity, category));
+  return shiftDate(occurredOn, historyLookbackDays(activity));
 }
 
 export function calculateEarnedHours(input: CalculationInput): Calculation {
@@ -333,26 +319,32 @@ export function calculateEarnedHours(input: CalculationInput): Calculation {
     }
   }
 
-  const bonusPct = category.returnBonusPct;
-  // Any calc mode counts as doing the category, even one that books no hours.
-  const categoryLogs = counted.filter((log) => log.categoryId === category.id);
-  const bonusWindowStart = returnBonusWindowStart(occurredOn, category);
-  // Two-sided (D34): a later entry frozen first has already spent the gap.
-  const bonusWindowEnd = shiftDate(occurredOn, category.returnBonusAfterDays);
+  const bonusPct = category.alternationBonusPct;
+  // D56: the bonus needs an earlier same-day entry of a *different* category
+  // that also takes the bonus (pct > 0); each category earns it once a day.
+  const participating = new Set(input.participatingCategoryIds);
+  const sameDay = counted.filter((log) => log.occurredOn === occurredOn);
+  const unlockedBy = earliestParticipatingOther(
+    sameDay,
+    category.id,
+    participating,
+  );
   const bonusApplies =
+    // D57: off behind one constant for a testing period; the step vanishes.
+    BONUS_ENABLED &&
     bonusPct > 0 &&
-    input.categoryFirstDay !== null &&
-    input.categoryFirstDay < bonusWindowStart &&
-    !categoryLogs.some(
-      (log) =>
-        log.occurredOn >= bonusWindowStart && log.occurredOn <= bonusWindowEnd,
+    participating.has(category.id) &&
+    unlockedBy !== null &&
+    // Already earned if an earlier entry of C came after the unlocking one.
+    !sameDay.some(
+      (log) => log.categoryId === category.id && isLaterInDay(log, unlockedBy),
     );
 
   if (bonusApplies) {
-    const next = multiply(value, returnBonusMultiplier(bonusPct));
+    const next = multiply(value, alternationBonusMultiplier(bonusPct));
     drafts.push({
       step: "bonus",
-      text: `+${formatNumber(bonusPct * 100)}%, ${awayText(categoryLogs, occurredOn, category.returnBonusAfterDays, input.historyFrom)} que você não faz ${category.name}`,
+      text: `+${formatNumber(bonusPct * 100)}%, você variou de atividade hoje`,
       total: next,
     });
     value = next;
@@ -361,10 +353,38 @@ export function calculateEarnedHours(input: CalculationInput): Calculation {
   return roundOnce(drafts);
 }
 
-// `return_bonus_pct` is a fraction (0,5 is +50%), like the seed and the spec's
-// `× (1 + pct)`. `decisions.md` does not settle it; a test pins it.
-function returnBonusMultiplier(pct: number): Fraction {
+// `alternation_bonus_pct` is a fraction (0,5 is +50%), like the seed and the
+// spec's `× (1 + pct)`. `decisions.md` does not settle it; a test pins it.
+function alternationBonusMultiplier(pct: number): Fraction {
   return add(ONE, fromNumber(pct));
+}
+
+/** D8 order within the day: the earliest participating entry of another category, or null. */
+function earliestParticipatingOther(
+  sameDay: readonly ApprovedLog[],
+  categoryId: number,
+  participating: ReadonlySet<number>,
+): ApprovedLog | null {
+  let earliest: ApprovedLog | null = null;
+
+  for (const log of sameDay) {
+    if (log.categoryId === categoryId || !participating.has(log.categoryId)) {
+      continue;
+    }
+    if (earliest === null || isLaterInDay(earliest, log)) earliest = log;
+  }
+
+  return earliest;
+}
+
+/** D8's tiebreak, within one day: `a` was frozen strictly after `b`. */
+function isLaterInDay(
+  a: Pick<ApprovedLog, "createdAt" | "id">,
+  b: Pick<ApprovedLog, "createdAt" | "id">,
+): boolean {
+  const byCreatedAt = a.createdAt.getTime() - b.createdAt.getTime();
+
+  return byCreatedAt === 0 ? a.id > b.id : byCreatedAt > 0;
 }
 
 /** `total` is the exact running total after this step, never a delta. */
@@ -415,28 +435,6 @@ export function isEarlier(
 
 function plural(days: number): string {
   return days === 1 ? "1 dia" : `${days} dias`;
-}
-
-/** Never a number that is not in the input: "mais de N dias" when history lacks the last entry. */
-function awayText(
-  categoryLogs: ApprovedLog[],
-  occurredOn: string,
-  afterDays: number,
-  historyFrom: string,
-): string {
-  let last: string | undefined;
-
-  for (const log of categoryLogs) {
-    // D34 history can hold a later day, which would read "faz −4 dias".
-    if (log.occurredOn > occurredOn) continue;
-    if (last === undefined || log.occurredOn > last) last = log.occurredOn;
-  }
-
-  if (last !== undefined) return `faz ${plural(daysBetween(last, occurredOn))}`;
-
-  const covered = Math.max(afterDays, daysBetween(historyFrom, occurredOn));
-
-  return `faz mais de ${plural(covered)}`;
 }
 
 // `index * step` in float drifts ("2000,01h" for 2000h); `step` has two decimals on
@@ -513,17 +511,12 @@ function formatRate(value: number): string {
 
 /** A short window is invisible and generous: a cooldown that never fires, a bonus that does. */
 function requireHistoryWindow(input: CalculationInput): void {
-  const from = historyWindowStart(
-    input.occurredOn,
-    input.activity,
-    input.category,
-  );
-  const to = historyWindowEnd(input.occurredOn, input.activity, input.category);
+  const from = historyWindowStart(input.occurredOn, input.activity);
+  const to = historyWindowEnd(input.occurredOn, input.activity);
 
   // `YYYY-MM-DD`, so the lexical order is the calendar order (D13).
   parseDate(input.historyFrom);
   parseDate(input.historyTo);
-  if (input.categoryFirstDay !== null) parseDate(input.categoryFirstDay);
 
   if (input.historyFrom > from) {
     throw new Error(

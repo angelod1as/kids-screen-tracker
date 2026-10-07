@@ -262,7 +262,7 @@ describe("a boy's request (D49)", () => {
       requestLog(
         connection,
         KID1,
-        { activityId: READING, occurredOn: "2026-09-20", durationMinutes: 30 },
+        { activityId: READING, occurredOn: TODAY, durationMinutes: 30 },
         NOW,
       );
     }
@@ -281,8 +281,8 @@ describe("a boy's request (D49)", () => {
 
     expect(entries).toHaveLength(21);
     expect(stopped.proposed).not.toBeNull();
-    // The first of them is Mente's debut (D47), so the later session waits
-    // too: twenty decisions stand in front of it.
+    // The first one stands in front of all the rest, the later session
+    // included: twenty decisions before it, in D32's order.
     expect(timed?.blockedBy?.id).toBe(entries[0]?.id);
     expect(entries.filter((entry) => entry.blockedBy !== null)).toHaveLength(
       20,

@@ -103,7 +103,7 @@ const MUTATIONS: readonly Mutation[] = [
   {
     name: "the history window is as short as the entry's own day",
     file: "admin.ts",
-    find: "  const historyFrom = historyWindowStart(\n    entry.occurredOn,\n    found.activity,\n    found.category,\n  );",
+    find: "  const historyFrom = historyWindowStart(entry.occurredOn, found.activity);",
     replace: "  const historyFrom = entry.occurredOn;",
   },
   {
@@ -122,7 +122,7 @@ const MUTATIONS: readonly Mutation[] = [
   {
     name: "the far end of the window is the entry's own day (D34)",
     file: "admin.ts",
-    find: "  const historyTo = historyWindowEnd(\n    entry.occurredOn,\n    found.activity,\n    found.category,\n  );",
+    find: "  const historyTo = historyWindowEnd(entry.occurredOn, found.activity);",
     replace: "  const historyTo = entry.occurredOn;",
   },
   {
@@ -233,17 +233,13 @@ const MUTATIONS: readonly Mutation[] = [
     replace: '  return false && activity.calcMode === "free"',
   },
   {
-    name: "the debut is priced as a return (D47)",
+    // The `blockedBy` tail is unique to `previewEntry`, so this prices the
+    // preview without the duration it was given — launch is left intact.
+    name: "the preview prices without the duration it was handed",
     file: "admin.ts",
-    find: "    categoryFirstDay: categoryFirstDay(db, entry.userId, found.category.id),",
-    replace: '    categoryFirstDay: "2000-01-01",',
-  },
-  {
-    name: "a pending debut blocks nothing (D32, D47)",
-    file: "admin.ts",
-    find: "  return blocking === undefined\n    ? pendingDebutBefore(",
+    find: "      durationMinutes: checked.durationMinutes ?? null,\n      quality: checked.quality ?? null,\n      freeValue: checked.freeValue ?? null,\n    }),\n    blockedBy: pendingBefore(db, entry) ?? null,",
     replace:
-      "  return blocking === undefined\n    ? undefined && pendingDebutBefore(",
+      "      durationMinutes: null,\n      quality: checked.quality ?? null,\n      freeValue: checked.freeValue ?? null,\n    }),\n    blockedBy: pendingBefore(db, entry) ?? null,",
   },
 ];
 
@@ -252,27 +248,11 @@ const CONTROL: Mutation = {
   name: "the two ends of the window are computed in the other order",
   file: "admin.ts",
   find:
-    "  const historyFrom = historyWindowStart(\n" +
-    "    entry.occurredOn,\n" +
-    "    found.activity,\n" +
-    "    found.category,\n" +
-    "  );\n" +
-    "  const historyTo = historyWindowEnd(\n" +
-    "    entry.occurredOn,\n" +
-    "    found.activity,\n" +
-    "    found.category,\n" +
-    "  );",
+    "  const historyFrom = historyWindowStart(entry.occurredOn, found.activity);\n" +
+    "  const historyTo = historyWindowEnd(entry.occurredOn, found.activity);",
   replace:
-    "  const historyTo = historyWindowEnd(\n" +
-    "    entry.occurredOn,\n" +
-    "    found.activity,\n" +
-    "    found.category,\n" +
-    "  );\n" +
-    "  const historyFrom = historyWindowStart(\n" +
-    "    entry.occurredOn,\n" +
-    "    found.activity,\n" +
-    "    found.category,\n" +
-    "  );",
+    "  const historyTo = historyWindowEnd(entry.occurredOn, found.activity);\n" +
+    "  const historyFrom = historyWindowStart(entry.occurredOn, found.activity);",
 };
 
 const sources = new Map<File, string>();

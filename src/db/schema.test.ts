@@ -494,21 +494,11 @@ const numericColumns: ReadonlyArray<{
     },
   },
   {
-    column: "categories.return_bonus_pct",
+    column: "categories.alternation_bonus_pct",
     insert: (value) => {
       connection.sqlite
         .prepare(
-          "insert into categories (name, return_bonus_pct) values ('X', ?)",
-        )
-        .run(value);
-    },
-  },
-  {
-    column: "categories.return_bonus_after_days",
-    insert: (value) => {
-      connection.sqlite
-        .prepare(
-          "insert into categories (name, return_bonus_after_days) values ('X', ?)",
+          "insert into categories (name, alternation_bonus_pct) values ('X', ?)",
         )
         .run(value);
     },
@@ -1049,7 +1039,7 @@ describe("categories follow D2 and D11", () => {
   it("accepts a category with no base_rate and no decay (D11, D12)", () => {
     const [curinga] = connection.db
       .insert(categories)
-      .values({ name: "Curinga", returnBonusPct: 0 })
+      .values({ name: "Curinga", alternationBonusPct: 0 })
       .returning()
       .all();
 

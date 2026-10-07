@@ -4,12 +4,12 @@ import type { ApprovedLog, EngineCategory } from "../engine/calculate";
 import {
   approvedOnly,
   calculateEarnedHours,
-  daysBetween,
   historyWindowEnd,
   historyWindowStart,
   shiftDate,
 } from "../engine/calculate";
 import type { Connection } from "./client";
+import { participatingCategoryIds } from "./participating";
 import { activities, activityLogs, categories, ledger, users } from "./schema";
 
 /**
@@ -37,8 +37,7 @@ export type CategoryStats = {
   name: string;
   active: boolean;
   decayStepHours: number | null;
-  returnBonusPct: number;
-  returnBonusAfterDays: number;
+  alternationBonusPct: number;
   /** Earned per day of `Dashboard.days`. */
   earnedPerDay: number[];
   earned: number;
@@ -50,10 +49,9 @@ export type CategoryStats = {
   /** Kid-days with any entry here, and those whose bucket passed one step (D3). */
   kidDays: number;
   kidDaysPastStep: number;
-  /** Days without the category before each return in the period (D6's count). */
-  gapsBeforeReturn: number[];
-  returnsWithBonus: number;
-  /** Overridden or unreproduced here: out of `split` and `returnsWithBonus`. */
+  /** Entries that took the alternation bonus (D56). */
+  bonusEntries: number;
+  /** Overridden or unreproduced here: out of `split` and `bonusEntries`. */
   excluded: number;
 };
 
@@ -131,26 +129,23 @@ function frozenBefore(a: LogRow, b: LogRow): boolean {
 
 /**
  * The engine's lines for `log` under today's table, against what was frozen
- * before it (D34, D47). Null when they do not add up to the frozen number.
+ * before it (D34). Null when they do not add up to the frozen number.
  */
 function replay(
   log: LogRow,
   logs: readonly LogRow[],
   activity: typeof activities.$inferSelect,
   category: EngineCategory,
+  participating: readonly number[],
 ): Split | null {
-  const historyFrom = historyWindowStart(log.occurredOn, activity, category);
-  const historyTo = historyWindowEnd(log.occurredOn, activity, category);
+  const historyFrom = historyWindowStart(log.occurredOn, activity);
+  const historyTo = historyWindowEnd(log.occurredOn, activity);
   const before = logs.filter(
     (other) => other.userId === log.userId && frozenBefore(other, log),
   );
   const history: ApprovedLog[] = before.filter(
     (other) => other.occurredOn >= historyFrom && other.occurredOn <= historyTo,
   );
-  const sameCategory = before
-    .filter((other) => other.categoryId === category.id)
-    .map((other) => other.occurredOn)
-    .sort();
 
   try {
     const calculation = calculateEarnedHours({
@@ -164,7 +159,7 @@ function replay(
       history,
       historyFrom,
       historyTo,
-      categoryFirstDay: sameCategory[0] ?? null,
+      participatingCategoryIds: participating,
     });
 
     if (calculation.hours !== log.computedHours) return null;
@@ -281,8 +276,7 @@ export function readDashboard(
         name: row.name,
         active: row.active,
         decayStepHours: row.decayStepHours,
-        returnBonusPct: row.returnBonusPct,
-        returnBonusAfterDays: row.returnBonusAfterDays,
+        alternationBonusPct: row.alternationBonusPct,
         earnedPerDay: days.map(() => 0),
         earned: 0,
         entries: 0,
@@ -291,12 +285,13 @@ export function readDashboard(
         split: { rule: 0, decay: 0, bonus: 0 },
         kidDays: 0,
         kidDaysPastStep: 0,
-        gapsBeforeReturn: [],
-        returnsWithBonus: 0,
+        bonusEntries: 0,
         excluded: 0,
       },
     ]),
   );
+
+  const participating = participatingCategoryIds(db);
 
   let overridden = 0;
   let unreproduced = 0;
@@ -330,7 +325,7 @@ export function readDashboard(
       continue;
     }
 
-    const split = replay(log, logs, activity, category);
+    const split = replay(log, logs, activity, category, participating);
     if (split === null) {
       unreproduced += 1;
       entry.excluded += 1;
@@ -340,7 +335,7 @@ export function readDashboard(
     entry.split.rule += split.rule;
     entry.split.decay += split.decay;
     entry.split.bonus += split.bonus;
-    if (split.bonus > 0) entry.returnsWithBonus += 1;
+    if (split.bonus > 0) entry.bonusEntries += 1;
   }
 
   for (const [key, minutes] of bucketMinutes) {
@@ -357,29 +352,6 @@ export function readDashboard(
     }
   }
 
-  // A return is a day with the category after a day without it (D6, D47).
-  for (const kid of kids) {
-    for (const entry of stats.values()) {
-      const kidDays = [
-        ...new Set(
-          logs
-            .filter(
-              (log) => log.userId === kid.id && log.categoryId === entry.id,
-            )
-            .map((log) => log.occurredOn),
-        ),
-      ].sort();
-
-      for (const [index, day] of kidDays.entries()) {
-        const previous = kidDays[index - 1];
-        if (previous === undefined || !dayIndex.has(day)) continue;
-
-        const without = daysBetween(previous, day) - 1;
-        if (without > 0) entry.gapsBeforeReturn.push(without);
-      }
-    }
-  }
-
   const categoriesOut = [...stats.values()]
     .filter((entry) => entry.active || entry.entries > 0)
     .map((entry) => ({
@@ -392,7 +364,6 @@ export function readDashboard(
         decay: round2(entry.split.decay),
         bonus: round2(entry.split.bonus),
       },
-      gapsBeforeReturn: entry.gapsBeforeReturn.sort((a, b) => a - b),
     }));
 
   const balances: KidBalance[] = kids.map((kid) => {

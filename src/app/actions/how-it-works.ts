@@ -36,8 +36,7 @@ export async function fetchHowItWorksAction(): Promise<HowItWorksData> {
       name: categories.name,
       baseRate: categories.baseRate,
       decayStepHours: categories.decayStepHours,
-      returnBonusPct: categories.returnBonusPct,
-      returnBonusAfterDays: categories.returnBonusAfterDays,
+      alternationBonusPct: categories.alternationBonusPct,
     })
     .from(categories)
     .where(eq(categories.active, true))

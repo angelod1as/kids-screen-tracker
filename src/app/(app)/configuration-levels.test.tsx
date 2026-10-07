@@ -5,6 +5,9 @@ import { createRoot, type Root } from "react-dom/client";
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+// D57: the page is read with the bonus ON; the shipped default is off.
+vi.mock("../../engine/flags", () => ({ BONUS_ENABLED: true }));
+
 import type { ActivityRow } from "../../db/activities";
 import type { CategoryRow } from "../../db/categories";
 
@@ -55,8 +58,7 @@ const MENTE: CategoryRow = {
   name: "Mente",
   baseRate: 2,
   decayStepHours: 1,
-  returnBonusPct: 0.5,
-  returnBonusAfterDays: 3,
+  alternationBonusPct: 0.5,
   sortOrder: 2,
   active: true,
   activityCount: 1,
@@ -67,8 +69,7 @@ const CASA: CategoryRow = {
   name: "Casa",
   baseRate: null,
   decayStepHours: null,
-  returnBonusPct: 0,
-  returnBonusAfterDays: 0,
+  alternationBonusPct: 0,
   sortOrder: 6,
   active: false,
   activityCount: 0,
@@ -174,7 +175,7 @@ describe("the category's page reads its numbers (#41)", () => {
     );
 
     expect(markup).toContain("Rende no máximo 4,00 h por dia");
-    expect(markup).toContain("+50% após 3 dias");
+    expect(markup).toContain("+50% ao alternar");
     expect(markup).toContain("Editar números");
     expect(markup).not.toContain("<input");
   });
@@ -328,8 +329,7 @@ describe("the activity's page, tapped into (#41)", () => {
       name: "Mente",
       baseRate: 2,
       decayStep: { hours: 1, minutes: 0 },
-      returnBonusPct: 0.5,
-      returnBonusAfterDays: 3,
+      alternationBonusPct: 0.5,
       sortOrder: 2,
     });
     expect(container.querySelector("#categoria-2-passo-horas")).toBeNull();

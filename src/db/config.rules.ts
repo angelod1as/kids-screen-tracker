@@ -27,7 +27,7 @@ export type ConfigModule = {
   ) => void;
 };
 
-/** A one-hour step and a return bonus. */
+/** A one-hour step and an alternation bonus. */
 export const MENTE = "Mente";
 
 /** No rate, no decay (D5, D11). */
@@ -96,8 +96,7 @@ export function makeConfigWorld(connection: Connection): ConfigWorld {
           name: categories.name,
           baseRate: categories.baseRate,
           decayStepHours: categories.decayStepHours,
-          returnBonusPct: categories.returnBonusPct,
-          returnBonusAfterDays: categories.returnBonusAfterDays,
+          alternationBonusPct: categories.alternationBonusPct,
           sortOrder: categories.sortOrder,
           active: categories.active,
         })
@@ -107,7 +106,7 @@ export function makeConfigWorld(connection: Connection): ConfigWorld {
 
       if (row === undefined) return `no category named ${name}`;
 
-      return `${row.name} · taxa ${row.baseRate} · passo ${row.decayStepHours} · bônus ${row.returnBonusPct}/${row.returnBonusAfterDays} · ordem ${row.sortOrder} · ${row.active ? "on" : "off"}`;
+      return `${row.name} · taxa ${row.baseRate} · passo ${row.decayStepHours} · bônus ${row.alternationBonusPct} · ordem ${row.sortOrder} · ${row.active ? "on" : "off"}`;
     },
     listText: (module) =>
       module
@@ -185,8 +184,7 @@ function input(overrides: Partial<CategoryInput> = {}): CategoryInput {
     name: "Oficina",
     baseRate: 2,
     decayStepHours: 1,
-    returnBonusPct: 0,
-    returnBonusAfterDays: 0,
+    alternationBonusPct: 0,
     sortOrder: 8,
     ...overrides,
   };
@@ -201,7 +199,7 @@ export const CONFIG_CASES: readonly ConfigCase[] = [
 
       return world.categoryText("Oficina");
     },
-    expected: "Oficina · taxa 2 · passo 1 · bônus 0/0 · ordem 8 · on",
+    expected: "Oficina · taxa 2 · passo 1 · bônus 0 · ordem 8 · on",
   },
   {
     rule: "a category can be created, edited and switched off",
@@ -226,15 +224,14 @@ export const CONFIG_CASES: readonly ConfigCase[] = [
           name: "Mente",
           baseRate: 3,
           decayStepHours: 2,
-          returnBonusPct: 0.25,
-          returnBonusAfterDays: 5,
+          alternationBonusPct: 0.25,
           sortOrder: 1,
         }),
       );
 
       return world.categoryText("Mente");
     },
-    expected: "Mente · taxa 3 · passo 2 · bônus 0.25/5 · ordem 1 · on",
+    expected: "Mente · taxa 3 · passo 2 · bônus 0.25 · ordem 1 · on",
   },
   {
     rule: "a category can be created, edited and switched off",
@@ -244,7 +241,7 @@ export const CONFIG_CASES: readonly ConfigCase[] = [
 
       return world.categoryText("Oficina");
     },
-    expected: "Oficina · taxa 2 · passo 1 · bônus 0/0 · ordem 8 · on",
+    expected: "Oficina · taxa 2 · passo 1 · bônus 0 · ordem 8 · on",
   },
   {
     rule: "a category can be created, edited and switched off",
@@ -292,7 +289,7 @@ export const CONFIG_CASES: readonly ConfigCase[] = [
 
       return world.categoryText("Mente");
     },
-    expected: "Mente · taxa 4 · passo 1 · bônus 0/0 · ordem 8 · on",
+    expected: "Mente · taxa 4 · passo 1 · bônus 0 · ordem 8 · on",
   },
   {
     rule: "a category can be created, edited and switched off",
@@ -403,7 +400,7 @@ export const CONFIG_CASES: readonly ConfigCase[] = [
         module.updateCategory(
           world.connection,
           world.categoryId(MENTE),
-          input({ name: MENTE, returnBonusPct: 5, returnBonusAfterDays: 3 }),
+          input({ name: MENTE, alternationBonusPct: 5 }),
         ),
       ).includes(`a entrada ${logId} (${BOOK},`);
     },
@@ -423,15 +420,14 @@ export const CONFIG_CASES: readonly ConfigCase[] = [
           name: "Mente renomeada",
           baseRate: 9,
           decayStepHours: 1,
-          returnBonusPct: 0.5,
-          returnBonusAfterDays: 3,
+          alternationBonusPct: 0.5,
           sortOrder: 4,
         }),
       );
 
       return world.categoryText("Mente renomeada");
     },
-    expected: "Mente renomeada · taxa 9 · passo 1 · bônus 0.5/3 · ordem 4 · on",
+    expected: "Mente renomeada · taxa 9 · passo 1 · bônus 0.5 · ordem 4 · on",
   },
 
   {
@@ -446,7 +442,7 @@ export const CONFIG_CASES: readonly ConfigCase[] = [
 
       return world.categoryText("Mente");
     },
-    expected: "Mente · taxa 1.5 · passo 1 · bônus 0.5/3 · ordem 2 · off",
+    expected: "Mente · taxa 1.5 · passo 1 · bônus 0.5 · ordem 2 · off",
   },
   {
     rule: "switching a category off deletes nothing",
@@ -492,7 +488,7 @@ export const CONFIG_CASES: readonly ConfigCase[] = [
 
       return world.categoryText("Mente");
     },
-    expected: "Mente · taxa 1.5 · passo 1 · bônus 0.5/3 · ordem 2 · on",
+    expected: "Mente · taxa 1.5 · passo 1 · bônus 0.5 · ordem 2 · on",
   },
   {
     rule: "switching a category off deletes nothing",
@@ -619,7 +615,7 @@ export const CONFIG_CASES: readonly ConfigCase[] = [
 
       return world.categoryText("Oficina");
     },
-    expected: "Oficina · taxa 2 · passo 0.25 · bônus 0/0 · ordem 8 · on",
+    expected: "Oficina · taxa 2 · passo 0.25 · bônus 0 · ordem 8 · on",
   },
   {
     rule: "a decay step below the floor is refused",
@@ -629,7 +625,7 @@ export const CONFIG_CASES: readonly ConfigCase[] = [
 
       return world.categoryText("Oficina");
     },
-    expected: "Oficina · taxa 2 · passo null · bônus 0/0 · ordem 8 · on",
+    expected: "Oficina · taxa 2 · passo null · bônus 0 · ordem 8 · on",
   },
   {
     rule: "a decay step below the floor is refused",
@@ -691,170 +687,115 @@ export const CONFIG_CASES: readonly ConfigCase[] = [
 
       return world.categoryText("Mente");
     },
-    expected: "Mente · taxa 1.5 · passo 1 · bônus 0.5/3 · ordem 2 · on",
+    expected: "Mente · taxa 1.5 · passo 1 · bônus 0.5 · ordem 2 · on",
   },
 
   {
-    rule: "a return bonus with no threshold is refused",
-    name: "a bonus above zero at zero days is refused",
-    run: (module, world) =>
-      wasRefused(() =>
-        module.createCategory(
-          world.connection,
-          input({ returnBonusPct: 0.5, returnBonusAfterDays: 0 }),
-        ),
-      ),
-    expected: true,
-  },
-  {
-    rule: "a return bonus with no threshold is refused",
-    name: "the refusal says why the window of one day is not an absence",
-    run: (module, world) =>
-      refused(() =>
-        module.createCategory(
-          world.connection,
-          input({ returnBonusPct: 0.5, returnBonusAfterDays: 0 }),
-        ),
-      ).includes("permanent"),
-    expected: true,
-  },
-  {
-    rule: "a return bonus with no threshold is refused",
-    name: "one day is enough",
+    rule: "the alternation bonus is a checked fraction (D56)",
+    name: "zero is the seed's no-bonus, and is accepted",
     run: (module, world) => {
       module.createCategory(
         world.connection,
-        input({ returnBonusPct: 0.5, returnBonusAfterDays: 1 }),
+        input({ alternationBonusPct: 0 }),
       );
 
       return world.categoryText("Oficina");
     },
-    expected: "Oficina · taxa 2 · passo 1 · bônus 0.5/1 · ordem 8 · on",
+    expected: "Oficina · taxa 2 · passo 1 · bônus 0 · ordem 8 · on",
   },
   {
-    rule: "a return bonus with no threshold is refused",
-    name: "no bonus at zero days is the pair the seed writes, and is accepted",
+    rule: "the alternation bonus is a checked fraction (D56)",
+    name: "a positive fraction is stored as typed",
     run: (module, world) => {
       module.createCategory(
         world.connection,
-        input({ returnBonusPct: 0, returnBonusAfterDays: 0 }),
+        input({ alternationBonusPct: 0.5 }),
       );
 
       return world.categoryText("Oficina");
     },
-    expected: "Oficina · taxa 2 · passo 1 · bônus 0/0 · ordem 8 · on",
+    expected: "Oficina · taxa 2 · passo 1 · bônus 0.5 · ordem 8 · on",
   },
   {
-    rule: "a return bonus with no threshold is refused",
-    name: "a bonus of zero may keep any threshold at all",
-    run: (module, world) => {
-      module.createCategory(
-        world.connection,
-        input({ returnBonusPct: 0, returnBonusAfterDays: 7 }),
-      );
-
-      return world.categoryText("Oficina");
-    },
-    expected: "Oficina · taxa 2 · passo 1 · bônus 0/7 · ordem 8 · on",
-  },
-  {
-    rule: "a return bonus with no threshold is refused",
-    name: "the pair holds on an edit too",
-    run: (module, world) =>
-      wasRefused(() =>
-        module.updateCategory(
-          world.connection,
-          world.categoryId(CONVIVIO),
-          input({
-            name: "Convívio",
-            returnBonusPct: 0.5,
-            returnBonusAfterDays: 0,
-          }),
-        ),
-      ),
-    expected: true,
-  },
-  {
-    rule: "a return bonus with no threshold is refused",
-    name: "a fractional threshold is refused rather than rounded, in words",
-    // The sentence: `typeof(col) = 'integer'` refuses 1,5 on its own.
-    run: (module, world) =>
-      refused(() =>
-        module.createCategory(
-          world.connection,
-          input({ returnBonusPct: 0.5, returnBonusAfterDays: 1.5 }),
-        ),
-      ),
-    expected:
-      "refused: a return bonus threshold is a whole number between 0 and 1000000, received 1.5",
-  },
-  {
-    rule: "a return bonus with no threshold is refused",
+    rule: "the alternation bonus is a checked fraction (D56)",
     name: "a negative bonus is refused, in words",
     // The sentence: the column CHECK refuses -0,5 on its own.
     run: (module, world) =>
       refused(() =>
         module.createCategory(
           world.connection,
-          input({ returnBonusPct: -0.5, returnBonusAfterDays: 3 }),
+          input({ alternationBonusPct: -0.5 }),
         ),
       ),
     expected:
-      "refused: a return bonus is a fraction between 0 and 1000000, received -0.5",
+      "refused: an alternation bonus is a fraction between 0 and 1000000, received -0.5",
   },
   {
-    rule: "a return bonus with no threshold is refused",
+    rule: "the alternation bonus is a checked fraction (D56)",
     name: "a bonus above the column ceiling is refused, in words",
     // The ceiling's sentence: the column CHECK refuses it too.
     run: (module, world) =>
       refused(() =>
         module.createCategory(
           world.connection,
-          input({ returnBonusPct: 2e6, returnBonusAfterDays: 3 }),
+          input({ alternationBonusPct: 2e6 }),
         ),
       ),
     expected:
-      "refused: a return bonus is a fraction between 0 and 1000000, received 2000000",
+      "refused: an alternation bonus is a fraction between 0 and 1000000, received 2000000",
   },
   {
-    rule: "a return bonus with no threshold is refused",
+    rule: "the alternation bonus is a checked fraction (D56)",
     name: "a bonus that is not a number at all is refused",
     run: (module, world) =>
       refused(() =>
         module.createCategory(
           world.connection,
-          input({ returnBonusPct: "" as unknown as number }),
+          input({ alternationBonusPct: "" as unknown as number }),
         ),
       ),
     // Forged POST only, but `Math.round("" * 100)` is 0: no bonus, silently.
-    expected: "refused: a return bonus is a number, received string ()",
+    expected: "refused: an alternation bonus is a number, received string ()",
   },
   {
-    rule: "a return bonus with no threshold is refused",
+    rule: "the alternation bonus is a checked fraction (D56)",
+    name: "the fraction holds on an edit too, not only on a create",
+    run: (module, world) =>
+      wasRefused(() =>
+        module.updateCategory(
+          world.connection,
+          world.categoryId(MENTE),
+          input({ name: MENTE, alternationBonusPct: -0.5 }),
+        ),
+      ),
+    expected: true,
+  },
+  {
+    rule: "the alternation bonus is a checked fraction (D56)",
     name: "a bonus is held to a hundredth of a percentage point, not to a whole one",
     // Two decimals of a percent: at an hour's precision 0,4% became no bonus.
     run: (module, world) => {
       module.createCategory(
         world.connection,
-        input({ returnBonusPct: 0.125, returnBonusAfterDays: 3 }),
+        input({ alternationBonusPct: 0.125 }),
       );
 
       return world.categoryText("Oficina");
     },
-    expected: "Oficina · taxa 2 · passo 1 · bônus 0.125/3 · ordem 8 · on",
+    expected: "Oficina · taxa 2 · passo 1 · bônus 0.125 · ordem 8 · on",
   },
   {
-    rule: "a return bonus with no threshold is refused",
+    rule: "the alternation bonus is a checked fraction (D56)",
     name: "a bonus of a tenth of a percent survives instead of vanishing",
     run: (module, world) => {
       module.createCategory(
         world.connection,
-        input({ returnBonusPct: 0.001, returnBonusAfterDays: 3 }),
+        input({ alternationBonusPct: 0.001 }),
       );
 
       return world.categoryText("Oficina");
     },
-    expected: "Oficina · taxa 2 · passo 1 · bônus 0.001/3 · ordem 8 · on",
+    expected: "Oficina · taxa 2 · passo 1 · bônus 0.001 · ordem 8 · on",
   },
 
   {
@@ -926,7 +867,7 @@ export const CONFIG_CASES: readonly ConfigCase[] = [
 
       return world.categoryText("Oficina");
     },
-    expected: "Oficina · taxa null · passo 1 · bônus 0/0 · ordem 8 · on",
+    expected: "Oficina · taxa null · passo 1 · bônus 0 · ordem 8 · on",
   },
   {
     rule: "every number the engine reads is checked here",
@@ -936,7 +877,7 @@ export const CONFIG_CASES: readonly ConfigCase[] = [
 
       return world.categoryText("Oficina");
     },
-    expected: "Oficina · taxa 2.01 · passo 1 · bônus 0/0 · ordem 8 · on",
+    expected: "Oficina · taxa 2.01 · passo 1 · bônus 0 · ordem 8 · on",
   },
   {
     rule: "every number the engine reads is checked here",

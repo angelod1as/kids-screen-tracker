@@ -1,9 +1,10 @@
 "use server";
 
-import { and, asc, eq, gte, isNull, min, ne } from "drizzle-orm";
+import { and, asc, eq, gte, isNull, ne } from "drizzle-orm";
 
 import { requireAccess } from "../../auth/guard";
 import { getDb } from "../../db";
+import { participatingCategoryIds } from "../../db/participating";
 import { activities, activityLogs, categories } from "../../db/schema";
 import type {
   ApprovedLog,
@@ -33,14 +34,11 @@ export type CalculatorData = {
   categories: EngineCategory[];
   activities: EngineActivity[];
   history: ApprovedLog[];
-  /** `CalculationInput.categoryFirstDay` per category id; absent is null (D47). */
-  categoryFirstDays: Record<number, string>;
+  /** `CalculationInput.participatingCategoryIds`: categories that take the bonus (D56). */
+  participatingCategoryIds: number[];
 };
 
-/**
- * Wider than `historyLookbackDays` needs: inside the minimum window `awayText`
- * can only say "faz mais de 3 dias", and #17 asks for the day to be named.
- */
+/** A generous floor for the history window, wider than any cooldown reaches back. */
 const CALCULATOR_LOOKBACK_DAYS = 30;
 
 /**
@@ -60,8 +58,7 @@ export async function fetchCalculatorDataAction(
       id: categories.id,
       name: categories.name,
       decayStepHours: categories.decayStepHours,
-      returnBonusPct: categories.returnBonusPct,
-      returnBonusAfterDays: categories.returnBonusAfterDays,
+      alternationBonusPct: categories.alternationBonusPct,
     })
     .from(categories)
     .where(eq(categories.active, true))
@@ -89,14 +86,10 @@ export async function fetchCalculatorDataAction(
 
   // Never narrower than what an offered activity's rules need, so a long
   // cooldown configured later cannot shorten the history under the engine.
-  const byId = new Map(categoryRows.map((row) => [row.id, row]));
-  const requiredDays = activityRows.reduce((widest, activity) => {
-    const category = byId.get(activity.categoryId);
-
-    return category === undefined
-      ? widest
-      : Math.max(widest, historyLookbackDays(activity, category));
-  }, CALCULATOR_LOOKBACK_DAYS);
+  const requiredDays = activityRows.reduce(
+    (widest, activity) => Math.max(widest, historyLookbackDays(activity)),
+    CALCULATOR_LOOKBACK_DAYS,
+  );
 
   const historyFrom = shiftDate(occurredOn, -requiredDays);
   // D34's far end. Nothing is dated after today, but the engine refuses a
@@ -139,23 +132,6 @@ export async function fetchCalculatorDataAction(
     activities: activityRows,
     // D19 is asserted by the engine's `approvedOnly`, the single place it is written.
     history: approvedOnly(historyRows),
-    categoryFirstDays: Object.fromEntries(
-      db
-        .select({
-          categoryId: activityLogs.categoryId,
-          first: min(activityLogs.occurredOn),
-        })
-        .from(activityLogs)
-        .where(
-          and(
-            eq(activityLogs.userId, targetUserId),
-            eq(activityLogs.status, "approved"),
-            isNull(activityLogs.voidedAt),
-          ),
-        )
-        .groupBy(activityLogs.categoryId)
-        .all()
-        .map((row) => [row.categoryId, row.first]),
-    ),
+    participatingCategoryIds: participatingCategoryIds(db),
   };
 }

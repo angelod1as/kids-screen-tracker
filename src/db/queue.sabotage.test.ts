@@ -51,7 +51,7 @@ const MUTATIONS: readonly Mutation[] = [
     name: "the far end of the window is the entry's own day (D34)",
     edits: [
       {
-        find: "  const historyTo = historyWindowEnd(\n    log.occurredOn,\n    found.activity,\n    found.category,\n  );",
+        find: "  const historyTo = historyWindowEnd(log.occurredOn, found.activity);",
         replace: "  const historyTo = log.occurredOn;",
       },
     ],
@@ -60,9 +60,8 @@ const MUTATIONS: readonly Mutation[] = [
     name: "the calculation reads today instead of the day it happened",
     edits: [
       {
-        find: '  isEarlier,\n  returnBonusWindowStart,\n} from "../engine/calculate";',
-        replace:
-          '  isEarlier,\n  returnBonusWindowStart,\n  saoPauloDay,\n} from "../engine/calculate";',
+        find: '  isEarlier,\n} from "../engine/calculate";',
+        replace: '  isEarlier,\n  saoPauloDay,\n} from "../engine/calculate";',
       },
       {
         find: "    occurredOn: log.occurredOn,\n    durationMinutes: log.durationMinutes,",
@@ -85,7 +84,7 @@ const MUTATIONS: readonly Mutation[] = [
     name: "the history window is as short as the entry's own day",
     edits: [
       {
-        find: "  const historyFrom = historyWindowStart(\n    log.occurredOn,\n    found.activity,\n    found.category,\n  );",
+        find: "  const historyFrom = historyWindowStart(log.occurredOn, found.activity);",
         replace: "  const historyFrom = log.occurredOn;",
       },
     ],
@@ -386,25 +385,6 @@ const MUTATIONS: readonly Mutation[] = [
         find: "    ...priceOrExplain(connection.db, row),",
         replace:
           "    preview: { hours: 1, lines: [] },\n    unpriceable: null,",
-      },
-    ],
-  },
-  {
-    name: "the debut is priced as a return (D47)",
-    edits: [
-      {
-        find: "    categoryFirstDay: categoryFirstDay(db, log.userId, found.category.id),",
-        replace: '    categoryFirstDay: "2000-01-01",',
-      },
-    ],
-  },
-  {
-    name: "a pending debut blocks nothing (D32, D47)",
-    edits: [
-      {
-        find: "  return blocking === undefined\n    ? pendingDebutBefore(",
-        replace:
-          "  return blocking === undefined\n    ? undefined && pendingDebutBefore(",
       },
     ],
   },

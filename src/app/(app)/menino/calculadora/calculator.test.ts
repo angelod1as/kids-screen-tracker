@@ -3,7 +3,10 @@ import { join } from "node:path";
 
 import { createElement, isValidElement, type ReactNode } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+
+// D57: the calculator is exercised with the bonus ON; default ships off.
+vi.mock("../../../../engine/flags", () => ({ BONUS_ENABLED: true }));
 
 import { SEED_CATEGORIES } from "../../../../db/seed";
 import type {
@@ -29,6 +32,11 @@ import { Calculator } from "./calculator";
  */
 
 const TODAY = "2026-09-02";
+
+/** Categories that take the alternation bonus (D56): what the action sends. */
+const PARTICIPATING = SEED_CATEGORIES.filter(
+  (category) => (category.alternationBonusPct ?? 0) > 0,
+).map((category) => category.id);
 
 function texts(node: ReactNode): string[] {
   if (typeof node === "string") return [node];
@@ -61,8 +69,7 @@ function seedActivity(id: number): {
           id: category.id,
           name: category.name,
           decayStepHours: category.decayStepHours ?? null,
-          returnBonusPct: category.returnBonusPct ?? 0,
-          returnBonusAfterDays: category.returnBonusAfterDays ?? 0,
+          alternationBonusPct: category.alternationBonusPct ?? 0,
         },
       };
     }
@@ -103,8 +110,7 @@ function calculatorData(): CalculatorData {
       id: category.id,
       name: category.name,
       decayStepHours: category.decayStepHours ?? null,
-      returnBonusPct: category.returnBonusPct ?? 0,
-      returnBonusAfterDays: category.returnBonusAfterDays ?? 0,
+      alternationBonusPct: category.alternationBonusPct ?? 0,
     });
 
     for (const activity of category.activities) {
@@ -122,7 +128,7 @@ function calculatorData(): CalculatorData {
     categories,
     activities,
     history: [],
-    categoryFirstDays: {},
+    participatingCategoryIds: PARTICIPATING,
   };
 }
 
@@ -138,9 +144,7 @@ function simulate(options: {
   const historyFrom = shiftDate(TODAY, -lookback);
 
   // The action promises at least this window; narrower would test what the screen never sees.
-  expect(historyFrom <= historyWindowStart(TODAY, activity, category)).toBe(
-    true,
-  );
+  expect(historyFrom <= historyWindowStart(TODAY, activity)).toBe(true);
 
   return calculateEarnedHours({
     userId: 3,
@@ -152,11 +156,7 @@ function simulate(options: {
     history: [...(options.history ?? [])],
     historyFrom,
     historyTo: shiftDate(TODAY, lookback),
-    categoryFirstDay:
-      (options.history ?? [])
-        .filter((log) => log.categoryId === category.id)
-        .map((log) => log.occurredOn)
-        .sort()[0] ?? null,
+    participatingCategoryIds: PARTICIPATING,
   });
 }
 
@@ -205,15 +205,16 @@ const CASES = [
     contains: ["cheio", "metade, de 1h a 2h de Mente no dia"],
   },
   {
-    name: "the return bonus names the day, which is what #17 asks for",
+    name: "the alternation bonus shows on the line (#17, D56)",
     input: {
       activityId: 1,
       durationMinutes: 120,
+      // A reading (Mente) earlier today: Corpo alternates off it.
       history: [
-        approvedLog({ activityId: 1, daysAgo: 4, durationMinutes: 90 }),
+        approvedLog({ activityId: 5, daysAgo: 0, durationMinutes: 60 }),
       ],
     },
-    contains: ["+50%, faz 4 dias que você não faz Corpo"],
+    contains: ["+50%, você variou de atividade hoje"],
   },
   {
     name: "the repeat cooldown of Casa",
@@ -308,8 +309,9 @@ describe("the lines add up to the total shown (#17, D9)", () => {
     const calculation = simulate({
       activityId: 1,
       durationMinutes: 120,
+      // A reading (Mente) earlier today unlocks Corpo's alternation (D56).
       history: [
-        approvedLog({ activityId: 1, daysAgo: 4, durationMinutes: 90 }),
+        approvedLog({ activityId: 5, daysAgo: 0, durationMinutes: 60 }),
       ],
     });
 
@@ -320,20 +322,21 @@ describe("the lines add up to the total shown (#17, D9)", () => {
     expect(texts(Result({ calculation }))).toContain("4h30");
   });
 
-  it("shows no bonus line on the category's debut, and one on a return (D47)", () => {
-    const debut = simulate({ activityId: 5, durationMinutes: 60 });
-    const back = simulate({
+  it("shows no bonus on the day's first entry, and one once it alternates (D56)", () => {
+    const first = simulate({ activityId: 5, durationMinutes: 60 });
+    const alternated = simulate({
       activityId: 5,
       durationMinutes: 60,
+      // Football (Corpo) earlier today: the reading now alternates off it.
       history: [
-        approvedLog({ activityId: 5, daysAgo: 4, durationMinutes: 60 }),
+        approvedLog({ activityId: 1, daysAgo: 0, durationMinutes: 60 }),
       ],
     });
 
-    expect(texts(Result({ calculation: debut })).join(" ")).not.toContain("%");
-    expect(debut.hours).toBe(1.5);
-    expect(texts(Result({ calculation: back })).join(" ")).toContain(
-      "+50%, faz 4 dias que você não faz Mente",
+    expect(texts(Result({ calculation: first })).join(" ")).not.toContain("%");
+    expect(first.hours).toBe(1.5);
+    expect(texts(Result({ calculation: alternated })).join(" ")).toContain(
+      "+50%, você variou de atividade hoje",
     );
   });
 

@@ -2266,3 +2266,19 @@ o freio da repetição e a razão de "alternar" ser por categoria. A D37 continu
 valendo: o percentual da categoria não pode mudar enquanto uma entrada dela
 espera na fila. A tela do menino e a Calculadora passam a explicar a alternância
 no lugar do retorno.
+
+## A decisão que veio da #75
+
+### D57 — O bônus de alternância nasce desligado, atrás de `BONUS_ENABLED`
+
+A D56 é implementada por inteiro, mas o bônus **nasce desligado** atrás de uma
+única constante de código, `BONUS_ENABLED` (um módulo, `src/engine/flags.ts`),
+padrão `false`, por um período de testes — o dono quer rodar o app sem o bônus em
+lugar nenhum, inclusive na Configuração, sem precisar tocá-lo. É uma **exceção
+explícita e aprovada pelo dono** à norma que tirou flags de liga/desliga da tabela
+(o oposto de `decay_enabled`, D2): esta é uma constante de código, não um dado por
+categoria nem variável de ambiente. Com `false`, o motor pula a etapa do bônus
+(multiplicador 1, sem linha "bônus") e nenhuma tela mostra o bônus — o campo de %
+some da Configuração. Religar é trocar a constante para `true`; nada é apagado, a
+D56 fica no código e os testes cobrem os dois estados. O seed mantém +50% em
+Corpo, Mente e Criativo para quando religar.
