@@ -43,11 +43,14 @@ export function EntryList({
   emptyText,
   entries,
   action,
+  nameDecider = false,
 }: {
   emptyText: string;
   entries: readonly HistoryEntry[];
   /** D52: the adult's control under an entry that still counts. */
   action?: (entry: LedgerEntry | ZeroEntry) => ReactNode;
+  /** #71: the author line lives on the two history screens, not the home (#15). */
+  nameDecider?: boolean;
 }) {
   if (entries.length === 0) {
     return <PanelText>{emptyText}</PanelText>;
@@ -57,12 +60,17 @@ export function EntryList({
     <ul>
       {entries.map((entry) =>
         entry.kind === "rejected" ? (
-          <RejectedRow entry={entry} key={`rejected-${entry.id}`} />
+          <RejectedRow
+            entry={entry}
+            key={`rejected-${entry.id}`}
+            nameDecider={nameDecider}
+          />
         ) : entry.kind === "zero" ? (
           <ZeroRow
             action={entry.voided === null ? action?.(entry) : null}
             entry={entry}
             key={`zero-${entry.id}`}
+            nameDecider={nameDecider}
           />
         ) : (
           <li className={ROW_CLASS} key={`ledger-${entry.id}`}>
@@ -72,18 +80,20 @@ export function EntryList({
               </span>
               <span className={`${META_CLASS} text-black`}>
                 {kindLabel(entry.kind)} · {formatDay(entry.occurredOn)}
-                {entry.override === null
-                  ? ""
-                  : ` · ${overriddenText(entry.decidedBy)}`}
+                {nameDecider && entry.override !== null
+                  ? ` · ${overriddenText(entry.decidedBy)}`
+                  : ""}
               </span>
               {entry.override === null ? null : (
                 <AdultValueText override={entry.override} />
               )}
-              {entry.override === null && entry.decidedBy !== null ? (
+              {nameDecider &&
+              entry.override === null &&
+              entry.decidedBy !== null ? (
                 <ReviewerLine
                   by={entry.decidedBy}
                   className="text-black"
-                  verb="Aprovado"
+                  verb={ledgerVerb(entry.kind)}
                 />
               ) : null}
               {entry.voided === null ? (
@@ -108,7 +118,13 @@ export function EntryList({
  * A refused entry (#72): inverted, not coloured (D42). `0 min` rather than blank
  * is D19 on screen. No invented reason when the adult wrote none.
  */
-function RejectedRow({ entry }: { entry: RejectedEntry }) {
+function RejectedRow({
+  entry,
+  nameDecider,
+}: {
+  entry: RejectedEntry;
+  nameDecider: boolean;
+}) {
   return (
     <li className={`${ROW_CLASS} bg-black text-white`}>
       <span className="flex min-w-0 flex-1 flex-col gap-1">
@@ -126,13 +142,13 @@ function RejectedRow({ entry }: { entry: RejectedEntry }) {
             Motivo: {entry.reason}
           </span>
         )}
-        {entry.decidedBy === null ? null : (
+        {nameDecider && entry.decidedBy !== null ? (
           <ReviewerLine
             by={entry.decidedBy}
             className="text-white"
             verb="Recusado"
           />
-        )}
+        ) : null}
       </span>
       <span className={`${READOUT_CLASS} shrink-0 text-white`}>
         {formatHours(0)}
@@ -144,6 +160,18 @@ function RejectedRow({ entry }: { entry: RejectedEntry }) {
 /** D50: said on the row, so a number that differs from the rule is not read as a bug. Names the adult (emenda à D50). */
 function overriddenText(decidedBy: string | null): string {
   return `valor decidido por ${decidedBy ?? "um adulto"}`;
+}
+
+/** The author verb for a ledger movement (#71): earn was approved, spend taken, refund given. */
+function ledgerVerb(kind: LedgerEntry["kind"]): string {
+  switch (kind) {
+    case "earn":
+      return "Aprovado";
+    case "spend":
+      return "Tirado";
+    case "refund":
+      return "Dado";
+  }
 }
 
 /** Who decided the entry (emenda à D50): named on both screens, under the kind and date. */
@@ -191,7 +219,15 @@ function VoidedText({ voided }: { voided: VoidMark }) {
 }
 
 /** D10: an approved zero stays visible; it counted for the cooldown and the bucket. */
-function ZeroRow({ entry, action }: { entry: ZeroEntry; action: ReactNode }) {
+function ZeroRow({
+  entry,
+  action,
+  nameDecider,
+}: {
+  entry: ZeroEntry;
+  action: ReactNode;
+  nameDecider: boolean;
+}) {
   return (
     <li className={ROW_CLASS}>
       <span className="flex min-w-0 flex-1 flex-col gap-1">
@@ -200,14 +236,14 @@ function ZeroRow({ entry, action }: { entry: ZeroEntry; action: ReactNode }) {
         </span>
         <span className={`${META_CLASS} text-black`}>
           {kindLabel("earn")} · {formatDay(entry.occurredOn)}
-          {entry.override === null
-            ? ""
-            : ` · ${overriddenText(entry.decidedBy)}`}
+          {nameDecider && entry.override !== null
+            ? ` · ${overriddenText(entry.decidedBy)}`
+            : ""}
         </span>
         {entry.override === null ? null : (
           <AdultValueText override={entry.override} />
         )}
-        {entry.override === null && entry.decidedBy !== null ? (
+        {nameDecider && entry.override === null && entry.decidedBy !== null ? (
           <ReviewerLine
             by={entry.decidedBy}
             className="text-black"

@@ -284,6 +284,34 @@ describe("a value an adult decided says so on the boy's history (D50)", () => {
     expect(markup).toContain("valor decidido por Admin1");
     expect(markup).toContain("Pela regra: 3h");
   });
+
+  it("names the adult who took and who gave hours (#71)", async () => {
+    const markup = await markupOf([
+      {
+        id: 30,
+        kind: "spend",
+        hours: 1.5,
+        occurredOn: "2026-09-02",
+        label: "Xbox",
+        override: null,
+        voided: null,
+        decidedBy: "Admin1",
+      },
+      {
+        id: 31,
+        kind: "refund",
+        hours: 0.25,
+        occurredOn: "2026-09-02",
+        label: "Não usou",
+        override: null,
+        voided: null,
+        decidedBy: "Admin2",
+      },
+    ]);
+
+    expect(markup).toContain("Tirado por Admin1");
+    expect(markup).toContain("Dado por Admin2");
+  });
 });
 
 describe("the history reveals one more day at a time (#64)", () => {

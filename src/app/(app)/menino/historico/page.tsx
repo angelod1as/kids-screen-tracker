@@ -36,6 +36,7 @@ export default async function KidHistoryPage({
         <EntryList
           emptyText="Você ainda não tem lançamentos. Quando ganhar ou gastar horas, elas aparecem aqui, da mais recente para a mais antiga."
           entries={entries}
+          nameDecider
         />
       </Panel>
 

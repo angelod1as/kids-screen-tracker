@@ -22,7 +22,7 @@ export type LedgerEntry = {
   override: AdultValue | null;
   /** D52: null while it counts. */
   voided: VoidMark | null;
-  /** Who approved it (emenda à D50). Null on a spend or refund, which has no log. */
+  /** The adult responsible (emenda à D50, #71): reviewer on a decided entry, creator on a spend or refund. */
   decidedBy: string | null;
 };
 
@@ -230,12 +230,14 @@ function ledgerEntries(
       >`coalesce(${ledger.voidedAt}, ${activityLogs.voidedAt})`,
       voidedBy: voider.displayName,
       reviewedBy: reviewer.displayName,
+      createdByName: creator.displayName,
     })
     .from(ledger)
     // Left joins: `activity_log_id` is null on every `spend` and `refund` (D10).
     .leftJoin(activityLogs, eq(ledger.activityLogId, activityLogs.id))
     .leftJoin(activities, eq(activityLogs.activityId, activities.id))
     .leftJoin(reviewer, eq(reviewer.id, activityLogs.reviewedBy))
+    .leftJoin(creator, eq(creator.id, ledger.createdBy))
     .leftJoin(
       voider,
       eq(
@@ -267,7 +269,8 @@ function ledgerEntries(
       label: row.activityName ?? row.destination ?? row.note ?? NO_LABEL,
       override: adultValue(row),
       voided: voidMark(row.voidedAt, row.voidedBy),
-      decidedBy: row.reviewedBy,
+      // #71: a spend or refund has no reviewer; name the adult who made it.
+      decidedBy: row.reviewedBy ?? row.createdByName,
     },
   }));
 }
@@ -325,6 +328,7 @@ function rejectedEntries(
 
 const voider = alias(users, "voider");
 const reviewer = alias(users, "reviewer");
+const creator = alias(users, "creator");
 
 /** D52. `at` is epoch ms: the `coalesce` above comes back unmapped. */
 function voidMark(at: number | null, by: string | null): VoidMark | null {
