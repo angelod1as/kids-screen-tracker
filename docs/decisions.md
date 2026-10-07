@@ -1722,7 +1722,9 @@ O que o valor arbitrado carrega:
   "valor decidido por {nome}" em vez de "por um adulto", e os dois históricos, o
   do menino e o do admin, mostram o nome. Pela mesma emenda, toda entrada
   decidida diz quem: "Aprovado por {nome}" no ganho e no zero, "Recusado por
-  {nome}" na recusa. A fonte é sempre o `reviewed_by`. Quando existem, a linha
+  {nome}" na recusa. A fonte é o `reviewed_by`, exceto num `spend` ou `refund`,
+  que não tem registro nem `reviewed_by`: esses são nomeados pelo `created_by` do
+  movimento — "Tirado por {nome}" e "Dado por {nome}". Quando existem, a linha
   ainda traz "Pela regra: 3h" e "Motivo: …"; um número que não bate com a tabela
   não é lido como erro do app.
 - **Zero é valor.** A entrada é aprovada com 0 h e sem linha no ledger (D10), e
