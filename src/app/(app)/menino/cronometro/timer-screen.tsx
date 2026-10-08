@@ -7,6 +7,7 @@ import type { TimerSettlement } from "../../../../db/timers";
 import { reachesMinimum } from "../../../../engine/timer";
 import { Button } from "../../../../ui/button";
 import { formatDay } from "../../../../ui/dates";
+import { ErrorNote } from "../../../../ui/error-note";
 import { RESYNCED_TEXT, timerFailureText } from "../../../../ui/failure";
 import { Field, TimeFields } from "../../../../ui/field";
 import {
@@ -111,9 +112,7 @@ export function TimerScreen({ initial }: { initial: TimerScreenData }) {
     <div className="flex flex-col gap-4 lg:grid lg:grid-cols-2 lg:items-start lg:gap-6">
       {failed === null ? null : (
         <div className="lg:col-span-2">
-          <Panel title="O que aconteceu">
-            <PanelText>{failed}</PanelText>
-          </Panel>
+          <ErrorNote>{failed}</ErrorNote>
         </div>
       )}
 
@@ -323,7 +322,7 @@ function Confirm({
         value={note}
       />
 
-      {missingNote ? <Box>{NOTE_REQUIRED_TEXT}</Box> : null}
+      {missingNote ? <ErrorNote>{NOTE_REQUIRED_TEXT}</ErrorNote> : null}
 
       <Button disabled={busy || missingNote} onClick={onConfirm} type="button">
         {short ? "Encerrar sem enviar" : "Enviar para aprovação"}
@@ -535,11 +534,7 @@ function RequestPanel({
             value={note}
           />
 
-          {missingNote ? (
-            <p className="break-words text-base text-black">
-              {NOTE_REQUIRED_TEXT}
-            </p>
-          ) : null}
+          {missingNote ? <ErrorNote>{NOTE_REQUIRED_TEXT}</ErrorNote> : null}
 
           <Button
             disabled={busy || !ready}

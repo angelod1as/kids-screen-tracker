@@ -15,6 +15,7 @@ import {
 } from "../../../../engine/limits";
 import { keptUnlessRetyped, minutesToHours } from "../../../../engine/timer";
 import { Button } from "../../../../ui/button";
+import { ErrorNote } from "../../../../ui/error-note";
 import { failureText } from "../../../../ui/failure";
 import { Field, TimeFields } from "../../../../ui/field";
 import type { TypedTime } from "../../../../ui/hours";
@@ -496,11 +497,7 @@ export function CategoryDetail({
             />
           ) : null}
 
-          {failed === null ? null : (
-            <p className={`${BORDER_CLASS} bg-white p-3 text-base text-black`}>
-              {failed}
-            </p>
-          )}
+          {failed === null ? null : <ErrorNote>{failed}</ErrorNote>}
 
           <div className="grid gap-3 lg:grid-cols-2">
             {editing ? (
@@ -638,11 +635,7 @@ export function NewCategoryForm() {
       <div className="flex flex-col gap-3 p-3">
         <CategoryFields draft={draft} onChange={setDraft} prefix="nova" />
 
-        {failed === null ? null : (
-          <p className={`${BORDER_CLASS} bg-white p-3 text-base text-black`}>
-            {failed}
-          </p>
-        )}
+        {failed === null ? null : <ErrorNote>{failed}</ErrorNote>}
 
         <Button
           disabled={busy || categoryInputOf(draft) === null}

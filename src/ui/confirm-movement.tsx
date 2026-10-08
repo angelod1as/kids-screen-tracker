@@ -89,7 +89,7 @@ export function ConfirmMovement({
           {confirmLabel}
         </Button>
 
-        {/* Gone while the write is out: it could no longer cancel it, and the secondary variant has no disabled look. */}
+        {/* Gone while the write is out: it could no longer cancel it. */}
         {busy ? null : (
           <div className="mt-auto pt-6">
             <Button onClick={onCancel} type="button" variant="secondary">

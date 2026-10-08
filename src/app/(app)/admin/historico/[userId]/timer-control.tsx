@@ -6,6 +6,7 @@ import { useState, useTransition } from "react";
 import { isBlankNote } from "../../../../../db/input";
 import type { TimerSettlement } from "../../../../../db/timers";
 import { Button } from "../../../../../ui/button";
+import { ErrorNote } from "../../../../../ui/error-note";
 import { timerFailureText } from "../../../../../ui/failure";
 import { Field } from "../../../../../ui/field";
 import { formatRecordedDuration } from "../../../../../ui/hours";
@@ -105,9 +106,7 @@ export function TimerControl({ timer }: { timer: RunningTimer }) {
         />
       ) : null}
 
-      {failed === null ? null : (
-        <p className="text-base text-black">{failed}</p>
-      )}
+      {failed === null ? null : <ErrorNote>{failed}</ErrorNote>}
 
       {cancelling ? (
         <div className="flex flex-col gap-2">

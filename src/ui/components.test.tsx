@@ -3,11 +3,14 @@ import { describe, expect, it, vi } from "vitest";
 
 import type { Session } from "../auth/access";
 import { Button } from "./button";
+import { ErrorNote } from "./error-note";
 import { Field } from "./field";
 import { accountItemFor, navigationFor } from "./navigation";
 import {
+  ACCENT_BG_CLASS,
   CONTENT_BOTTOM_CLASS,
   DESTRUCTIVE_BG_CLASS,
+  DISABLED_CONTROL_CLASS,
   TOUCH_TARGET_CLASS,
 } from "./style";
 
@@ -145,11 +148,13 @@ describe("the only button in the app (#14)", () => {
     expect(String(button.props.className)).toContain(TOUCH_TARGET_CLASS);
   });
 
-  it("inverts when disabled rather than fading", () => {
-    const button = Button({ children: "Entrando…", disabled: true });
+  it("gives the disabled control a look of its own, not a fade (D42, #86)", () => {
+    const className = String(
+      Button({ children: "Entrando…", disabled: true }).props.className,
+    );
 
-    expect(String(button.props.className)).toContain("disabled:bg-white");
-    expect(String(button.props.className)).toContain("disabled:text-black");
+    expect(className).toContain(DISABLED_CONTROL_CLASS);
+    expect(className).not.toContain("opacity");
   });
 
   it("paints the destructive variant red, white on it (#35)", () => {
@@ -157,5 +162,47 @@ describe("the only button in the app (#14)", () => {
 
     expect(String(button.props.className)).toContain(DESTRUCTIVE_BG_CLASS);
     expect(String(button.props.className)).toContain("text-white");
+  });
+
+  it("renders four distinct states, disabled unlike the secondary (#86)", () => {
+    const className = (variant?: "secondary" | "destructive") =>
+      String(Button({ children: "x", variant }).props.className);
+
+    const primary = className();
+    const secondary = className("secondary");
+    const alert = className("destructive");
+
+    expect(primary).toContain(ACCENT_BG_CLASS);
+    expect(secondary).toContain("bg-white");
+    expect(alert).toContain(DESTRUCTIVE_BG_CLASS);
+    expect(new Set([primary, secondary, alert]).size).toBe(3);
+
+    // The bug this fixes: disabled used to invert to white on black, the
+    // secondary's own look. It recedes to the page floor instead.
+    expect(DISABLED_CONTROL_CLASS).toContain("slate-100");
+    expect(DISABLED_CONTROL_CLASS).not.toContain("bg-white");
+
+    // Rendered, not just the token: the disabled look reaches the secondary too.
+    const disabledSecondary = String(
+      Button({ children: "x", variant: "secondary", disabled: true }).props
+        .className,
+    );
+
+    expect(disabledSecondary).toContain(DISABLED_CONTROL_CLASS);
+  });
+});
+
+describe("an error reads as ERRO, not a stray sentence (#86)", () => {
+  it("labels the message ERRO and marks it an alert", () => {
+    const note = ErrorNote({ children: "Algo falhou." }) as ReactNode;
+    const parts = elements(note);
+
+    expect((note as Element).props.role).toBe("alert");
+    expect(parts.some((element) => element.props.children === "Erro")).toBe(
+      true,
+    );
+    expect(
+      parts.some((element) => element.props.children === "Algo falhou."),
+    ).toBe(true);
   });
 });

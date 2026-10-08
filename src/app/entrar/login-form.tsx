@@ -3,8 +3,8 @@
 import { useActionState, useState } from "react";
 
 import { Button } from "../../ui/button";
+import { ErrorNote } from "../../ui/error-note";
 import { Field } from "../../ui/field";
-import { BORDER_CLASS } from "../../ui/style";
 import { EMPTY_LOGIN_STATE } from "../actions/login-state";
 import { loginAction } from "../actions/session";
 
@@ -46,14 +46,7 @@ export function LoginForm() {
         type="password"
       />
 
-      {state.error === null ? null : (
-        <p
-          className={`${BORDER_CLASS} bg-white p-3 text-base font-bold text-black`}
-          role="alert"
-        >
-          {state.error}
-        </p>
-      )}
+      {state.error === null ? null : <ErrorNote>{state.error}</ErrorNote>}
 
       <Button disabled={pending} type="submit">
         {pending ? "Entrando…" : "Entrar"}

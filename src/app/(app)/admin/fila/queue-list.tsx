@@ -9,6 +9,7 @@ import { Button } from "../../../../ui/button";
 import type { Choice } from "../../../../ui/choice";
 import { ChoiceGroup } from "../../../../ui/choice";
 import { formatDay } from "../../../../ui/dates";
+import { ErrorNote } from "../../../../ui/error-note";
 import { failureText, RESYNCED_TEXT } from "../../../../ui/failure";
 import { Field, TimeFields } from "../../../../ui/field";
 import type { TypedTime } from "../../../../ui/hours";
@@ -76,11 +77,7 @@ export function QueueList({ initial }: { initial: QueueData }) {
 
   return (
     <div className="flex flex-col gap-4 lg:max-w-3xl lg:gap-6">
-      {failed === null ? null : (
-        <Panel title="O que aconteceu">
-          <PanelText>{failed}</PanelText>
-        </Panel>
-      )}
+      {failed === null ? null : <ErrorNote>{failed}</ErrorNote>}
 
       <Panel
         note={

@@ -6,6 +6,7 @@ import { Button } from "../../../../ui/button";
 import type { Choice } from "../../../../ui/choice";
 import { ChoiceGroup } from "../../../../ui/choice";
 import { formatDay } from "../../../../ui/dates";
+import { ErrorNote } from "../../../../ui/error-note";
 import { Result } from "../../../../ui/explanation";
 import { failureText } from "../../../../ui/failure";
 import { Field, TimeFields } from "../../../../ui/field";
@@ -182,11 +183,7 @@ export function LaunchForm({ data, kids }: { data: LaunchData; kids: Kid[] }) {
 
   return (
     <div className="flex flex-col gap-6">
-      {failed === null ? null : (
-        <p className={`${BORDER_CLASS} bg-white p-4 text-lg text-black`}>
-          {failed}
-        </p>
-      )}
+      {failed === null ? null : <ErrorNote>{failed}</ErrorNote>}
 
       {done === null ? null : (
         <section className="flex flex-col gap-3">
@@ -265,11 +262,7 @@ export function LaunchForm({ data, kids }: { data: LaunchData; kids: Kid[] }) {
       ) : null}
 
       {activity.calcMode === "free" && isZeroTime(freeValue) ? (
-        <p
-          className={`${BORDER_CLASS} bg-white p-3 text-base font-bold text-black`}
-        >
-          {ZERO_TIME_TEXT}
-        </p>
+        <ErrorNote>{ZERO_TIME_TEXT}</ErrorNote>
       ) : null}
 
       <Field

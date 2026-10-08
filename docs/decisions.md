@@ -1237,7 +1237,7 @@ aparelho, e o app é a fonte de verdade sobre o saldo.
 - **Todo par de texto mede pelo menos 4,5:1** (WCAG 2, AA). Os pares de hoje
   estão medidos em `design.md`; o mais baixo é o vermelho sobre branco, 6,42:1.
   Nada desbota: sem `opacity`, sem cinza sobre cinza, sem tom pálido de fundo.
-  Desativado inverte.
+  Desativado recua para o chão `slate-100` com borda tracejada (emenda #86).
 - **Canto arredondado em dois raios**: 12 px num painel, 8 px num controle.
 - **Desktop é a mesma base**, não uma segunda tela: a partir de `lg` a barra
   vira uma trilha à esquerda e as telas abrem em duas colunas onde a divisão
@@ -1305,6 +1305,21 @@ utilitário do saldo negativo, e os guardas deixariam de distinguir os dois.
 **Resíduo aceito.** Na Conta do menino, a única coisa quente da tela passa a
 ser um botão que ele não precisa resolver. Fica no pé, longe do polegar que
 procura *Como funciona*.
+
+**Emenda (#86) — o desativado recua para o chão em vez de inverter.** A inversão
+para branco deixava o botão desativado idêntico ao controle secundário, que já é
+branco sobre preto; eram o mesmo visual. O desativado passa a recuar para o chão
+`slate-100` com a borda tracejada: afunda na página e a borda diz "inativo".
+
+Isto **não** relaxa a regra. `slate-100` é mobília já declarada, medida em 19,17:1
+sob preto; não há `opacity`, cinza sobre cinza nem tom pálido, e a borda tracejada
+é forma, não cor nova. O look mora num só token, `DISABLED_CONTROL_CLASS` em
+`src/ui/style.ts`, e vale para todos os variants — o secundário ganhou o
+desativado que não tinha. O dono aprovou dentro da D42, sem afrouxar nada.
+
+**Considerado e descartado.** O cinza "mudo" que a issue levantou: só leria como
+desativado desbotando, o que a D42 proíbe, e exigiria uma sétima cor nos dois
+guardas.
 
 ---
 

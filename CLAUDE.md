@@ -110,7 +110,8 @@ mesma base com utilitários `lg:`, nunca uma segunda tela. Detalhe e medidas em
   vermelho ou amarelo, e nenhuma mobília é quente.
 - **Alto contraste:** todo par de texto mede pelo menos 4,5:1, e cada par tem a
   medida escrita em `docs/design.md`. Nada de cinza sobre cinza, `opacity` ou
-  tom pálido. Desativado inverte, não desbota.
+  tom pálido. Desativado recua para o chão `slate-100` com borda tracejada
+  (emenda #86 à D42), não desbota.
 - **Cantos arredondados em dois raios:** 12 px no painel, 8 px no controle. A
   etiqueta de pendência tem 4 px, resíduo registrado na D42.
 - **Ícone só na barra de navegação**, desenhado em `src/ui/icons.tsx`, em
