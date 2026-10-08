@@ -37,6 +37,13 @@ export const ACCENT_BG_CLASS = "bg-blue-800";
 export const PANEL_RADIUS_CLASS = "overflow-hidden rounded-xl";
 export const CONTROL_RADIUS_CLASS = "rounded-lg";
 
+/**
+ * Disabled recedes into the page floor with a dashed edge, not the palette's
+ * inversion, which reads as the secondary control (D42, #86). No grey, no opacity.
+ */
+export const DISABLED_CONTROL_CLASS =
+  "disabled:border-dashed disabled:bg-slate-100 disabled:text-black";
+
 /** Ink on white only: on black the same red measures 3.27:1. */
 export const NEGATIVE_CLASS = "text-red-700";
 

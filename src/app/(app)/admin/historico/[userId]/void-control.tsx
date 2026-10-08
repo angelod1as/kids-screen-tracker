@@ -5,6 +5,7 @@ import { useState, useTransition } from "react";
 
 import type { VoidTarget } from "../../../../../db/voiding";
 import { Button } from "../../../../../ui/button";
+import { ErrorNote } from "../../../../../ui/error-note";
 import { failureText } from "../../../../../ui/failure";
 import { formatHours } from "../../../../../ui/hours";
 import { balanceToneClass } from "../../../../../ui/style";
@@ -73,9 +74,7 @@ export function VoidControl({
           {formatHours(after)}
         </span>
       </p>
-      {failed === null ? null : (
-        <p className="text-base text-black">{failed}</p>
-      )}
+      {failed === null ? null : <ErrorNote>{failed}</ErrorNote>}
       <Button disabled={busy} onClick={confirm} type="button">
         Confirmar anulação
       </Button>

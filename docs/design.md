@@ -153,9 +153,11 @@ fazer é uma cor que alguém vai usar para outra coisa.
 
 ### Nada ficou pálido
 
-Desativado **inverte**, não desbota — e agora funciona melhor do que funcionava
-em preto e branco: a cor indo embora *é* o sinal. Dá para ver na fila, no
-*Aprovar* da entrada bloqueada pela D32.
+Desativado **recua** para o chão `slate-100`, com a borda tracejada — não
+desbota: a cor indo embora *é* o sinal, sem `opacity` e sem cinza que perca
+contraste (preto sobre `slate-100` mede 19,17:1). Antes ele *invertia* para
+branco, o que o deixava idêntico ao controle secundário; a #86 trocou isso por
+um look próprio. Dá para ver na fila, no *Aprovar* da entrada bloqueada pela D32.
 
 O chão `slate-100` mede 19,17:1 sob texto preto. É tinta, não cinza no sentido
 que as regras proíbem: nada perde contraste. O que ele compra é a borda — um
@@ -254,10 +256,12 @@ mudado: este documento descreve o desenho, não o corrige.
 ### Azul sólido = "faça isso"
 
 Controle primário é branco sobre `blue-800`; secundário é preto sobre branco com
-régua. Desativado **inverte**, não desbota — controle acinzentado é exatamente o
-cinza sobre cinza que a regra proíbe, e é o estado que o menino tem mais chance
-de estar apertando os olhos para ler. Dá para ver isso na fila: o *Aprovar* da
-entrada bloqueada pela D32 fica branco enquanto os outros dois ficam azuis.
+régua. Desativado **recua** para o chão `slate-100` com a borda tracejada — não
+desbota. A inversão antiga para branco o deixava idêntico ao secundário, o bug
+que a #86 corrige; `slate-100` é mobília medida (19,17:1 sob preto), não o cinza
+sobre cinza que a regra proíbe, e o menino que aperta os olhos para ler não perde
+contraste. Dá para ver na fila: o *Aprovar* da entrada bloqueada pela D32 recua
+para o chão enquanto os outros dois ficam azuis.
 
 ### Cor, os três lugares e nada além
 

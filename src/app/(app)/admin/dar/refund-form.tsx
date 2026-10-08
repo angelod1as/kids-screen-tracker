@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { Button } from "../../../../ui/button";
 import { ConfirmMovement } from "../../../../ui/confirm-movement";
+import { ErrorNote } from "../../../../ui/error-note";
 import { failureText, previewFailureText } from "../../../../ui/failure";
 import { Field, TimeFields } from "../../../../ui/field";
 import type { TypedTime } from "../../../../ui/hours";
@@ -125,11 +126,7 @@ export function RefundForm({ kids, today }: { kids: Kid[]; today: string }) {
 
       {/* The form is out of reach; leaving by the nav is a cancel (D53). */}
       <div className="flex flex-col gap-6" inert={asked !== null}>
-        {failed === null ? null : (
-          <p className={`${BORDER_CLASS} bg-white p-4 text-lg text-black`}>
-            {failed}
-          </p>
-        )}
+        {failed === null ? null : <ErrorNote>{failed}</ErrorNote>}
 
         {done === null ? null : (
           <section

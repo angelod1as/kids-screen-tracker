@@ -10,6 +10,7 @@ import type { Refused } from "../../../../db/refusal";
 import { DEFAULT_MIN_SESSION_MINUTES } from "../../../../engine/timer";
 import { Button } from "../../../../ui/button";
 import { ChoiceGroup } from "../../../../ui/choice";
+import { ErrorNote } from "../../../../ui/error-note";
 import { failureText } from "../../../../ui/failure";
 import { Field, TimeFields } from "../../../../ui/field";
 import type { TypedTime } from "../../../../ui/hours";
@@ -406,11 +407,7 @@ export function ActivityEditor({
           />
         ) : null}
 
-        {failed === null ? null : (
-          <p className={`${BORDER_CLASS} bg-white p-3 text-base text-black`}>
-            {failed}
-          </p>
-        )}
+        {failed === null ? null : <ErrorNote>{failed}</ErrorNote>}
 
         {editable ? (
           <div className="grid gap-3 lg:grid-cols-2">
@@ -481,11 +478,7 @@ export function NewActivityForm({
           prefix={`nova-atividade-${category.id}`}
         />
 
-        {failed === null ? null : (
-          <p className={`${BORDER_CLASS} bg-white p-3 text-base text-black`}>
-            {failed}
-          </p>
-        )}
+        {failed === null ? null : <ErrorNote>{failed}</ErrorNote>}
 
         <Button
           disabled={busy || activityInputOf(draft, category.id) === null}
