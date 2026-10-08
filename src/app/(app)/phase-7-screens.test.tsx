@@ -189,6 +189,8 @@ describe("the history an adult opens is the boy's own (#73)", () => {
     expect(markup).toContain("Recusado");
     expect(markup).toContain("Você estava no celular");
     expect(markup).toContain("0 min");
+    // #77: São Paulo is three hours behind the fixture's noon-UTC review stamp.
+    expect(markup).toContain("às 09:00");
 
     mocked.entries = [];
   });

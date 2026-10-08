@@ -268,6 +268,8 @@ describe("a value an adult decided says so on the boy's history (D50)", () => {
 
     expect(markup).toContain("Lavar o carro");
     expect(markup).toContain("0 min");
+    // #77: the approved zero shows its review time, São Paulo three hours behind noon UTC.
+    expect(markup).toContain("às 09:00");
     expect(markup).not.toContain("+0 min");
     expect(markup).not.toContain("valor decidido");
   });
