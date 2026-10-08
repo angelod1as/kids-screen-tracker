@@ -8,7 +8,7 @@ import type {
   VoidMark,
   ZeroEntry,
 } from "../app/actions/history";
-import { formatDay, formatSignedHours } from "./dates";
+import { formatDay, formatSignedHours, formatTime } from "./dates";
 import { formatDuration, formatHours } from "./hours";
 import { PanelText } from "./panel";
 import { META_CLASS, READOUT_CLASS, ROW_CLASS } from "./style";
@@ -79,7 +79,8 @@ export function EntryList({
                 {entry.label}
               </span>
               <span className={`${META_CLASS} text-black`}>
-                {kindLabel(entry.kind)} · {formatDay(entry.occurredOn)}
+                {kindLabel(entry.kind)} · {formatDay(entry.occurredOn)} às{" "}
+                {formatTime(entry.at)}
                 {nameDecider && entry.override !== null
                   ? ` · ${overriddenText(entry.decidedBy)}`
                   : ""}
@@ -132,7 +133,7 @@ function RejectedRow({
           {entry.label}
         </span>
         <span className={`${META_CLASS} text-white`}>
-          Recusado · {formatDay(entry.occurredOn)}
+          Recusado · {formatDay(entry.occurredOn)} às {formatTime(entry.at)}
           {entry.durationMinutes === null
             ? ""
             : ` · ${formatDuration(entry.durationMinutes)}`}
@@ -213,7 +214,8 @@ function AdultValueText({ override }: { override: AdultValue }) {
 function VoidedText({ voided }: { voided: VoidMark }) {
   return (
     <span className="break-words text-base font-bold text-black">
-      Anulado por {voided.by} em {formatDay(voided.on)}. Não conta no saldo.
+      Anulado por {voided.by} em {formatDay(voided.on)} às{" "}
+      {formatTime(voided.at)}. Não conta no saldo.
     </span>
   );
 }
@@ -235,7 +237,8 @@ function ZeroRow({
           {entry.label}
         </span>
         <span className={`${META_CLASS} text-black`}>
-          {kindLabel("earn")} · {formatDay(entry.occurredOn)}
+          {kindLabel("earn")} · {formatDay(entry.occurredOn)} às{" "}
+          {formatTime(entry.at)}
           {nameDecider && entry.override !== null
             ? ` · ${overriddenText(entry.decidedBy)}`
             : ""}

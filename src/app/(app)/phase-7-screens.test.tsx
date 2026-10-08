@@ -176,6 +176,7 @@ describe("the history an adult opens is the boy's own (#73)", () => {
         id: 7,
         kind: "rejected",
         occurredOn: "2026-09-02",
+        at: Date.parse("2026-09-02T12:00:00Z"),
         label: "Ler livro",
         durationMinutes: 90,
         reason: "Você estava no celular",
@@ -188,6 +189,8 @@ describe("the history an adult opens is the boy's own (#73)", () => {
     expect(markup).toContain("Recusado");
     expect(markup).toContain("Você estava no celular");
     expect(markup).toContain("0 min");
+    // #77: São Paulo is three hours behind the fixture's noon-UTC review stamp.
+    expect(markup).toContain("às 09:00");
 
     mocked.entries = [];
   });
@@ -199,6 +202,7 @@ describe("the history an adult opens is the boy's own (#73)", () => {
         kind: "earn",
         hours: 2,
         occurredOn: "2026-09-02",
+        at: Date.parse("2026-09-02T12:00:00Z"),
         label: "Ler livro",
         override: null,
         voided: null,
@@ -209,6 +213,7 @@ describe("the history an adult opens is the boy's own (#73)", () => {
         kind: "spend",
         hours: 1.5,
         occurredOn: "2026-09-02",
+        at: Date.parse("2026-09-02T12:00:00Z"),
         label: "Xbox",
         override: null,
         voided: null,
@@ -231,6 +236,7 @@ describe("the history an adult opens is the boy's own (#73)", () => {
         kind: "earn",
         hours: 1,
         occurredOn: "2026-09-02",
+        at: Date.parse("2026-09-02T12:00:00Z"),
         label: "Sair com os amigos",
         override: { ruleHours: 3, reason: null },
         voided: null,
@@ -250,6 +256,7 @@ describe("voiding from the boy's history (D52)", () => {
     kind: "earn",
     hours: 3,
     occurredOn: "2026-09-25",
+    at: Date.parse("2026-09-25T12:00:00Z"),
     label: "Ler livro",
     override: null,
     voided: null,
@@ -263,6 +270,7 @@ describe("voiding from the boy's history (D52)", () => {
         id: 7,
         kind: "rejected",
         occurredOn: "2026-09-02",
+        at: Date.parse("2026-09-02T12:00:00Z"),
         label: "Ler livro",
         durationMinutes: 90,
         reason: null,
@@ -279,7 +287,14 @@ describe("voiding from the boy's history (D52)", () => {
 
   it("draws a voided entry struck through, with who and when, and no control", async () => {
     mocked.entries = [
-      { ...counting, voided: { on: "2026-09-25", by: "Admin1" } },
+      {
+        ...counting,
+        voided: {
+          on: "2026-09-25",
+          at: Date.parse("2026-09-25T12:00:00Z"),
+          by: "Admin1",
+        },
+      },
     ];
 
     const markup = await historyMarkup("3");

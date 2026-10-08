@@ -14,6 +14,16 @@ export function formatDay(day: string): string {
   return `${match[3]}/${match[2]}/${match[1]}`;
 }
 
+/** #77: the time of a real audit instant, in São Paulo. The day still comes from occurred_on (D13). */
+export function formatTime(instant: number): string {
+  return new Intl.DateTimeFormat("pt-BR", {
+    timeZone: "America/Sao_Paulo",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).format(instant);
+}
+
 /** U+2212, not a hyphen: at row size a hyphen beside a digit nearly vanishes. */
 export function formatSignedHours(hours: number): string {
   const text = formatHours(hours);

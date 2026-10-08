@@ -81,6 +81,7 @@ const ENTRIES: LedgerEntry[] = [
     kind: "spend",
     hours: 1.5,
     occurredOn: "2026-09-02",
+    at: Date.parse("2026-09-02T20:00:00Z"),
     label: "Xbox",
     override: null,
     voided: null,
@@ -91,6 +92,7 @@ const ENTRIES: LedgerEntry[] = [
     kind: "earn",
     hours: 2,
     occurredOn: "2026-09-01",
+    at: Date.parse("2026-09-01T15:00:00Z"),
     label: "Ler livro",
     override: null,
     voided: null,
@@ -101,6 +103,7 @@ const ENTRIES: LedgerEntry[] = [
     kind: "refund",
     hours: 0.25,
     occurredOn: "2026-08-31",
+    at: Date.parse("2026-08-31T12:30:00Z"),
     label: "Não usou",
     override: null,
     voided: null,
@@ -146,6 +149,17 @@ describe("the extract (#16)", () => {
       "31/08/2026",
       "+15 min",
     ]) {
+      expect(rendered, fragment).toContain(fragment);
+    }
+  });
+
+  it("shows the time of the action beside the date (#77)", () => {
+    const rendered = textOf(
+      EntryList({ emptyText: "vazio", entries: ENTRIES }),
+    );
+
+    // São Paulo is three hours behind the fixtures' UTC stamps.
+    for (const fragment of ["às 17:00", "às 12:00", "às 09:30"]) {
       expect(rendered, fragment).toContain(fragment);
     }
   });

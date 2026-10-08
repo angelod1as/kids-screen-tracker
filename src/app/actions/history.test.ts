@@ -20,6 +20,7 @@ import {
   fetchHistoryAction,
   fetchHistoryDaysAction,
   fetchLedgerEntriesAction,
+  type HistoryEntry,
 } from "./history";
 
 /**
@@ -868,5 +869,108 @@ describe("the history opens on the newest days with an entry (#64)", () => {
     await expect(
       fetchHistoryDaysAction(idOf("kid1"), 2),
     ).resolves.toMatchObject({ more: true });
+  });
+});
+
+describe("the history carries the time of each action (#77)", () => {
+  const DATE = /^\d{4}-\d{2}-\d{2}$/;
+
+  function entriesByKind(): Promise<Map<string, HistoryEntry>> {
+    return fetchHistoryAction(idOf("kid1"), HISTORY_LIMIT).then(
+      (entries) => new Map(entries.map((entry) => [entry.kind, entry])),
+    );
+  }
+
+  it("takes an earn's time from reviewed_at, not from its ledger row", async () => {
+    const reviewedAt = new Date("2026-08-30T18:30:00Z");
+    connection.db
+      .update(activityLogs)
+      .set({ reviewedAt })
+      .where(eq(activityLogs.status, "approved"))
+      .run();
+    mocked.username = "kid1";
+
+    const earn = (await entriesByKind()).get("earn");
+
+    // The ledger row was created at 15:00Z; the review is the action's instant.
+    expect(earn?.at).toBe(reviewedAt.getTime());
+  });
+
+  it("takes a spend's and a refund's time from created_at", async () => {
+    mocked.username = "kid1";
+
+    const byKind = await entriesByKind();
+
+    expect(byKind.get("spend")?.at).toBe(Date.parse("2026-09-01T20:00:00Z"));
+    expect(byKind.get("refund")?.at).toBe(Date.parse("2026-09-02T09:00:00Z"));
+  });
+
+  it("takes a refusal's time from reviewed_at", async () => {
+    const id = addRejected({
+      username: "kid1",
+      occurredOn: "2026-09-03",
+      reason: "não",
+      createdAt: new Date("2026-09-03T10:00:00Z"),
+    });
+    const reviewedAt = new Date("2026-09-03T11:15:00Z");
+    connection.db
+      .update(activityLogs)
+      .set({ reviewedAt })
+      .where(eq(activityLogs.id, id))
+      .run();
+    mocked.username = "kid1";
+
+    expect((await entriesByKind()).get("rejected")?.at).toBe(
+      reviewedAt.getTime(),
+    );
+  });
+
+  it("takes an approved zero's time from reviewed_at", async () => {
+    const admin1 = idOf("admin1");
+    const reviewedAt = new Date("2026-09-04T08:45:00Z");
+    connection.db
+      .insert(activityLogs)
+      .values({
+        userId: idOf("kid1"),
+        activityId: 5,
+        categoryId: 2,
+        status: "approved",
+        source: "admin",
+        occurredOn: "2026-09-04",
+        durationMinutes: 30,
+        computedHours: 0,
+        createdBy: admin1,
+        reviewedBy: admin1,
+        reviewedAt,
+        createdAt: new Date("2026-09-04T07:00:00Z"),
+      })
+      .run();
+    mocked.username = "kid1";
+
+    expect((await entriesByKind()).get("zero")?.at).toBe(reviewedAt.getTime());
+  });
+
+  it("takes a void mark's time from voided_at", async () => {
+    const voidedAt = new Date("2026-09-03T10:00:00Z");
+    connection.db
+      .update(ledger)
+      .set({ voidedAt, voidedBy: idOf("admin1") })
+      .where(eq(ledger.destination, "Xbox"))
+      .run();
+    mocked.username = "kid1";
+
+    const refund = (await entriesByKind()).get("refund");
+
+    expect(refund?.kind === "refund" ? refund.voided?.at : null).toBe(
+      voidedAt.getTime(),
+    );
+  });
+
+  it("still files the day as a date, never a timestamp (D13)", async () => {
+    mocked.username = "kid1";
+
+    for (const entry of await fetchHistoryAction(idOf("kid1"), HISTORY_LIMIT)) {
+      expect(entry.occurredOn, entry.kind).toMatch(DATE);
+    }
   });
 });
