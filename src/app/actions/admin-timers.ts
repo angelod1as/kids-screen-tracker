@@ -92,9 +92,8 @@ export async function adminStopTimerAction(
 
 /**
  * Kills it (#84): the session is discarded, nothing reaches the queue. Returns
- * the settlement so the screen does not promise "nada vai para a fila" when the
- * session had already auto-ended and `mutateOpenTimer` filed a record (D16); a
- * real discard settles to `null`.
+ * the settlement, not void, so the screen tells a real discard (null) from a
+ * record `mutateOpenTimer` filed because the session had already ended (D16).
  */
 export async function adminCancelTimerAction(
   userId: number,
