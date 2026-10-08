@@ -172,13 +172,7 @@ export function ReleaseForm({
           value={time}
         />
 
-        {isZeroTime(time) ? (
-          <p
-            className={`${BORDER_CLASS} bg-white p-3 text-base font-bold text-black`}
-          >
-            {ZERO_TIME_TEXT}
-          </p>
-        ) : null}
+        {isZeroTime(time) ? <ErrorNote>{ZERO_TIME_TEXT}</ErrorNote> : null}
 
         <Field
           id="destino"

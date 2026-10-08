@@ -262,11 +262,7 @@ export function LaunchForm({ data, kids }: { data: LaunchData; kids: Kid[] }) {
       ) : null}
 
       {activity.calcMode === "free" && isZeroTime(freeValue) ? (
-        <p
-          className={`${BORDER_CLASS} bg-white p-3 text-base font-bold text-black`}
-        >
-          {ZERO_TIME_TEXT}
-        </p>
+        <ErrorNote>{ZERO_TIME_TEXT}</ErrorNote>
       ) : null}
 
       <Field

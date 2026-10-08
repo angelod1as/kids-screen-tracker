@@ -534,11 +534,7 @@ function RequestPanel({
             value={note}
           />
 
-          {missingNote ? (
-            <p className="break-words text-base text-black">
-              {NOTE_REQUIRED_TEXT}
-            </p>
-          ) : null}
+          {missingNote ? <ErrorNote>{NOTE_REQUIRED_TEXT}</ErrorNote> : null}
 
           <Button
             disabled={busy || !ready}
