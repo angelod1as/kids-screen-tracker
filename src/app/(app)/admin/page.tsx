@@ -25,7 +25,9 @@ export default async function AdminHomePage() {
     ),
     fetchRunningTimersAction(),
   ]);
-  const runningKidIds = new Set(running.map((timer) => timer.userId));
+  const timerStatusByKid = new Map(
+    running.map((timer) => [timer.userId, timer.status] as const),
+  );
 
   return (
     <div className="flex flex-col gap-4 lg:grid lg:grid-cols-2 lg:items-start lg:gap-6">
@@ -51,9 +53,11 @@ export default async function AdminHomePage() {
                     {formatHours(kid.hours)}
                   </span>
                   <span className={`${META_CLASS} text-black`}>
-                    {runningKidIds.has(kid.id)
+                    {timerStatusByKid.get(kid.id) === "running"
                       ? "Cronômetro rodando"
-                      : "Ver histórico"}
+                      : timerStatusByKid.get(kid.id) === "paused"
+                        ? "Cronômetro pausado"
+                        : "Ver histórico"}
                   </span>
                 </CardLink>
               </li>
