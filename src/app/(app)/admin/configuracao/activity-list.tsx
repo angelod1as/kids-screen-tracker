@@ -307,6 +307,7 @@ export function ActivityList({
               key={activity.id}
             >
               <CardLink
+                disabled={!activity.active}
                 flush
                 href={`/admin/configuracao/${category.id}/${activity.id}`}
               >

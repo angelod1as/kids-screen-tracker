@@ -44,6 +44,9 @@ export const CONTROL_RADIUS_CLASS = "rounded-lg";
 export const DISABLED_CONTROL_CLASS =
   "disabled:border-dashed disabled:bg-slate-100 disabled:text-black";
 
+/** The same #86 recede for a row that is a link, not a form control: no `disabled:` to hang it on. */
+export const DISABLED_SURFACE_CLASS = "border-dashed bg-slate-100 text-black";
+
 /** Ink on white only: on black the same red measures 3.27:1. */
 export const NEGATIVE_CLASS = "text-red-700";
 

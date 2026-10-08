@@ -400,6 +400,7 @@ describe("the screen itself (#26)", () => {
 });
 
 const {
+  ActivityList,
   activityInputOf,
   activitySummary,
   emptyActivity,
@@ -407,6 +408,8 @@ const {
   suggestedValue,
   withCalcMode,
 } = await import("./admin/configuracao/activity-list");
+
+const { DISABLED_SURFACE_CLASS } = await import("../../ui/style");
 
 const BOOK: ActivityRow = {
   id: 5,
@@ -421,6 +424,31 @@ const BOOK: ActivityRow = {
   sortOrder: 1,
   active: true,
 };
+
+describe("a disabled activity reads as disabled in Configuração (#81, D14)", () => {
+  const OFF: ActivityRow = { ...BOOK, id: 6, name: "Guardado", active: false };
+
+  it("recedes the disabled row to the #86 floor, distinct from an active one", () => {
+    const markup = renderToStaticMarkup(
+      <ActivityList category={MENTE} rows={[BOOK, OFF]} />,
+    );
+
+    // It stays listed and managed here (D14), not hidden.
+    expect(markup).toContain("Guardado · desativada");
+    // The #86 recede, not a fade: slate-100 floor, dashed edge, no opacity.
+    expect(markup).toContain(DISABLED_SURFACE_CLASS);
+    expect(markup).not.toContain("opacity");
+    // Reads distinct from the active row, which keeps the white surface.
+    expect(markup).toContain("bg-white");
+  });
+
+  it("carries the #86 look, not a pale tone of its own", () => {
+    expect(DISABLED_SURFACE_CLASS).toContain("bg-slate-100");
+    expect(DISABLED_SURFACE_CLASS).toContain("border-dashed");
+    expect(DISABLED_SURFACE_CLASS).not.toContain("bg-white");
+    expect(DISABLED_SURFACE_CLASS).not.toContain("opacity");
+  });
+});
 
 describe("the category's rate as a suggestion (#27, D11)", () => {
   it("arrives in the value field of a new duration activity, filled in", () => {
