@@ -152,6 +152,8 @@ describe("the server actions this app has", () => {
   it("finds them, so the check below is checking something", () => {
     // A glob that matches nothing passes every assertion in this file.
     expect(actions.map((action) => action.name).sort()).toEqual([
+      "adminCancelTimerAction",
+      "adminStopTimerAction",
       "approveLogAction",
       "countPendingLogsAction",
       "createActivityAction",
@@ -168,6 +170,7 @@ describe("the server actions this app has", () => {
       "fetchLedgerEntriesAction",
       "fetchLocksAction",
       "fetchQueueAction",
+      "fetchRunningTimersAction",
       "fetchTimerScreenAction",
       "launchEntryAction",
       "listKidsAction",

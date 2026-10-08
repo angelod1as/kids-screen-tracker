@@ -3,6 +3,7 @@ import { CardLink, LinkButton } from "../../../ui/link-button";
 import { Panel, PanelText } from "../../../ui/panel";
 import { PendingMark } from "../../../ui/pending";
 import { balanceToneClass, META_CLASS } from "../../../ui/style";
+import { fetchRunningTimersAction } from "../../actions/admin-timers";
 import { fetchBalanceAction } from "../../actions/balance";
 import { listKidsAction } from "../../actions/people";
 import { countPendingLogsAction } from "../../actions/queue";
@@ -14,7 +15,7 @@ import { countPendingLogsAction } from "../../actions/queue";
  */
 export default async function AdminHomePage() {
   const kids = await listKidsAction();
-  const [pending, balances] = await Promise.all([
+  const [pending, balances, running] = await Promise.all([
     countPendingLogsAction(),
     Promise.all(
       kids.map(async (kid) => ({
@@ -22,7 +23,11 @@ export default async function AdminHomePage() {
         hours: await fetchBalanceAction(kid.id),
       })),
     ),
+    fetchRunningTimersAction(),
   ]);
+  const timerStatusByKid = new Map(
+    running.map((timer) => [timer.userId, timer.status] as const),
+  );
 
   return (
     <div className="flex flex-col gap-4 lg:grid lg:grid-cols-2 lg:items-start lg:gap-6">
@@ -48,7 +53,11 @@ export default async function AdminHomePage() {
                     {formatHours(kid.hours)}
                   </span>
                   <span className={`${META_CLASS} text-black`}>
-                    Ver histórico
+                    {timerStatusByKid.get(kid.id) === "running"
+                      ? "Cronômetro rodando"
+                      : timerStatusByKid.get(kid.id) === "paused"
+                        ? "Cronômetro pausado"
+                        : "Ver histórico"}
                   </span>
                 </CardLink>
               </li>

@@ -39,6 +39,10 @@ vi.mock("../actions/queue", () => ({
   countPendingLogsAction: async () => mocked.pending,
 }));
 
+vi.mock("../actions/admin-timers", () => ({
+  fetchRunningTimersAction: async () => [],
+}));
+
 vi.mock("../actions/history", () => ({
   fetchLedgerEntriesAction: async (_id: number, limit: number) => {
     mocked.entryLimits.push(limit);

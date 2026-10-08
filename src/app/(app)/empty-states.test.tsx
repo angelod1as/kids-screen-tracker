@@ -24,6 +24,10 @@ vi.mock("../actions/queue", () => ({
   rejectLogAction: async () => null,
 }));
 
+vi.mock("../actions/admin-timers", () => ({
+  fetchRunningTimersAction: async () => [],
+}));
+
 vi.mock("../actions/timer", () => ({
   fetchTimerScreenAction: async () => null,
   startTimerAction: async () => null,

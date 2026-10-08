@@ -60,6 +60,10 @@ vi.mock("../actions/queue", () => ({
   rejectLogAction: async () => null,
 }));
 
+vi.mock("../actions/admin-timers", () => ({
+  fetchRunningTimersAction: async () => [],
+}));
+
 vi.mock("../actions/admin", () => ({
   fetchLaunchDataAction: async () => mocked.launch,
   previewEntryAction: async () => mocked.preview,

@@ -9,9 +9,11 @@ import {
 } from "../../../../../ui/entries";
 import { LinkButton } from "../../../../../ui/link-button";
 import { Panel, PanelText } from "../../../../../ui/panel";
+import { fetchRunningTimersAction } from "../../../../actions/admin-timers";
 import { fetchBalanceAction } from "../../../../actions/balance";
 import { fetchHistoryDaysAction } from "../../../../actions/history";
 import { listKidsAction } from "../../../../actions/people";
+import { TimerControl } from "./timer-control";
 import { VoidControl } from "./void-control";
 
 /**
@@ -39,13 +41,22 @@ export default async function AdminKidHistoryPage({
   }
 
   // #64: the same cut as the boy's own screen.
-  const [{ entries, more }, balance] = await Promise.all([
+  const [{ entries, more }, balance, running] = await Promise.all([
     fetchHistoryDaysAction(kid.id, days),
     fetchBalanceAction(kid.id),
+    fetchRunningTimersAction(),
   ]);
+  const openTimer = running.find((timer) => timer.userId === kid.id) ?? null;
 
   return (
     <div className="flex flex-col gap-4 lg:max-w-2xl lg:gap-6">
+      {/* #84: only when a session is open, and in the boy's own space. */}
+      {openTimer === null ? null : (
+        <Panel title="Cronômetro">
+          <TimerControl timer={openTimer} />
+        </Panel>
+      )}
+
       {/* Shortcut for the common case: the adult spots a wrong entry here and debits at once. */}
       <LinkButton href={`/admin/tirar?menino=${kid.id}`}>
         Tirar horas

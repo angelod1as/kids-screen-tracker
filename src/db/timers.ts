@@ -531,6 +531,30 @@ export function stopTimer(
   });
 }
 
+/**
+ * Discards an open session (#84): the status changes and nothing is filed, the
+ * same ending D16 gives an abandonment. `mutateOpenTimer` settles first, so a
+ * session that already ended on its own is honored instead of discarded.
+ */
+export function cancelTimer(
+  connection: Connection,
+  userId: number,
+  now: Date,
+): TimerWrite {
+  return mutateOpenTimer(connection, userId, now, (tx, row, reconciliation) => {
+    tx.update(timers)
+      .set({
+        status: "abandoned",
+        pausedAt: now,
+        accumulatedSeconds: Math.floor(reconciliation.activeSeconds),
+      })
+      .where(eq(timers.id, row.id))
+      .run();
+
+    return { read: { open: null, settlement: null }, proposed: null };
+  });
+}
+
 /** Settle first (D16), then act, in the same transaction. */
 function mutateOpenTimer(
   connection: Connection,

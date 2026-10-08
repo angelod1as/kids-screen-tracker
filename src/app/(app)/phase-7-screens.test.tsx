@@ -2,6 +2,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 import { MAX_HISTORY_DAYS } from "../../ui/entries";
 import { TOUCH_TARGET_CLASS } from "../../ui/style";
+import type { RunningTimer } from "../actions/admin-timers";
 import type { HistoryEntry, LedgerEntry } from "../actions/history";
 
 /**
@@ -17,6 +18,7 @@ const mocked = vi.hoisted(() => ({
   historyFor: [] as { userId: number; days: number }[],
   entries: [] as HistoryEntry[],
   more: false,
+  running: [] as RunningTimer[],
 }));
 
 vi.mock("../actions/people", () => ({
@@ -51,6 +53,10 @@ vi.mock("next/navigation", () => ({
 
 vi.mock("../actions/void", () => ({
   voidEntryAction: async () => ({ balance: 0 }),
+}));
+
+vi.mock("../actions/admin-timers", () => ({
+  fetchRunningTimersAction: async () => mocked.running,
 }));
 
 const AdminHomePage = (await import("./admin/page")).default;
@@ -283,5 +289,59 @@ describe("voiding from the boy's history (D52)", () => {
     expect(markup).not.toContain(">Anular<");
 
     mocked.entries = [];
+  });
+});
+
+describe("the admin sees a running timer where it belongs (#84)", () => {
+  const kid1Running: RunningTimer = {
+    userId: 3,
+    kidName: "Kid1",
+    activityId: 7,
+    activityName: "Ler livro",
+    categoryName: "Leitura",
+    activeSeconds: 6 * 60,
+    status: "running",
+    noteRequired: false,
+  };
+
+  it("labels only the boy whose timer is open, by its real status", async () => {
+    mocked.running = [
+      kid1Running,
+      { ...kid1Running, userId: 4, status: "paused" },
+    ];
+    const markup = renderToStaticMarkup(await AdminHomePage());
+
+    const kid1Card = markup.slice(markup.indexOf('href="/admin/historico/3"'));
+    const kid2Card = markup.slice(markup.indexOf('href="/admin/historico/4"'));
+
+    // A paused session must not read "rodando" (the detail page gets this right).
+    expect(kid1Card.slice(0, kid1Card.indexOf("</a>"))).toContain(
+      "Cronômetro rodando",
+    );
+    expect(kid2Card.slice(0, kid2Card.indexOf("</a>"))).toContain(
+      "Cronômetro pausado",
+    );
+
+    mocked.running = [];
+  });
+
+  it("says 'Ver histórico' when no timer is open", async () => {
+    const markup = renderToStaticMarkup(await AdminHomePage());
+
+    expect(markup).toContain("Ver histórico");
+    expect(markup).not.toContain("Cronômetro rodando");
+  });
+
+  it("mounts the control on that boy's history page, and nobody else's", async () => {
+    mocked.running = [kid1Running];
+
+    const kid1 = await historyMarkup("3");
+    const kid2 = await historyMarkup("4");
+
+    expect(kid1).toContain("Cronômetro");
+    expect(kid1).toContain(">Parar<");
+    expect(kid2).not.toContain(">Parar<");
+
+    mocked.running = [];
   });
 });
