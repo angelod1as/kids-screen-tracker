@@ -16,7 +16,7 @@ export function ErrorNote({ children }: { children: ReactNode }) {
       <span className="inline-block bg-black px-2 py-1 text-xs font-bold uppercase tracking-[0.12em] text-white">
         Erro
       </span>
-      <p className="mt-2 text-base">{children}</p>
+      <p className="mt-2 break-words text-base">{children}</p>
     </div>
   );
 }

@@ -181,6 +181,14 @@ describe("the only button in the app (#14)", () => {
     // secondary's own look. It recedes to the page floor instead.
     expect(DISABLED_CONTROL_CLASS).toContain("slate-100");
     expect(DISABLED_CONTROL_CLASS).not.toContain("bg-white");
+
+    // Rendered, not just the token: the disabled look reaches the secondary too.
+    const disabledSecondary = String(
+      Button({ children: "x", variant: "secondary", disabled: true }).props
+        .className,
+    );
+
+    expect(disabledSecondary).toContain(DISABLED_CONTROL_CLASS);
   });
 });
 
