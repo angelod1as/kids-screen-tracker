@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { formatDay, formatSignedHours } from "./dates";
+import { formatDay, formatSignedHours, formatTime } from "./dates";
 
 describe("a calendar date on screen (D13)", () => {
   it("is written the way a Brazilian reader writes it", () => {
@@ -17,6 +17,21 @@ describe("a calendar date on screen (D13)", () => {
     expect(() => formatDay("02/09/2026")).toThrow();
     expect(() => formatDay("2026-9-2")).toThrow();
     expect(() => formatDay("")).toThrow();
+  });
+});
+
+describe("the time of an action on screen (#77)", () => {
+  it("reads the clock in São Paulo, not in UTC", () => {
+    expect(formatTime(Date.parse("2026-08-30T15:00:00Z"))).toBe("12:00");
+  });
+
+  it("stays on the São Paulo clock when UTC has crossed midnight", () => {
+    // 02:00 UTC is 23:00 the previous day in São Paulo (UTC−3).
+    expect(formatTime(Date.parse("2026-09-02T02:00:00Z"))).toBe("23:00");
+  });
+
+  it("writes the hour in two digits on a 24-hour clock", () => {
+    expect(formatTime(Date.parse("2026-08-30T12:05:00Z"))).toBe("09:05");
   });
 });
 

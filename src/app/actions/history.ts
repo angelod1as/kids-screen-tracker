@@ -17,6 +17,8 @@ export type LedgerEntry = {
   hours: number;
   /** D13: `YYYY-MM-DD`. Never a timestamp. */
   occurredOn: string;
+  /** #77: the action's real instant — reviewed_at on an earn, created_at on a spend or refund (D13). */
+  at: number;
   label: string;
   /** D50: null when the rule priced it. */
   override: AdultValue | null;
@@ -30,6 +32,8 @@ export type LedgerEntry = {
 export type VoidMark = {
   /** D13: the São Paulo day it was voided. */
   on: string;
+  /** #77: the real instant it was voided (D13). */
+  at: number;
   by: string;
 };
 
@@ -49,6 +53,8 @@ export type RejectedEntry = {
   kind: "rejected";
   /** D13: `YYYY-MM-DD`. Never a timestamp. */
   occurredOn: string;
+  /** #77: reviewed_at, the instant the adult refused it (D13). */
+  at: number;
   /** The activity, which D14 keeps readable even after it is switched off. */
   label: string;
   durationMinutes: number | null;
@@ -63,6 +69,8 @@ export type ZeroEntry = {
   kind: "zero";
   /** D13: `YYYY-MM-DD`. Never a timestamp. */
   occurredOn: string;
+  /** #77: reviewed_at, the instant the adult approved it (D13). */
+  at: number;
   label: string;
   override: AdultValue | null;
   voided: VoidMark | null;
@@ -230,6 +238,7 @@ function ledgerEntries(
       >`coalesce(${ledger.voidedAt}, ${activityLogs.voidedAt})`,
       voidedBy: voider.displayName,
       reviewedBy: reviewer.displayName,
+      reviewedAt: activityLogs.reviewedAt,
       createdByName: creator.displayName,
     })
     .from(ledger)
@@ -264,6 +273,11 @@ function ledgerEntries(
       kind: row.kind,
       hours: row.hours,
       occurredOn: row.occurredOn,
+      // #77: an earn carries its review stamp; a spend or refund has no log, so its own.
+      at: (row.kind === "earn"
+        ? (row.reviewedAt ?? row.createdAt)
+        : row.createdAt
+      ).getTime(),
       // Activity first (D14 keeps a deactivated one readable), then the
       // destination, then the note that names a refund (#24).
       label: row.activityName ?? row.destination ?? row.note ?? NO_LABEL,
@@ -288,6 +302,7 @@ function rejectedEntries(
       durationMinutes: activityLogs.durationMinutes,
       note: activityLogs.note,
       createdAt: activityLogs.createdAt,
+      reviewedAt: activityLogs.reviewedAt,
       activityName: activities.name,
       reviewedBy: reviewer.displayName,
     })
@@ -317,6 +332,7 @@ function rejectedEntries(
       id: row.id,
       kind: "rejected" as const,
       occurredOn: row.occurredOn,
+      at: (row.reviewedAt ?? row.createdAt).getTime(),
       label: row.activityName,
       durationMinutes: row.durationMinutes,
       // The boy's own note stays out: #72 asks for the adult's sentence.
@@ -332,7 +348,9 @@ const creator = alias(users, "creator");
 
 /** D52. `at` is epoch ms: the `coalesce` above comes back unmapped. */
 function voidMark(at: number | null, by: string | null): VoidMark | null {
-  return at === null ? null : { on: saoPauloDay(new Date(at)), by: by ?? "" };
+  return at === null
+    ? null
+    : { on: saoPauloDay(new Date(at)), at, by: by ?? "" };
 }
 
 const ADULT_VALUE_COLUMNS = {
@@ -362,6 +380,7 @@ function zeroEntries(
       id: activityLogs.id,
       occurredOn: activityLogs.occurredOn,
       createdAt: activityLogs.createdAt,
+      reviewedAt: activityLogs.reviewedAt,
       activityName: activities.name,
       ...ADULT_VALUE_COLUMNS,
       voidedAt: activityLogs.voidedAt,
@@ -396,6 +415,7 @@ function zeroEntries(
       id: row.id,
       kind: "zero" as const,
       occurredOn: row.occurredOn,
+      at: (row.reviewedAt ?? row.createdAt).getTime(),
       label: row.activityName,
       override: adultValue(row),
       voided: voidMark(row.voidedAt?.getTime() ?? null, row.voidedBy),
