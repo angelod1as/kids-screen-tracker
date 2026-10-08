@@ -144,6 +144,68 @@ export function BalanceLine({
   );
 }
 
+/**
+ * The three ledger flows, one black bar-row each (#87); no colour per series
+ * (D42), so the label tells them apart and one scale spans all three to keep
+ * them comparable. The total is text; a bar shows its value on hover.
+ */
+export function FlowBars({
+  flows,
+}: {
+  flows: readonly { label: string; total: number; values: readonly number[] }[];
+}) {
+  const height = 24;
+  const max = Math.max(0, ...flows.flatMap((flow) => flow.values));
+  const scale = max > 0 ? height / max : 0;
+
+  return (
+    <div className="flex flex-col gap-2">
+      {flows.map((flow) => (
+        <div className="flex items-center gap-2" key={flow.label}>
+          <span className={`${META_CLASS} w-16 shrink-0 text-black`}>
+            {flow.label}
+          </span>
+          <svg
+            aria-label={`${flow.label}: ${formatHours(flow.total)} no período`}
+            className="block h-6 flex-1 text-black"
+            preserveAspectRatio="none"
+            role="img"
+            viewBox={`0 0 ${Math.max(flow.values.length * 4, 1)} ${height}`}
+          >
+            <line
+              stroke="currentColor"
+              strokeWidth="1"
+              vectorEffect="non-scaling-stroke"
+              x1="0"
+              x2={flow.values.length * 4}
+              y1={height - 0.5}
+              y2={height - 0.5}
+            />
+            {flow.values.map((value, index) =>
+              value > 0 ? (
+                <rect
+                  fill="currentColor"
+                  height={Math.max(value * scale, 1)}
+                  // biome-ignore lint/suspicious/noArrayIndexKey: a bar is its position in time
+                  key={index}
+                  width="3"
+                  x={index * 4}
+                  y={height - Math.max(value * scale, 1)}
+                >
+                  <title>{formatHours(value)}</title>
+                </rect>
+              ) : null,
+            )}
+          </svg>
+          <span className="w-14 shrink-0 text-right font-mono text-base tabular-nums text-black">
+            {formatHours(flow.total)}
+          </span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 /** A share of the row, as a block: `style` because the width is data. */
 export function ShareBar({ share }: { share: number }) {
   return (

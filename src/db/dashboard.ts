@@ -65,6 +65,11 @@ export type KidBalance = {
   earned: number;
   spent: number;
   refunded: number;
+  /** The three ledger flows per day of `Dashboard.days`; no category: a
+   * release or refund is to the balance, not to a category (#87). */
+  earnedPerDay: number[];
+  givenPerDay: number[];
+  takenPerDay: number[];
 };
 
 export type ActivityUse = {
@@ -386,6 +391,16 @@ export function readDashboard(
           .filter((row) => row.kind === kind && dayIndex.has(row.occurredOn))
           .reduce((sum, row) => sum + row.hours, 0),
       );
+    const perDay = (kind: string) => {
+      const buckets = days.map(() => 0);
+      for (const row of rows) {
+        const index = dayIndex.get(row.occurredOn);
+        if (row.kind !== kind || index === undefined) continue;
+        buckets[index] = (buckets[index] ?? 0) + row.hours;
+      }
+
+      return buckets.map(round2);
+    };
 
     return {
       id: kid.id,
@@ -394,6 +409,9 @@ export function readDashboard(
       earned: total("earn"),
       spent: total("spend"),
       refunded: total("refund"),
+      earnedPerDay: perDay("earn"),
+      givenPerDay: perDay("refund"),
+      takenPerDay: perDay("spend"),
     };
   });
 

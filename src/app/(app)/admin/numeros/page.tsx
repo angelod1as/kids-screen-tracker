@@ -12,7 +12,7 @@ import {
 import type { DashboardPeriod } from "../../../actions/dashboard";
 import { fetchDashboardAction } from "../../../actions/dashboard";
 import { listKidsAction } from "../../../actions/people";
-import { BalanceLine, bucketed, DayBars, ShareBar } from "./charts";
+import { BalanceLine, bucketed, DayBars, FlowBars, ShareBar } from "./charts";
 
 /**
  * #9, the instrument for #54: each panel answers one of its questions. The
@@ -256,11 +256,25 @@ export default async function AdminNumbersPage({
                     label={`Saldo de ${balance.displayName} no período, terminando em ${formatHours(end)}`}
                     points={balance.points}
                   />
-                  <p className="text-base text-black">
-                    Ganhou {formatHours(balance.earned)} · tirou{" "}
-                    {formatHours(balance.spent)} · recebeu{" "}
-                    {formatHours(balance.refunded)}
-                  </p>
+                  <FlowBars
+                    flows={[
+                      {
+                        label: "Lançadas",
+                        total: balance.earned,
+                        values: bucketed(balance.earnedPerDay),
+                      },
+                      {
+                        label: "Dadas",
+                        total: balance.refunded,
+                        values: bucketed(balance.givenPerDay),
+                      },
+                      {
+                        label: "Tiradas",
+                        total: balance.spent,
+                        values: bucketed(balance.takenPerDay),
+                      },
+                    ]}
+                  />
                 </div>
               </Panel>
             );
