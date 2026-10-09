@@ -221,9 +221,8 @@ export function calculateEarnedHours(input: CalculationInput): Calculation {
     isPositive(exactActivityHours);
 
   // D1 as the boy hears it: each band of activity hours is its own positive
-  // addend at that band's rate (base × 2^-i), so the column adds up instead of
-  // reading "cheio menos X" (#80). Quality, cooldown and bonus multiply after —
-  // the order is free, the product is not (D9).
+  // addend at its rate (base × 2^-i), so the column sums instead of reading
+  // "cheio menos X" (#80); quality, cooldown and bonus then multiply (D56 emenda).
   if (exactStep !== null && step !== null && decays && baseRate !== null) {
     const end = add(exactBucketHours, exactActivityHours);
     let emitted = 0;

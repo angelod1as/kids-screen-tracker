@@ -2287,6 +2287,19 @@ valendo: o percentual da categoria não pode mudar enquanto uma entrada dela
 espera na fila. A tela do menino e a Calculadora passam a explicar a alternância
 no lugar do retorno.
 
+**Emenda (#80) — a explicação soma parcelas positivas, e o desgaste é a
+primeira.** A ordem acima (base → nota → cooldown → desgaste → alternância) é a do
+produto, e o total não muda: é o mesmo byte a byte (D9). O que muda é só a
+*leitura* da quebra na tela do menino, na Calculadora e nos guias (#80). Em vez de
+mostrar o valor cheio e descontar o desgaste ("cheio menos X", que o dono
+recusou), cada faixa de horas de atividade vira uma parcela positiva à taxa
+daquela faixa (base × 2⁻ⁱ): o desgaste é a própria base da quebra e, por isso,
+aparece primeiro. Nota, cooldown e alternância continuam incidindo depois, sobre o
+valor já degradado — como esta decisão já dizia do bônus —, só que agora as linhas
+de nota e cooldown também exibem o delta sobre o valor já degradado, não sobre o
+cheio. A soma das parcelas fecha no total. Os identificadores do schema e do motor
+(`decay_step_hours`, a ordem do produto) não mudam; muda só a geração das linhas.
+
 ## A decisão que veio da #75
 
 ### D57 — O bônus de alternância nasce desligado, atrás de `BONUS_ENABLED`

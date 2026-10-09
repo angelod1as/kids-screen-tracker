@@ -104,6 +104,10 @@ describe("the asymptote, while the category is being edited (#26)", () => {
     );
     // No rate, nothing to multiply: no example instead of a wrong one.
     expect(decayExampleText({ ...DRAFT, baseRate: "" })).toBe("");
+    // Step below the floor the endpoint refuses: no example for a step it won't keep.
+    expect(
+      decayExampleText({ ...DRAFT, decayStep: { hours: "0", minutes: "10" } }),
+    ).toBe("");
   });
 
   it("previews the stored step while its field is untouched, as the endpoint keeps it (#55)", () => {
