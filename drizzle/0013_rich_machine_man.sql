@@ -1,0 +1,1 @@
+ALTER TABLE `activities` ADD `observation_prompt` text;

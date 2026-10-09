@@ -92,6 +92,13 @@
       "when": 1790830000000,
       "tag": "0012_alternation_bonus",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "6",
+      "when": 1791574344680,
+      "tag": "0013_rich_machine_man",
+      "breakpoints": true
     }
   ]
 }

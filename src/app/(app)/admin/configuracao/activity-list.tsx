@@ -69,6 +69,8 @@ export type ActivityDraft = {
   description?: string;
   /** #44. */
   noteRequired?: boolean;
+  /** #85: optional; empty is no prompt. */
+  observationPrompt?: string;
   calcMode: ActivityRow["calcMode"];
   /** D11: the `duration` rate, prefilled from the category's, and the adult's from then on. */
   value: string;
@@ -93,6 +95,7 @@ export function emptyActivity(baseRate: number | null): ActivityDraft {
   return {
     name: "",
     description: "",
+    observationPrompt: "",
     calcMode: "duration",
     value: suggestedValue(baseRate),
     amount: EMPTY_TIME,
@@ -178,6 +181,7 @@ export function activityInputOf(
     name,
     description: (draft.description ?? "").trim() || null,
     noteRequired: draft.noteRequired === true,
+    observationPrompt: (draft.observationPrompt ?? "").trim() || null,
     calcMode: draft.calcMode,
     rate,
     amount,
@@ -216,6 +220,7 @@ function draftOf(activity: ActivityRow): ActivityDraft {
   return {
     name: activity.name,
     description: activity.description ?? "",
+    observationPrompt: activity.observationPrompt ?? "",
     noteRequired: activity.noteRequired === true,
     calcMode: activity.calcMode,
     value:
@@ -553,6 +558,18 @@ function ActivityFields({
         onSelect={(value) => onChange({ ...draft, noteRequired: value === 1 })}
         options={NOTE_REQUIRED}
         value={draft.noteRequired === true ? 1 : 0}
+      />
+
+      <Field
+        id={`${prefix}-observacao`}
+        label="O que deve ser explicado na observação? (opcional)"
+        // `MAX_OBSERVATION_PROMPT_LENGTH`, which a client file cannot import from `db/`.
+        maxLength={200}
+        onChange={(event) =>
+          onChange({ ...draft, observationPrompt: event.target.value })
+        }
+        type="text"
+        value={draft.observationPrompt ?? ""}
       />
 
       <div className={"grid gap-3 lg:grid-cols-2"}>

@@ -529,6 +529,7 @@ describe("the activity form the endpoint is handed (#27)", () => {
       name: "Podcast",
       description: null,
       noteRequired: false,
+      observationPrompt: null,
       calcMode: "duration",
       rate: 1.5,
       amount: null,

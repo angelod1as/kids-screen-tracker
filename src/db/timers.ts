@@ -32,6 +32,8 @@ export type TimerActivity = {
   minSessionMinutes: number;
   /** #44, read live: a note prices nothing (D37), so it needs no stamp. */
   noteRequired: boolean;
+  /** #85, read live like `noteRequired`: it prices nothing (D37). */
+  observationPrompt: string | null;
 };
 
 export type OpenTimer = {
@@ -74,6 +76,7 @@ type TimerRow = {
   maxSessionMinutes: number | null;
   minSessionMinutes: number;
   noteRequired: boolean;
+  observationPrompt: string | null;
 };
 
 /** The open timer of one user. The limit is the row's own stamp (D38). */
@@ -96,6 +99,7 @@ function selectOpenTimer(
         maxSessionMinutes: timers.maxSessionMinutes,
         minSessionMinutes: timers.minSessionMinutes,
         noteRequired: activities.noteRequired,
+        observationPrompt: activities.observationPrompt,
       })
       .from(timers)
       .innerJoin(activities, eq(timers.activityId, activities.id))
@@ -130,6 +134,7 @@ function activityOf(row: TimerRow): TimerActivity {
     maxSessionMinutes: row.maxSessionMinutes,
     minSessionMinutes: row.minSessionMinutes,
     noteRequired: row.noteRequired,
+    observationPrompt: row.observationPrompt,
   };
 }
 

@@ -346,4 +346,80 @@ describe("Configuração (#44)", () => {
     );
     expect(activitySummary(FRIENDS)).not.toContain("observação");
   });
+
+  describe("the observation prompt (#85)", () => {
+    const PROMPT = "Conte com quem você saiu e o que fizeram.";
+
+    it("replaces the generic sentence on the stopwatch confirmation when set", async () => {
+      await confirming({ ...session(true), observationPrompt: PROMPT });
+
+      expect(container.textContent).toContain(PROMPT);
+      expect(container.textContent).not.toContain(NOTE_REQUIRED_TEXT);
+    });
+
+    it("falls back to the generic sentence when it is null", async () => {
+      await confirming({ ...session(true), observationPrompt: null });
+
+      expect(container.textContent).toContain(NOTE_REQUIRED_TEXT);
+    });
+
+    it("replaces the generic sentence on the request panel when set", async () => {
+      await render(
+        <TimerScreen
+          initial={{
+            ...IDLE,
+            requestable: IDLE.requestable.map((item, index) =>
+              index === 0 ? { ...item, observationPrompt: PROMPT } : item,
+            ),
+          }}
+        />,
+      );
+
+      expect(container.textContent).toContain(PROMPT);
+      expect(container.textContent).not.toContain(NOTE_REQUIRED_TEXT);
+    });
+
+    it("sends the prompt the admin typed, trimmed", async () => {
+      vi.mocked(config.updateActivityAction).mockResolvedValue([]);
+
+      await render(
+        <ActivityEditor
+          activity={FRIENDS}
+          categories={[CONVIVIO]}
+          category={CONVIVIO}
+          locks={LOCKS}
+        />,
+      );
+
+      await type("#atividade-15-observacao", `  ${PROMPT}  `);
+      await click("Salvar atividade");
+
+      expect(config.updateActivityAction).toHaveBeenCalledWith(
+        4,
+        15,
+        expect.objectContaining({ observationPrompt: PROMPT }),
+      );
+    });
+
+    it("sends null when the admin leaves it blank", async () => {
+      vi.mocked(config.updateActivityAction).mockResolvedValue([]);
+
+      await render(
+        <ActivityEditor
+          activity={FRIENDS}
+          categories={[CONVIVIO]}
+          category={CONVIVIO}
+          locks={LOCKS}
+        />,
+      );
+
+      await click("Salvar atividade");
+
+      expect(config.updateActivityAction).toHaveBeenCalledWith(
+        4,
+        15,
+        expect.objectContaining({ observationPrompt: null }),
+      );
+    });
+  });
 });

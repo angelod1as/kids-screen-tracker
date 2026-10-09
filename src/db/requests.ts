@@ -22,6 +22,8 @@ export type RequestableActivity = {
   description: string | null;
   /** #44. */
   noteRequired?: boolean;
+  /** #85: replaces the generic observation prompt when set. */
+  observationPrompt?: string | null;
   calcMode: "duration" | "fixed" | "delivery" | "free";
   /** #18: what the minutes field starts from, for a `duration` activity. */
   presumedMinutes: number | null;
@@ -54,6 +56,7 @@ export function listRequestableActivities(
       name: activities.name,
       description: activities.description,
       noteRequired: activities.noteRequired,
+      observationPrompt: activities.observationPrompt,
       calcMode: activities.calcMode,
       presumedMinutes: activities.presumedMinutes,
     })
