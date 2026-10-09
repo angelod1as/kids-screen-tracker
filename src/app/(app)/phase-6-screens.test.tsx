@@ -400,6 +400,7 @@ describe("the screen itself (#26)", () => {
 });
 
 const {
+  ActivityList,
   activityInputOf,
   activitySummary,
   emptyActivity,
@@ -407,6 +408,8 @@ const {
   suggestedValue,
   withCalcMode,
 } = await import("./admin/configuracao/activity-list");
+
+const { DISABLED_SURFACE_CLASS } = await import("../../ui/style");
 
 const BOOK: ActivityRow = {
   id: 5,
@@ -421,6 +424,38 @@ const BOOK: ActivityRow = {
   sortOrder: 1,
   active: true,
 };
+
+describe("a disabled activity reads as disabled in Configuração (#81, D14)", () => {
+  const OFF: ActivityRow = { ...BOOK, id: 6, name: "Guardado", active: false };
+
+  it("recedes the disabled row to the #86 floor, an active one unchanged", () => {
+    // Separate renders, as the category reactivation test does, so the look is
+    // tied to the disabled row and cannot have leaked onto the active one.
+    const on = renderToStaticMarkup(
+      <ActivityList category={MENTE} rows={[BOOK]} />,
+    );
+    const off = renderToStaticMarkup(
+      <ActivityList category={MENTE} rows={[OFF]} />,
+    );
+
+    // It stays listed and managed here (D14), not hidden, and still a link to reactivate.
+    expect(off).toContain("Guardado · desativada");
+    expect(off).toContain('href="/admin/configuracao/2/6"');
+    // The #86 recede, not a fade: slate-100 floor, dashed edge, no opacity.
+    expect(off).toContain(DISABLED_SURFACE_CLASS);
+    expect(off).not.toContain("opacity");
+    // The recede is the disabled row's alone: an active-only list never shows it.
+    expect(on).not.toContain("border-dashed");
+    expect(on).not.toContain("bg-slate-100");
+  });
+
+  it("carries the #86 look, not a pale tone of its own", () => {
+    expect(DISABLED_SURFACE_CLASS).toContain("bg-slate-100");
+    expect(DISABLED_SURFACE_CLASS).toContain("border-dashed");
+    expect(DISABLED_SURFACE_CLASS).not.toContain("bg-white");
+    expect(DISABLED_SURFACE_CLASS).not.toContain("opacity");
+  });
+});
 
 describe("the category's rate as a suggestion (#27, D11)", () => {
   it("arrives in the value field of a new duration activity, filled in", () => {

@@ -5,6 +5,7 @@ import {
   ACCENT_BG_CLASS,
   BORDER_CLASS,
   CONTROL_RADIUS_CLASS,
+  DISABLED_SURFACE_CLASS,
   TOUCH_TARGET_CLASS,
 } from "./style";
 
@@ -44,21 +45,26 @@ export function LinkButton({
 /**
  * A link that is a block of content (#73), so a screen never writes a bare
  * `<Link>`. `flush` drops the frame for a cell inside a panel (#74), never the 48 px.
+ * `disabled` recedes the row to the #86 look; its dashed edge needs the frame back.
  */
 export function CardLink({
   children,
+  disabled = false,
   flush = false,
   href,
 }: {
   children: ReactNode;
+  disabled?: boolean;
   flush?: boolean;
   href: string;
 }) {
-  const frame = flush ? "" : `${BORDER_CLASS} ${CONTROL_RADIUS_CLASS}`;
+  const frame =
+    flush && !disabled ? "" : `${BORDER_CLASS} ${CONTROL_RADIUS_CLASS}`;
+  const surface = disabled ? DISABLED_SURFACE_CLASS : "bg-white text-black";
 
   return (
     <Link
-      className={`${TOUCH_TARGET_CLASS} ${frame} flex h-full w-full flex-col gap-1 bg-white p-3 text-black`}
+      className={`${TOUCH_TARGET_CLASS} ${frame} ${surface} flex h-full w-full flex-col gap-1 p-3`}
       href={href}
     >
       {children}
