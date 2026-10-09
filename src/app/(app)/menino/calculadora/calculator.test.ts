@@ -176,10 +176,7 @@ const CASES = [
         approvedLog({ activityId: 5, daysAgo: 0, durationMinutes: 60 }),
       ],
     },
-    contains: [
-      "Ler livro, 1h × 1,5 — você já fez 1h de Mente hoje",
-      "metade, de 1h a 2h de Mente no dia",
-    ],
+    contains: ["Ler livro, 1h × 0,75 — metade, você já fez 1h de Mente hoje"],
   },
   {
     name: "a third hour of Mente — um quarto",
@@ -191,8 +188,7 @@ const CASES = [
       ],
     },
     contains: [
-      "Ler livro, 1h × 1,5 — você já fez 2h de Mente hoje",
-      "um quarto, de 2h a 3h de Mente no dia",
+      "Ler livro, 1h × 0,375 — um quarto, você já fez 2h de Mente hoje",
     ],
   },
   {
@@ -266,7 +262,7 @@ describe("the explanation is the product (#17)", () => {
     const total = CASES.map((entry) => simulate(entry.input).lines.length);
 
     expect(Math.min(...total)).toBeGreaterThan(0);
-    expect(total.reduce((sum, count) => sum + count, 0)).toBeGreaterThan(12);
+    expect(total.reduce((sum, count) => sum + count, 0)).toBeGreaterThan(10);
   });
 });
 
@@ -341,17 +337,56 @@ describe("the lines add up to the total shown (#17, D9)", () => {
   });
 
   it("shows a step that takes hours away as a negative number", () => {
-    const calculation = simulate({
-      activityId: 5,
-      durationMinutes: 60,
-      history: [
-        approvedLog({ activityId: 5, daysAgo: 0, durationMinutes: 60 }),
-      ],
-    });
+    // Decay reads as positive bands now (#80); the grade is the step that subtracts.
+    const calculation = simulate({ activityId: 23, quality: 0.5 });
 
+    expect(calculation.lines.some((line) => line.step === "quality")).toBe(
+      true,
+    );
     expect(
       texts(Result({ calculation })).some((text) => text.startsWith("−")),
     ).toBe(true);
+  });
+});
+
+describe("the explanation sums positive parts, never 'cheio menos X' (#80)", () => {
+  // Two hours of reading from an empty day: a full hour and a half one.
+  const crossing = simulate({ activityId: 5, durationMinutes: 120 });
+
+  it("gives each half band a positive addend, a reason and a rate", () => {
+    const decay = crossing.lines.filter((line) => line.step === "decay");
+
+    expect(decay.length).toBeGreaterThan(0);
+    for (const line of decay) {
+      // A "+" part: a halving that subtracts from a full line is the old bug.
+      expect(line.hours).toBeGreaterThan(0);
+      // The reason (the band of the day) and the rate (duração × taxa) on the line.
+      expect(line.text).toMatch(/de [\d,]+h a [\d,]+h de .+ no dia/);
+      expect(line.text).toContain("×");
+    }
+  });
+
+  it("adds the parts to the shown total (D9)", () => {
+    const summed = crossing.lines.reduce(
+      (total, line) => total + line.hours,
+      0,
+    );
+
+    expect(Math.round(summed * 100) / 100).toBe(crossing.hours);
+  });
+
+  it("states a reason and a rate on the alternation (double) line too", () => {
+    const bonus = simulate({
+      activityId: 1,
+      durationMinutes: 120,
+      history: [
+        approvedLog({ activityId: 5, daysAgo: 0, durationMinutes: 60 }),
+      ],
+    }).lines.find((line) => line.step === "bonus");
+
+    expect(bonus?.hours).toBeGreaterThan(0);
+    expect(bonus?.text).toContain("%");
+    expect(bonus?.text).toContain("você variou de atividade hoje");
   });
 });
 

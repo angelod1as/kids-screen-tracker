@@ -187,11 +187,11 @@ describe("decay", () => {
 
     expect(result.hours).toBe(3);
     expect(result.lines).toEqual([
-      { step: "base", text: "Ler livro, 2h × 2,0 — cheio", hours: 4 },
+      { step: "base", text: "Ler livro, 1h × 2,0 — cheio", hours: 2 },
       {
         step: "decay",
-        text: "metade, de 1h a 2h de Mente no dia",
-        hours: -1,
+        text: "metade, de 1h a 2h de Mente no dia — 1h × 1,0",
+        hours: 1,
       },
     ]);
   });
@@ -282,11 +282,11 @@ describe("decay", () => {
         history: [log(lerLivro, { durationMinutes: 30 })],
       }).lines,
     ).toEqual([
-      { step: "base", text: "Ler livro, 1h × 2,0 — cheio", hours: 2 },
+      { step: "base", text: "Ler livro, 0,5h × 2,0 — cheio", hours: 1 },
       {
         step: "decay",
-        text: "metade, de 1h a 2h de Mente no dia",
-        hours: -0.5,
+        text: "metade, de 1h a 2h de Mente no dia — 0,5h × 1,0",
+        hours: 0.5,
       },
     ]);
 
@@ -410,13 +410,8 @@ describe("decay", () => {
     const expected = [
       {
         step: "base",
-        text: "Futebol, 1h × 2,0 — você já fez 2h de Corpo hoje",
-        hours: 2,
-      },
-      {
-        step: "decay",
-        text: "metade, de 2h a 4h de Corpo no dia",
-        hours: -1,
+        text: "Futebol, 1h × 1,0 — metade, você já fez 2h de Corpo hoje",
+        hours: 1,
       },
     ];
 
@@ -455,13 +450,8 @@ describe("decay", () => {
     ).toEqual([
       {
         step: "base",
-        text: "Ler livro, 1h × 2,0 — você já fez 1h de Mente hoje",
-        hours: 2,
-      },
-      {
-        step: "decay",
-        text: "metade, de 1h a 2h de Mente no dia",
-        hours: -1,
+        text: "Ler livro, 1h × 1,0 — metade, você já fez 1h de Mente hoje",
+        hours: 1,
       },
     ]);
   });
@@ -502,7 +492,7 @@ describe("decay", () => {
     expect(marathon.lines.at(-1)).toEqual({
       step: "decay",
       text: "cada vez menos, depois de 8h de Mente no dia",
-      hours: -3983.98,
+      hours: 0.02,
     });
     expect(marathon.hours).toBe(4);
 
@@ -521,9 +511,11 @@ describe("decay", () => {
         participatingCategoryIds: [],
         history: [log(lerLivro, { durationMinutes: 2000 * 60 })],
       }).lines.at(-1)?.text,
-      // 2000,01h, not 2000h: the fold starts at band 2.000.007, which opens at
-      // 2.000,007h. Float underflow used to stop at band 2.000.000 and call it zero.
-    ).toBe("cada vez menos, depois de 2000,01h de Mente no dia");
+      // One hour this deep is a single band worth all but nothing: it names the
+      // depth it arrived at and does not underflow to "nada" (D2). Every band of
+      // it is 2 / 2^2.000.000, so the named decay bands round away and the base
+      // line is the whole story.
+    ).toBe("Ler livro — cada vez menos, você já fez 2000h de Mente hoje");
 
     for (const durationMinutes of [90, 1440, 120_000]) {
       for (const decayStepHours of [0.001, 0.01, 1]) {
@@ -818,11 +810,11 @@ describe("quality, cooldown and the alternation bonus", () => {
 
     expect(result.hours).toBe(9);
     expect(result.lines).toEqual([
-      { step: "base", text: "Futebol, 4h × 2,0 — cheio", hours: 8 },
+      { step: "base", text: "Futebol, 2h × 2,0 — cheio", hours: 4 },
       {
         step: "decay",
-        text: "metade, de 2h a 4h de Corpo no dia",
-        hours: -2,
+        text: "metade, de 2h a 4h de Corpo no dia — 2h × 1,0",
+        hours: 2,
       },
       {
         step: "bonus",

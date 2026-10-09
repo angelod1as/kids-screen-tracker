@@ -169,12 +169,35 @@ function replay(
 
     if (calculation.hours !== log.computedHours) return null;
 
-    const sum = (step: string) =>
-      calculation.lines
+    const sum = (lines: typeof calculation.lines, step: string) =>
+      lines
         .filter((line) => line.step === step)
         .reduce((total, line) => total + line.hours, 0);
-    const decay = round2(sum("decay"));
-    const bonus = round2(sum("bonus"));
+    const bonus = round2(sum(calculation.lines, "bonus"));
+
+    // The decay bands are positive addends now (#80), so the loss is read against
+    // the same entry priced with no decay, not off a single negative line: the
+    // value before the bonus with decay, minus the same without it.
+    const valueBeforeBonus =
+      calculation.hours - sum(calculation.lines, "bonus");
+    let fullBeforeBonus = valueBeforeBonus;
+    if (category.decayStepHours !== null) {
+      const full = calculateEarnedHours({
+        userId: log.userId,
+        activity,
+        category: { ...category, decayStepHours: null },
+        occurredOn: log.occurredOn,
+        durationMinutes: log.durationMinutes,
+        quality: log.quality,
+        freeValue: log.freeValue,
+        history,
+        historyFrom,
+        historyTo,
+        participatingCategoryIds: participating,
+      });
+      fullBeforeBonus = full.hours - sum(full.lines, "bonus");
+    }
+    const decay = round2(valueBeforeBonus - fullBeforeBonus);
 
     return {
       rule: round2(calculation.hours - decay - bonus),

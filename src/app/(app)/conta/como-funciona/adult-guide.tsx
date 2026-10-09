@@ -179,9 +179,9 @@ export function AdultGuide({ data }: { data: HowItWorksData }) {
             minutos.
           </li>
           <li>
-            <strong>Passo do desgaste:</strong> Configuração, categoria, campo
-            “Passo do desgaste”, em horas e minutos. Vazio desliga o desgaste. O
-            mínimo é {formatDuration(MIN_DECAY_STEP_HOURS * 60)}.
+            <strong>Desgaste:</strong> Configuração, categoria, campo “A cada
+            quantas horas cai pela metade”, em horas e minutos. Vazio desliga o
+            desgaste. O mínimo é {formatDuration(MIN_DECAY_STEP_HOURS * 60)}.
           </li>
           {BONUS_ENABLED ? (
             <li>
