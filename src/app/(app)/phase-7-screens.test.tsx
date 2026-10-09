@@ -120,7 +120,7 @@ describe("the history an adult opens is the boy's own (#73)", () => {
     const markup = await historyMarkup("4", "5");
 
     expect(mocked.historyFor).toEqual([{ userId: 4, days: 5 }]);
-    expect(markup).toContain('href="/admin/historico/4?dias=6"');
+    expect(markup).toContain('href="/admin/historico/4?dias=6&amp;aba=geral"');
 
     mocked.more = false;
   });

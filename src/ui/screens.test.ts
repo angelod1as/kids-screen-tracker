@@ -1,10 +1,24 @@
 import { isValidElement, type ReactNode } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 
-import type { LedgerEntry } from "../app/actions/history";
-import { EntryList, signedHours } from "./entries";
+import type {
+  HistoryEntry,
+  LedgerEntry,
+  RejectedEntry,
+  ZeroEntry,
+} from "../app/actions/history";
+import {
+  EntryList,
+  entriesForTab,
+  HistoryStatement,
+  historyTab,
+  signedHours,
+  tabTotal,
+} from "./entries";
 import { parseTypedHours, parseTypedTime } from "./hours";
 import { failingScreenCases } from "./screens.rules";
+import { NEGATIVE_CLASS } from "./style";
 
 /** A `"use server"` module reaches `varlock/env` and the database on import. */
 vi.mock("../app/actions/timer", () => ({
@@ -198,5 +212,149 @@ describe("the extract (#16)", () => {
     const empty = elements(EntryList({ emptyText: "vazio", entries: [] }));
 
     expect(empty.filter((element) => element.type === "li")).toEqual([]);
+  });
+});
+
+const ZERO: ZeroEntry = {
+  id: 40,
+  kind: "zero",
+  occurredOn: "2026-09-03",
+  at: Date.parse("2026-09-03T13:00:00Z"),
+  label: "Nota zero",
+  override: null,
+  voided: null,
+  decidedBy: "Admin1",
+};
+
+const REJECTED: RejectedEntry = {
+  id: 50,
+  kind: "rejected",
+  occurredOn: "2026-09-04",
+  at: Date.parse("2026-09-04T13:00:00Z"),
+  label: "Tarefa recusada",
+  durationMinutes: 30,
+  reason: null,
+  decidedBy: "Admin1",
+};
+
+const MIXED: HistoryEntry[] = [REJECTED, ZERO, ...ENTRIES];
+
+describe("the extract tabs (#78)", () => {
+  it("defaults an unknown tab to the whole extract", () => {
+    expect(historyTab(undefined)).toBe("geral");
+    expect(historyTab("lixo")).toBe("geral");
+    expect(historyTab(["geral", "ganhos"])).toBe("geral");
+    expect(historyTab("perdas")).toBe("perdas");
+  });
+
+  it("keeps earns, refunds and refusals in Ganhos, and spends out", () => {
+    const kinds = entriesForTab(MIXED, "ganhos").map((entry) => entry.kind);
+
+    expect(kinds).toEqual(["rejected", "earn", "refund"]);
+  });
+
+  it("keeps only spends in Perdas", () => {
+    const kinds = entriesForTab(MIXED, "perdas").map((entry) => entry.kind);
+
+    expect(kinds).toEqual(["spend"]);
+  });
+
+  it("shows a zero only in Geral", () => {
+    const hasZero = (tab: Parameters<typeof entriesForTab>[1]) =>
+      entriesForTab(MIXED, tab).some((entry) => entry.kind === "zero");
+
+    expect(hasZero("geral")).toBe(true);
+    expect(hasZero("ganhos")).toBe(false);
+    expect(hasZero("perdas")).toBe(false);
+  });
+
+  it("shows a refusal in Ganhos as 0h, marked refused", () => {
+    const markup = renderToStaticMarkup(
+      HistoryStatement({
+        basePath: "/menino/historico",
+        days: 2,
+        emptyText: "vazio",
+        entries: entriesForTab(MIXED, "ganhos"),
+        tab: "ganhos",
+      }),
+    );
+
+    expect(markup).toContain("Tarefa recusada");
+    expect(markup).toContain("Recusado");
+    expect(markup).toContain("0 min");
+    expect(markup).not.toContain("+0 min");
+  });
+
+  it("totals each tab by the kind's sign, rounded once (D9)", () => {
+    expect(tabTotal(entriesForTab(MIXED, "geral"))).toBe(0.75);
+    expect(tabTotal(entriesForTab(MIXED, "ganhos"))).toBe(2.25);
+    expect(tabTotal(entriesForTab(MIXED, "perdas"))).toBe(-1.5);
+  });
+
+  it("rounds the sum once at the end, never each row", () => {
+    const earns: LedgerEntry[] = [0.1, 0.2].map((hours, index) => ({
+      id: index,
+      kind: "earn",
+      hours,
+      occurredOn: "2026-09-01",
+      at: 0,
+      label: "x",
+      override: null,
+      voided: null,
+      decidedBy: null,
+    }));
+
+    expect(tabTotal(earns)).toBe(0.3);
+  });
+
+  it("leaves a voided entry in the list but out of the total (D52)", () => {
+    const voided: LedgerEntry = {
+      id: 20,
+      kind: "earn",
+      hours: 2,
+      occurredOn: "2026-09-01",
+      at: 0,
+      label: "Ler livro",
+      override: null,
+      voided: { on: "2026-09-05", at: 0, by: "Admin1" },
+      decidedBy: "Admin1",
+    };
+
+    expect(tabTotal([voided])).toBe(0);
+    expect(entriesForTab([voided], "ganhos")).toHaveLength(1);
+  });
+
+  it("paints a negative total red and a positive one black (no new colour)", () => {
+    const classesFor = (tab: "ganhos" | "perdas") =>
+      elements(
+        HistoryStatement({
+          basePath: "/menino/historico",
+          days: 2,
+          emptyText: "vazio",
+          entries: entriesForTab(MIXED, tab),
+          tab,
+        }),
+      )
+        .map((element) => String(element.props.className ?? ""))
+        .join(" ");
+
+    expect(classesFor("perdas")).toContain(NEGATIVE_CLASS);
+    expect(classesFor("ganhos")).not.toContain(NEGATIVE_CLASS);
+  });
+
+  it("carries the chosen tab and the day window in each tab link", () => {
+    const markup = renderToStaticMarkup(
+      HistoryStatement({
+        basePath: "/menino/historico",
+        days: 3,
+        emptyText: "vazio",
+        entries: entriesForTab(MIXED, "perdas"),
+        tab: "perdas",
+      }),
+    );
+
+    expect(markup).toContain('href="/menino/historico?dias=3&amp;aba=geral"');
+    expect(markup).toContain('href="/menino/historico?dias=3&amp;aba=perdas"');
+    expect(markup).toContain('aria-current="page"');
   });
 });
