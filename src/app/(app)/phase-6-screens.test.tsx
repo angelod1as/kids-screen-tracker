@@ -428,19 +428,25 @@ const BOOK: ActivityRow = {
 describe("a disabled activity reads as disabled in Configuração (#81, D14)", () => {
   const OFF: ActivityRow = { ...BOOK, id: 6, name: "Guardado", active: false };
 
-  it("recedes the disabled row to the #86 floor, distinct from an active one", () => {
-    const markup = renderToStaticMarkup(
-      <ActivityList category={MENTE} rows={[BOOK, OFF]} />,
+  it("recedes the disabled row to the #86 floor, an active one unchanged", () => {
+    // Separate renders, as the category reactivation test does, so the look is
+    // tied to the disabled row and cannot have leaked onto the active one.
+    const on = renderToStaticMarkup(
+      <ActivityList category={MENTE} rows={[BOOK]} />,
+    );
+    const off = renderToStaticMarkup(
+      <ActivityList category={MENTE} rows={[OFF]} />,
     );
 
     // It stays listed and managed here (D14), not hidden, and still a link to reactivate.
-    expect(markup).toContain("Guardado · desativada");
-    expect(markup).toContain('href="/admin/configuracao/2/6"');
+    expect(off).toContain("Guardado · desativada");
+    expect(off).toContain('href="/admin/configuracao/2/6"');
     // The #86 recede, not a fade: slate-100 floor, dashed edge, no opacity.
-    expect(markup).toContain(DISABLED_SURFACE_CLASS);
-    expect(markup).not.toContain("opacity");
-    // Reads distinct from the active row, which keeps the white surface.
-    expect(markup).toContain("bg-white");
+    expect(off).toContain(DISABLED_SURFACE_CLASS);
+    expect(off).not.toContain("opacity");
+    // The recede is the disabled row's alone: an active-only list never shows it.
+    expect(on).not.toContain("border-dashed");
+    expect(on).not.toContain("bg-slate-100");
   });
 
   it("carries the #86 look, not a pale tone of its own", () => {
