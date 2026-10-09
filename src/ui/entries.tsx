@@ -318,7 +318,7 @@ export function entriesForTab(
   }
 }
 
-/** D9: summed and rounded once, like the balance. Zeros, refusals and voided move nothing (D52). */
+/** D9: summed and rounded once, like the balance. A zero has no ledger line (D10), a refusal moves nothing (D19), the voided no longer counts (D52). */
 export function tabTotal(entries: readonly HistoryEntry[]): number {
   let sum = 0;
 
