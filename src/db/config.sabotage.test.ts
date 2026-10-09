@@ -300,9 +300,8 @@ const MUTATIONS: readonly Mutation[] = [
   {
     name: "a category with no activities disappears from the list",
     file: "categories.ts",
-    find: "    .leftJoin(activities, eq(activities.categoryId, categories.id))",
-    replace:
-      "    .innerJoin(activities, eq(activities.categoryId, categories.id))",
+    find: "    .leftJoin(\n      activities,",
+    replace: "    .innerJoin(\n      activities,",
   },
   {
     name: "an empty category is counted as having one activity",
