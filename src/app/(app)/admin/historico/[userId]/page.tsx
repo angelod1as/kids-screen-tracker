@@ -1,9 +1,11 @@
 import { notFound } from "next/navigation";
 
 import {
-  EntryList,
+  entriesForTab,
   HISTORY_LIMIT,
+  HistoryStatement,
   historyDays,
+  historyTab,
   MAX_HISTORY_DAYS,
   signedHours,
 } from "../../../../../ui/entries";
@@ -26,14 +28,15 @@ export default async function AdminKidHistoryPage({
   searchParams,
 }: {
   params: Promise<{ userId: string }>;
-  searchParams: Promise<{ dias?: string | string[] }>;
+  searchParams: Promise<{ dias?: string | string[]; aba?: string | string[] }>;
 }) {
-  const [{ userId }, { dias }, kids] = await Promise.all([
+  const [{ userId }, { dias, aba }, kids] = await Promise.all([
     params,
     searchParams,
     listKidsAction(),
   ]);
   const days = historyDays(dias);
+  const tab = historyTab(aba);
   const kid = kids.find((candidate) => String(candidate.id) === userId);
 
   if (kid === undefined) {
@@ -47,6 +50,7 @@ export default async function AdminKidHistoryPage({
     fetchRunningTimersAction(),
   ]);
   const openTimer = running.find((timer) => timer.userId === kid.id) ?? null;
+  const shown = entriesForTab(entries, tab);
 
   return (
     <div className="flex flex-col gap-4 lg:max-w-2xl lg:gap-6">
@@ -64,14 +68,12 @@ export default async function AdminKidHistoryPage({
 
       <Panel
         note={
-          entries.length === 1
-            ? "1 lançamento"
-            : `${entries.length} lançamentos`
+          shown.length === 1 ? "1 lançamento" : `${shown.length} lançamentos`
         }
         title={`Histórico de ${kid.displayName}`}
         top
       >
-        <EntryList
+        <HistoryStatement
           action={(entry) => (
             <VoidControl
               after={
@@ -88,15 +90,18 @@ export default async function AdminKidHistoryPage({
               }}
             />
           )}
+          basePath={`/admin/historico/${kid.id}`}
+          days={days}
           emptyText={`${kid.displayName} ainda não tem lançamentos. O que ele ganhar, gastar ou tiver recusado aparece aqui, do mais recente para o mais antigo.`}
-          entries={entries}
+          entries={shown}
           nameDecider
+          tab={tab}
         />
       </Panel>
 
       {more && days < MAX_HISTORY_DAYS ? (
         <LinkButton
-          href={`/admin/historico/${kid.id}?dias=${days + 1}`}
+          href={`/admin/historico/${kid.id}?dias=${days + 1}&aba=${tab}`}
           scroll={false}
           variant="secondary"
         >

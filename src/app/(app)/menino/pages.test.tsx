@@ -357,7 +357,7 @@ describe("the history reveals one more day at a time (#64)", () => {
 
     const markup = await render("3");
 
-    expect(markup).toContain('href="/menino/historico?dias=4"');
+    expect(markup).toContain('href="/menino/historico?dias=4&amp;aba=geral"');
     expect(markup).toContain("Ver mais");
   });
 

@@ -8,10 +8,16 @@ import type {
   VoidMark,
   ZeroEntry,
 } from "../app/actions/history";
+import { ChoiceLinks } from "./choice-links";
 import { formatDay, formatSignedHours, formatTime } from "./dates";
 import { formatDuration, formatHours } from "./hours";
 import { PanelText } from "./panel";
-import { META_CLASS, READOUT_CLASS, ROW_CLASS } from "./style";
+import {
+  balanceToneClass,
+  META_CLASS,
+  READOUT_CLASS,
+  ROW_CLASS,
+} from "./style";
 
 /** Not beside the query: a `"use server"` module may export only async functions. */
 export const RECENT_ENTRIES_LIMIT = 5;
@@ -269,6 +275,114 @@ export function signedHours(
   entry: Pick<LedgerEntry, "hours" | "kind">,
 ): number {
   return entry.kind === "spend" ? -entry.hours : entry.hours;
+}
+
+/** #78: the three tabs of the extract, in the order they are shown. */
+const HISTORY_TABS = ["geral", "ganhos", "perdas"] as const;
+
+export type HistoryTab = (typeof HISTORY_TABS)[number];
+
+const TAB_LABELS: Readonly<Record<HistoryTab, string>> = {
+  geral: "Geral",
+  ganhos: "Ganhos",
+  perdas: "Perdas",
+};
+
+/** `?aba=` is typed by anyone: an unknown tab opens the whole extract. */
+export function historyTab(param: string | string[] | undefined): HistoryTab {
+  return HISTORY_TABS.includes(param as HistoryTab)
+    ? (param as HistoryTab)
+    : "geral";
+}
+
+/**
+ * #78: Ganhos holds earns, refunds and the refusals that are cancelled gains
+ * (0h); Perdas holds only spends; zeros live in Geral alone (owner, 07/10/2026).
+ */
+export function entriesForTab(
+  entries: readonly HistoryEntry[],
+  tab: HistoryTab,
+): HistoryEntry[] {
+  switch (tab) {
+    case "geral":
+      return [...entries];
+    case "ganhos":
+      return entries.filter(
+        (entry) =>
+          entry.kind === "earn" ||
+          entry.kind === "refund" ||
+          entry.kind === "rejected",
+      );
+    case "perdas":
+      return entries.filter((entry) => entry.kind === "spend");
+  }
+}
+
+/** D9: summed and rounded once, like the balance. A zero has no ledger line (D10), a refusal moves nothing (D19), the voided no longer counts (D52). */
+export function tabTotal(entries: readonly HistoryEntry[]): number {
+  let sum = 0;
+
+  for (const entry of entries) {
+    if (entry.kind === "zero" || entry.kind === "rejected") continue;
+    if (entry.voided !== null) continue;
+    sum += signedHours(entry);
+  }
+
+  return Math.round(sum * 100) / 100;
+}
+
+/**
+ * #78: the tabs and the window's total sit over the one `EntryList`, so the two
+ * screens share the extract. The total's red is the negative balance's, no new
+ * colour (D42); it closes against the rows on screen (D9).
+ */
+export function HistoryStatement({
+  entries,
+  tab,
+  basePath,
+  days,
+  emptyText,
+  action,
+  nameDecider = false,
+}: {
+  entries: readonly HistoryEntry[];
+  tab: HistoryTab;
+  basePath: string;
+  days: number;
+  emptyText: string;
+  action?: (entry: LedgerEntry | ZeroEntry) => ReactNode;
+  nameDecider?: boolean;
+}) {
+  const total = tabTotal(entries);
+
+  return (
+    <div>
+      <div className="flex flex-col gap-3 border-b-2 border-black px-3 py-3">
+        <ChoiceLinks
+          label="Extrato"
+          options={HISTORY_TABS.map((value) => ({
+            href: `${basePath}?dias=${days}&aba=${value}`,
+            label: TAB_LABELS[value],
+            chosen: value === tab,
+          }))}
+        />
+        <div className="flex items-baseline justify-between gap-3">
+          <span className={`${META_CLASS} text-black`}>Total</span>
+          <span
+            className={`${READOUT_CLASS} shrink-0 ${balanceToneClass(total)}`}
+          >
+            {total === 0 ? formatHours(0) : formatSignedHours(total)}
+          </span>
+        </div>
+      </div>
+      <EntryList
+        action={action}
+        emptyText={emptyText}
+        entries={entries}
+        nameDecider={nameDecider}
+      />
+    </div>
+  );
 }
 
 function kindLabel(kind: LedgerEntry["kind"]): string {

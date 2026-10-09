@@ -1,8 +1,10 @@
 import { requireSession } from "../../../../auth/guard";
 import {
-  EntryList,
+  entriesForTab,
   HISTORY_LIMIT,
+  HistoryStatement,
   historyDays,
+  historyTab,
   MAX_HISTORY_DAYS,
 } from "../../../../ui/entries";
 import { LinkButton } from "../../../../ui/link-button";
@@ -16,33 +18,37 @@ import { fetchHistoryDaysAction } from "../../../actions/history";
 export default async function KidHistoryPage({
   searchParams,
 }: {
-  searchParams: Promise<{ dias?: string | string[] }>;
+  searchParams: Promise<{ dias?: string | string[]; aba?: string | string[] }>;
 }) {
   const session = await requireSession();
-  const days = historyDays((await searchParams).dias);
+  const params = await searchParams;
+  const days = historyDays(params.dias);
+  const tab = historyTab(params.aba);
   const { entries, more } = await fetchHistoryDaysAction(session.userId, days);
+  const shown = entriesForTab(entries, tab);
 
   return (
     <div className="flex flex-col gap-4 lg:gap-6 lg:max-w-2xl">
       <Panel
         note={
-          entries.length === 1
-            ? "1 lançamento"
-            : `${entries.length} lançamentos`
+          shown.length === 1 ? "1 lançamento" : `${shown.length} lançamentos`
         }
         title="Histórico"
         top
       >
-        <EntryList
+        <HistoryStatement
+          basePath="/menino/historico"
+          days={days}
           emptyText="Você ainda não tem lançamentos. Quando ganhar ou gastar horas, elas aparecem aqui, da mais recente para a mais antiga."
-          entries={entries}
+          entries={shown}
           nameDecider
+          tab={tab}
         />
       </Panel>
 
       {more && days < MAX_HISTORY_DAYS ? (
         <LinkButton
-          href={`/menino/historico?dias=${days + 1}`}
+          href={`/menino/historico?dias=${days + 1}&aba=${tab}`}
           scroll={false}
           variant="secondary"
         >
