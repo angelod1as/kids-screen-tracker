@@ -421,8 +421,7 @@ describe("the history the calculator reads", () => {
 
     expect(calculation.hours).toBe(0.38);
     expect(calculation.lines.map((line) => line.text)).toStrictEqual([
-      "Ler livro, 1h × 1,5 — você já fez 2h de Mente hoje",
-      "um quarto, de 2h a 3h de Mente no dia",
+      "Ler livro, 1h × 0,375 — um quarto, você já fez 2h de Mente hoje",
     ]);
   });
 });
@@ -468,8 +467,7 @@ describe("after an adult decided the value (D50)", () => {
     // The two hours happened; the 0,5 h the adult paid for them is not a bucket.
     expect(calculation.hours).toBe(0.38);
     expect(calculation.lines.map((line) => line.text)).toStrictEqual([
-      "Ler livro, 1h × 1,5 — você já fez 2h de Mente hoje",
-      "um quarto, de 2h a 3h de Mente no dia",
+      "Ler livro, 1h × 0,375 — um quarto, você já fez 2h de Mente hoje",
     ]);
   });
 });

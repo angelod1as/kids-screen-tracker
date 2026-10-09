@@ -107,7 +107,7 @@ describe("the bonus is invisible while it is off (D57)", () => {
 
     expect(markup).not.toContain("Bônus de alternância");
     // The rest of the form is still there.
-    expect(markup).toContain("Passo do desgaste");
+    expect(markup).toContain("A cada quantas horas cai pela metade");
   });
 
   it("keeps the saved bonus through an edit, though the field is hidden (D57)", () => {

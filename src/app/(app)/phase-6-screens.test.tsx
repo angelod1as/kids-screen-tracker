@@ -44,6 +44,7 @@ const {
   CategoryDetail,
   categoryInputOf,
   categorySummary,
+  decayExampleText,
   decayStepWarning,
   EMPTY_CATEGORY,
   NewCategoryForm,
@@ -95,6 +96,18 @@ describe("the asymptote, while the category is being edited (#26)", () => {
     expect(
       asymptoteText({ ...DRAFT, decayStep: { hours: "2", minutes: "" } }),
     ).toBe("Rende no máximo 8,00 h por dia (taxa × passo × 2).");
+  });
+
+  it("always shows a concrete numeric halving beside the field (#79)", () => {
+    expect(decayExampleText(DRAFT)).toBe(
+      "Ex.: as primeiras 1h valem 2,00 h por hora; depois disso, 1,00 h por hora.",
+    );
+    // No rate, nothing to multiply: no example instead of a wrong one.
+    expect(decayExampleText({ ...DRAFT, baseRate: "" })).toBe("");
+    // Step below the floor the endpoint refuses: no example for a step it won't keep.
+    expect(
+      decayExampleText({ ...DRAFT, decayStep: { hours: "0", minutes: "10" } }),
+    ).toBe("");
   });
 
   it("previews the stored step while its field is untouched, as the endpoint keeps it (#55)", () => {
@@ -153,10 +166,10 @@ describe("the two floors, explained before they are hit (#26)", () => {
   it("does not call an unreadable step a category without decay", () => {
     expect(
       asymptoteText({ ...DRAFT, decayStep: { hours: "abc", minutes: "" } }),
-    ).toBe("Passo do desgaste ainda não é um tempo.");
+    ).toBe("Isto ainda não é um tempo: use horas e minutos.");
     expect(
       asymptoteText({ ...DRAFT, decayStep: { hours: "1", minutes: "60" } }),
-    ).toBe("Passo do desgaste ainda não é um tempo.");
+    ).toBe("Isto ainda não é um tempo: use horas e minutos.");
   });
 
   it("says something when the bonus fields are unreadable, as the step does", () => {
@@ -379,7 +392,7 @@ describe("the screen itself (#26)", () => {
   it("asks for every number on that page", () => {
     const markup = renderToStaticMarkup(<NewCategoryForm />);
 
-    expect(markup).toContain("Passo do desgaste");
+    expect(markup).toContain("A cada quantas horas cai pela metade");
     expect(markup).toContain("Bônus de alternância");
   });
 

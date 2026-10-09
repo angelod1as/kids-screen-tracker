@@ -14,6 +14,7 @@ import {
   ONE,
   subtract,
   toCents,
+  ZERO,
 } from "./exact";
 import { BONUS_ENABLED } from "./flags";
 
@@ -172,11 +173,15 @@ export function calculateEarnedHours(input: CalculationInput): Calculation {
 
   let value: Fraction;
   let baseText: string;
+  // Hoisted: the decay split narrates each band at the base rate (× 2^-i).
+  let rate = 0;
+  let baseRate: Fraction | null = null;
 
   switch (activity.calcMode) {
     case "duration": {
-      const rate = requireValue(activity);
-      value = multiply(exactActivityHours, fromNumber(rate));
+      rate = requireValue(activity);
+      baseRate = fromNumber(rate);
+      value = multiply(exactActivityHours, baseRate);
       baseText = `${activity.name}, ${durationText(durationMinutes)} × ${formatRate(rate)}`;
       break;
     }
@@ -215,16 +220,71 @@ export function calculateEarnedHours(input: CalculationInput): Calculation {
     activity.calcMode === "duration" &&
     isPositive(exactActivityHours);
 
-  // Base line: where this entry starts. Decay lines: the rule.
-  const startsFull =
-    exactStep !== null && bandIndex(exactBucketHours, exactStep) === 0n;
-  const bucketNote = !decays
-    ? ""
-    : startsFull
-      ? " — cheio"
-      : ` — você já fez ${formatHours(bucketHours)} de ${category.name} hoje`;
+  // D1 as the boy hears it: each band of activity hours is its own positive
+  // addend at its rate (base × 2^-i), so the column sums instead of reading
+  // "cheio menos X" (#80); quality, cooldown and bonus then multiply (D56 emenda).
+  if (exactStep !== null && step !== null && decays && baseRate !== null) {
+    const end = add(exactBucketHours, exactActivityHours);
+    let emitted = 0;
+    let foldedFrom: number | null = null;
+    let index = bandIndex(exactBucketHours, exactStep);
+    let bandStart = exactBucketHours;
+    let running = ZERO;
 
-  drafts.push({ step: "base", text: `${baseText}${bucketNote}`, total: value });
+    while (compare(bandStart, end) < 0) {
+      const boundary = multiply(exactStep, fraction(index + 1n, 1n));
+      const bandEnd = compare(boundary, end) < 0 ? boundary : end;
+      const hasNext = compare(bandEnd, end) < 0;
+
+      if (emitted === MAX_DECAY_LINES && hasNext) {
+        // The fold never lands on the first band, so a base line is always drawn.
+        foldedFrom = bandBound(index, step);
+        break;
+      }
+
+      // Within a band the rate is constant (D39), so width × rate is exact.
+      const width = subtract(bandEnd, bandStart);
+      running = add(
+        running,
+        multiply(width, multiply(baseRate, fraction(1n, 1n << index))),
+      );
+
+      drafts.push({
+        step: emitted === 0 ? "base" : "decay",
+        text: bandLineText({
+          first: emitted === 0,
+          index,
+          step,
+          widthMinutes: fractionMinutes(width),
+          rate,
+          activityName: activity.name,
+          categoryName: category.name,
+          bucketHours,
+        }),
+        total: running,
+      });
+
+      emitted += 1;
+      bandStart = bandEnd;
+      index += 1n;
+    }
+
+    // The closed form, so the bands past the fold cost nothing (D39).
+    value = multiply(
+      decayedHours(exactBucketHours, exactActivityHours, exactStep),
+      baseRate,
+    );
+
+    if (foldedFrom !== null) {
+      drafts.push({
+        step: "decay",
+        text: `${DEEP_DECAY_TEXT}, depois de ${formatHours(foldedFrom)} de ${category.name} no dia`,
+        total: value,
+      });
+    }
+  } else {
+    drafts.push({ step: "base", text: baseText, total: value });
+  }
 
   if (activity.qualityGraded) {
     const quality = requireQuality(input);
@@ -258,65 +318,6 @@ export function calculateEarnedHours(input: CalculationInput): Calculation {
       total: next,
     });
     value = next;
-  }
-
-  // `exactStep !== null` is implied by `decays`; written out for the narrowing.
-  if (exactStep !== null && step !== null && decays) {
-    // The factor depends only on the bucket, so a session crossing a band is split.
-    const perActivityHour = divide(value, exactActivityHours);
-    const end = add(exactBucketHours, exactActivityHours);
-    // Walked: exact `2^-i` never underflows, so only the fold bounds the loop.
-    let emitted = 0;
-    let foldedFrom: number | null = null;
-    let index = bandIndex(exactBucketHours, exactStep);
-    let bandStart = exactBucketHours;
-
-    while (compare(bandStart, end) < 0) {
-      const boundary = multiply(exactStep, fraction(index + 1n, 1n));
-      const bandEnd = compare(boundary, end) < 0 ? boundary : end;
-      const hasNext = compare(bandEnd, end) < 0;
-
-      if (index !== 0n) {
-        const reached = subtract(bandEnd, exactBucketHours);
-        const pending = subtract(end, bandEnd);
-
-        value = multiply(
-          add(decayedHours(exactBucketHours, reached, exactStep), pending),
-          perActivityHour,
-        );
-
-        emitted += 1;
-
-        if (emitted === MAX_DECAY_LINES && hasNext) {
-          // The band's own bound as printed; the fold never lands on the first band.
-          foldedFrom = bandBound(index, step);
-          break;
-        }
-
-        drafts.push({
-          step: "decay",
-          text: `${fractionText(index)}, ${bandText(index, step)} de ${category.name} no dia`,
-          total: value,
-        });
-      }
-
-      bandStart = bandEnd;
-      index += 1n;
-    }
-
-    // The closed form, so the bands past the fold cost nothing.
-    value = multiply(
-      decayedHours(exactBucketHours, exactActivityHours, exactStep),
-      perActivityHour,
-    );
-
-    if (foldedFrom !== null) {
-      drafts.push({
-        step: "decay",
-        text: `${DEEP_DECAY_TEXT}, depois de ${formatHours(foldedFrom)} de ${category.name} no dia`,
-        total: value,
-      });
-    }
   }
 
   const bonusPct = category.alternationBonusPct;
@@ -449,6 +450,47 @@ function bandText(index: bigint, step: number): string {
   const to = formatHours(bandBound(index + 1n, step));
 
   return from === to ? `depois de ${from}` : `de ${from} a ${to}`;
+}
+
+/** Minutes of activity in a band, for the per-band line's own "duração × taxa". */
+function fractionMinutes(hours: Fraction): number {
+  return Number(hours.n * 60n) / Number(hours.d);
+}
+
+/**
+ * One band as a positive addend: its reason and its own rate (base × 2^-index),
+ * so "metade" shows the halved rate the boy multiplies, never a bare subtraction (#80).
+ * Past the named bands the rate is a vanishing decimal, so only the word is shown.
+ */
+function bandLineText(args: {
+  first: boolean;
+  index: bigint;
+  step: number;
+  widthMinutes: number;
+  rate: number;
+  activityName: string;
+  categoryName: string;
+  bucketHours: number;
+}): string {
+  // 0..3 are cheio/metade/um quarto/um oitavo: a word and a rate of two decimals.
+  const product =
+    args.index <= 3n
+      ? `${durationText(args.widthMinutes)} × ${formatRate(args.rate / 2 ** Number(args.index))}`
+      : null;
+
+  if (args.first) {
+    const head = product
+      ? `${args.activityName}, ${product}`
+      : args.activityName;
+
+    return args.index === 0n
+      ? `${head} — cheio`
+      : `${head} — ${fractionText(args.index)}, você já fez ${formatHours(args.bucketHours)} de ${args.categoryName} hoje`;
+  }
+
+  const rule = `${fractionText(args.index)}, ${bandText(args.index, args.step)} de ${args.categoryName} no dia`;
+
+  return product ? `${rule} — ${product}` : rule;
 }
 
 /** Cut at the third halving: Portuguese has no everyday word for 1/16. */

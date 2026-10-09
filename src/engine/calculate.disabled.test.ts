@@ -111,9 +111,7 @@ describe("the alternation bonus while it is off (D57)", () => {
     });
 
     expect(result.hours).toBe(1);
-    expect(result.lines.map((line) => line.step)).toStrictEqual([
-      "base",
-      "decay",
-    ]);
+    // The second hour sits in one band, so it is the single base line (#80).
+    expect(result.lines.map((line) => line.step)).toStrictEqual(["base"]);
   });
 });

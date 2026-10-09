@@ -156,7 +156,7 @@ export function asymptoteText(draft: CategoryDraft): string {
 
   // Unreadable is neither an asymptote nor "sem desgaste", which would contradict the warning below.
   if (typedStep && step === null) {
-    return "Passo do desgaste ainda não é um tempo.";
+    return "Isto ainda não é um tempo: use horas e minutos.";
   }
 
   if (draft.baseRate.trim() !== "" && rate === null) {
@@ -173,6 +173,20 @@ export function asymptoteText(draft: CategoryDraft): string {
   }
 
   return `Rende no máximo ${formatDecimalHours(asymptote)} por dia (taxa × passo × 2).`;
+}
+
+/** A concrete halving in numbers, always beside the field (#79, owner 2026-10-07). */
+export function decayExampleText(draft: CategoryDraft): string {
+  const step = typedStepHours(draft);
+  const rate =
+    draft.baseRate.trim() === "" ? null : parseTypedHours(draft.baseRate);
+
+  if (step === null || rate === null || !isUsableDecayStep(step)) return "";
+
+  return (
+    `Ex.: as primeiras ${formatHours(step)} valem ${formatDecimalHours(rate)} ` +
+    `por hora; depois disso, ${formatDecimalHours(rate / 2)} por hora.`
+  );
 }
 
 /** The endpoint refuses; this is the same predicate, said before the tap. */
@@ -451,7 +465,9 @@ export function CategoryDetail({
             </span>
           </li>
           <li className={ROW_CLASS}>
-            <span className="text-base text-black">Passo do desgaste</span>
+            <span className="text-base text-black">
+              A cada quantas horas cai pela metade
+            </span>
             <span className={READOUT_CLASS}>
               {category.decayStepHours === null
                 ? "sem desgaste"
@@ -597,8 +613,8 @@ const NUMBERS_HELP: readonly (readonly [string, string])[] = [
       "Mudar aqui não muda nenhuma atividade que já existe.",
   ],
   [
-    "Passo do desgaste",
-    "A cada passo de horas de atividade acumuladas na categoria no dia, a hora " +
+    "A cada quantas horas cai pela metade",
+    "A cada tanto de horas de atividade acumuladas na categoria no dia, a hora " +
       "seguinte vale metade da anterior. O acumulado é da categoria inteira, zera " +
       "à meia-noite, e só atividade com duração enche. Vazio: sem desgaste. " +
       `O mínimo é ${formatHours(MIN_DECAY_STEP_HOURS)}.`,
@@ -677,6 +693,7 @@ function CategoryFields({
 }) {
   const rateWarning = baseRateWarning(draft);
   const stepWarning = decayStepWarning(draft);
+  const stepExample = decayExampleText(draft);
   const bonusWarning = alternationBonusWarning(draft);
 
   return (
@@ -703,7 +720,7 @@ function CategoryFields({
 
       <TimeFields
         id={`${prefix}-passo`}
-        legend="Passo do desgaste (vazio: sem desgaste)"
+        legend="A cada quantas horas cai pela metade (vazio: sem desgaste)"
         onChange={(decayStep) => onChange({ ...draft, decayStep })}
         value={draft.decayStep}
       />
@@ -718,6 +735,7 @@ function CategoryFields({
 
       <p className={`${BORDER_CLASS} bg-white p-3 text-base text-black`}>
         {asymptoteText(draft)}
+        {stepExample === "" ? null : ` ${stepExample}`}
         {stepWarning === null ? null : (
           <>
             {" "}

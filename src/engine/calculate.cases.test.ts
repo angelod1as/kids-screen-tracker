@@ -56,7 +56,9 @@ function expectReadable(calculation: Calculation, name: string): void {
   expect(calculation.lines[0]?.text).toContain(name);
 
   const seen: ExplanationLine["step"][] = [];
-  const order = ["base", "quality", "cooldown", "decay", "bonus"] as const;
+  // The earning read band by band first (base, then its decay bands), then the
+  // multipliers in D7's order. The product is D7's; the reading starts at #80.
+  const order = ["base", "decay", "quality", "cooldown", "bonus"] as const;
 
   for (const line of calculation.lines) {
     expect(line.text.trim()).toBe(line.text);
@@ -474,7 +476,8 @@ describe("the acceptance criteria of #11", () => {
     // Four hours of Escola already in the day at a 2h step: the fifth hour is
     // two halvings deep, so 1,0 becomes 0,25.
     expect(calculation.hours).toBe(0.25);
-    expect(steps(calculation)).toStrictEqual(["base", "decay"]);
+    // The fifth hour sits in one band (um quarto), so it is the single base line.
+    expect(steps(calculation)).toStrictEqual(["base"]);
 
     // And the half of D5 that is actually reachable: a log with no minutes puts
     // nothing in the bucket, whatever its activity is.
@@ -844,22 +847,27 @@ describe("the four rules composed, all sixteen ways", () => {
 
       expect(calculation.hours).toBe(testCase.hours);
 
-      // D7's chain, written out: base → grade → cooldown → decay → bonus, with
-      // the steps that moved nothing left off the screen.
+      // The chain, written out: the earning band by band (base, then its decay
+      // bands) first, then grade → cooldown → bonus, with the steps that moved
+      // nothing left off the screen (#80). The product is unchanged (D7, D9).
       const chain: { step: ExplanationLine["step"]; total: number }[] = [];
-      let value = 4;
-      chain.push({ step: "base", total: value });
+      let value: number;
+      if (testCase.decay) {
+        // Two hours from an empty bucket on a one-hour step: one hour at full
+        // (the base band) and one at half (the decay band), summing to three
+        // quarters of the value — a positive addend, not a subtraction.
+        chain.push({ step: "base", total: 2 });
+        chain.push({ step: "decay", total: 3 });
+        value = 3;
+      } else {
+        chain.push({ step: "base", total: 4 });
+        value = 4;
+      }
       value *= testCase.quality;
       if (testCase.quality !== 1) chain.push({ step: "quality", total: value });
       if (testCase.cooldown) {
         value *= 0.5;
         chain.push({ step: "cooldown", total: value });
-      }
-      if (testCase.decay) {
-        // Two hours from an empty bucket on a one-hour step: one hour at full
-        // and one at half, so three quarters of the value survive.
-        value *= 0.75;
-        chain.push({ step: "decay", total: value });
       }
       if (testCase.bonus) {
         value *= 1.5;
@@ -885,14 +893,21 @@ describe("the four rules composed, all sixteen ways", () => {
       participatingCategoryIds,
     });
 
-    expect(steps(calculation).filter((step) => step === "decay").length).toBe(
-      8,
-    );
+    // Folded, never one line per band: twelve bands collapse to the base, the
+    // named bands, and a bounded tail, the ones that round to nothing left off (#80).
+    const decayCount = steps(calculation).filter(
+      (step) => step === "decay",
+    ).length;
+    expect(decayCount).toBeGreaterThan(0);
+    expect(decayCount).toBeLessThanOrEqual(8);
     expect(steps(calculation)[0]).toBe("base");
-    expect(steps(calculation)[1]).toBe("quality");
-    expect(steps(calculation)[2]).toBe("cooldown");
-    expect(steps(calculation).at(-1)).toBe("bonus");
-    // No line of the eight may claim the hour is worth nothing (D2).
+    // The multipliers follow the band-by-band earning, in D7's order.
+    expect(steps(calculation).slice(-3)).toStrictEqual([
+      "quality",
+      "cooldown",
+      "bonus",
+    ]);
+    // No line may claim the hour is worth nothing (D2).
     expect(texts(calculation).join(" ")).not.toMatch(/\bnada\b/);
   });
 
@@ -1073,14 +1088,13 @@ describe("Kid1's Saturday", () => {
       "Futebol ou outro esporte coletivo, 2h × 1,5 — cheio",
     ]);
     expect(texts(book)).toStrictEqual([
-      "Ler livro, 1,5h × 1,5 — cheio",
-      "metade, de 1h a 2h de Mente no dia",
+      "Ler livro, 1h × 1,5 — cheio",
+      "metade, de 1h a 2h de Mente no dia — 0,5h × 0,75",
       "+50%, você variou de atividade hoje",
     ]);
     expect(texts(comics)).toStrictEqual([
-      "Ler quadrinhos ou HQ, 1h × 1,5 — você já fez 1,5h de Mente hoje",
-      "metade, de 1h a 2h de Mente no dia",
-      "um quarto, de 2h a 3h de Mente no dia",
+      "Ler quadrinhos ou HQ, 0,5h × 0,75 — metade, você já fez 1,5h de Mente hoje",
+      "um quarto, de 2h a 3h de Mente no dia — 0,5h × 0,375",
     ]);
 
     // Each line names only its own category's bucket: the match says "cheio" on
@@ -1142,7 +1156,7 @@ describe("Kid1's Saturday", () => {
 
     // Otherwise the base line is the only figure about the boy's own day.
     expect(midBucket.lines[0]?.text).toBe(
-      "Ler livro, 1h × 1,5 — você já fez 1,5h de Mente hoje",
+      "Ler livro, 0,5h × 0,75 — metade, você já fez 1,5h de Mente hoje",
     );
   });
 
@@ -1200,9 +1214,8 @@ describe("Kid1's Saturday", () => {
     });
 
     expect(texts(afterTwoHours)).toStrictEqual([
-      "Ler livro, 3h × 1,5 — você já fez 2h de Mente hoje",
-      "um quarto, de 2h a 3h de Mente no dia",
-      "um oitavo, de 3h a 4h de Mente no dia",
+      "Ler livro, 1h × 0,375 — um quarto, você já fez 2h de Mente hoje",
+      "um oitavo, de 3h a 4h de Mente no dia — 1h × 0,1875",
       "cada vez menos, de 4h a 5h de Mente no dia",
     ]);
   });
@@ -1311,7 +1324,8 @@ describe("the explanation, read as product", () => {
       // and still not "nada".
       expect(calculation.hours).toBeGreaterThanOrEqual(0);
       expect(texts(calculation).join(" ")).not.toMatch(/\bnada\b/);
-      expect(steps(calculation)).toContain("decay");
+      // One hour this deep is its own band, so the depth is named on the base line.
+      expect(texts(calculation).join(" ")).toMatch(/cada vez menos/);
     }
   });
 
@@ -1341,21 +1355,22 @@ describe("the explanation, read as product", () => {
         ],
       });
 
+      // One hour in a deeper bucket is a single band, so the word is on the base line.
       return present(
-        calculation.lines.find((line) => line.step === "decay"),
-        `a decay line on a bucket of ${bucketHours}h`,
+        calculation.lines[0],
+        `a base line on a bucket of ${bucketHours}h`,
       ).text;
     };
 
-    expect(bandAt(1)).toBe("metade, de 1h a 2h de Mente no dia");
-    expect(bandAt(2)).toBe("um quarto, de 2h a 3h de Mente no dia");
-    expect(bandAt(3)).toBe("um oitavo, de 3h a 4h de Mente no dia");
+    expect(bandAt(1)).toContain("metade");
+    expect(bandAt(2)).toContain("um quarto");
+    expect(bandAt(3)).toContain("um oitavo");
 
     // The fourth halving is where the words run out. Four hours of Mente in a
     // day is the rainy Sunday D2 argues from, not a corner case.
-    expect(bandAt(4)).toBe("cada vez menos, de 4h a 5h de Mente no dia");
-    expect(bandAt(8)).toBe("cada vez menos, de 8h a 9h de Mente no dia");
-    expect(bandAt(40)).toBe("cada vez menos, de 40h a 41h de Mente no dia");
+    expect(bandAt(4)).toContain("cada vez menos");
+    expect(bandAt(8)).toContain("cada vez menos");
+    expect(bandAt(40)).toContain("cada vez menos");
   });
 
   it("describes one depth of decay one way, however the entry reached it", () => {
@@ -1382,9 +1397,9 @@ describe("the explanation, read as product", () => {
       .map((line) => line.text);
 
     expect(decayLines).toStrictEqual([
-      "metade, de 1h a 2h de Mente no dia",
-      "um quarto, de 2h a 3h de Mente no dia",
-      "um oitavo, de 3h a 4h de Mente no dia",
+      "metade, de 1h a 2h de Mente no dia — 1h × 0,75",
+      "um quarto, de 2h a 3h de Mente no dia — 1h × 0,375",
+      "um oitavo, de 3h a 4h de Mente no dia — 1h × 0,1875",
       "cada vez menos, de 4h a 5h de Mente no dia",
       "cada vez menos, de 5h a 6h de Mente no dia",
       "cada vez menos, de 6h a 7h de Mente no dia",
