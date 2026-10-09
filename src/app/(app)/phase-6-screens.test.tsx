@@ -433,8 +433,9 @@ describe("a disabled activity reads as disabled in Configuração (#81, D14)", (
       <ActivityList category={MENTE} rows={[BOOK, OFF]} />,
     );
 
-    // It stays listed and managed here (D14), not hidden.
+    // It stays listed and managed here (D14), not hidden, and still a link to reactivate.
     expect(markup).toContain("Guardado · desativada");
+    expect(markup).toContain('href="/admin/configuracao/2/6"');
     // The #86 recede, not a fade: slate-100 floor, dashed edge, no opacity.
     expect(markup).toContain(DISABLED_SURFACE_CLASS);
     expect(markup).not.toContain("opacity");

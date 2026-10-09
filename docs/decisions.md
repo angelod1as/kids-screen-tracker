@@ -1321,6 +1321,14 @@ desativado que não tinha. O dono aprovou dentro da D42, sem afrouxar nada.
 desativado desbotando, o que a D42 proíbe, e exigiria uma sétima cor nos dois
 guardas.
 
+**Addendum (#81) — um token irmão para a linha que é link, não botão.** O #86 pôs
+o look num só token, `DISABLED_CONTROL_CLASS`, prefixado `disabled:`: a pseudo
+só dispara em controle de formulário. A linha de atividade desativada na
+Configuração é um `CardLink` (um `<Link>`, que nunca recebe o atributo
+`disabled`), então ganhou `DISABLED_SURFACE_CLASS` — as mesmas utilidades
+(`slate-100`, `border-dashed`, preto) sem o prefixo. Mesmo recuo, mesma régua,
+nenhuma cor nova; só o gancho muda. O dono aprovou dentro da D42.
+
 ---
 
 ### D43 — Produção só recebe o que passou pelo CI
