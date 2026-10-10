@@ -140,4 +140,18 @@ describe("the admin calculator picks a boy (#76)", () => {
     expect(options).toContain(seedActivity(FOOTBALL).activity.name);
     expect(options).not.toContain(seedActivity(BOOK).activity.name);
   });
+
+  it("says so when no boy is registered", async () => {
+    const emptyContainer = document.createElement("div");
+    document.body.append(emptyContainer);
+    const emptyRoot = createRoot(emptyContainer);
+    await act(async () => {
+      emptyRoot.render(<AdminCalculator dataByUserId={{}} kids={[]} />);
+    });
+
+    expect(emptyContainer.textContent).toContain("Nenhum menino cadastrado.");
+
+    act(() => emptyRoot.unmount());
+    emptyContainer.remove();
+  });
 });
