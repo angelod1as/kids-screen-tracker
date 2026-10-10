@@ -24,7 +24,7 @@ export default async function AdminConfigurationPage() {
 
       <CategoryList initial={categories} initialLocks={locks} />
 
-      {/* Escondida aqui, não na barra: o admin usa pra estimar, não todo dia (#76). */}
+      {/* Hidden here, not in the nav bar: the admin uses it to estimate, not every day (#76). */}
       <LinkButton href="/admin/calculadora" variant="secondary">
         Calculadora
       </LinkButton>
