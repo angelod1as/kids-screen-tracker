@@ -470,6 +470,123 @@ describe("an activity's description (#40)", () => {
   });
 });
 
+describe("an activity's observation prompt (#85)", () => {
+  function podcast(world: ActivityWorld, observationPrompt?: string | null) {
+    return {
+      categoryId: world.categoryId("Mente"),
+      name: "Podcast",
+      noteRequired: true,
+      observationPrompt,
+      calcMode: "duration" as const,
+      value: 1.5,
+      maxSessionMinutes: null,
+      minSessionMinutes: 5,
+      qualityGraded: false,
+      repeatCooldownDays: 0,
+      sortOrder: 9,
+    };
+  }
+
+  function promptOf(world: ActivityWorld, id: number) {
+    return listActivities(world.connection, world.categoryId("Mente")).find(
+      (row) => row.id === id,
+    )?.observationPrompt;
+  }
+
+  it("is stored trimmed, and read back by the Configuration list", () => {
+    const world = freshWorld();
+
+    try {
+      const id = createActivity(
+        world.connection,
+        podcast(world, "  O que você ouviu?  "),
+      );
+
+      expect(promptOf(world, id)).toBe("O que você ouviu?");
+    } finally {
+      world.connection.sqlite.close();
+    }
+  });
+
+  it("is null when missing or blank", () => {
+    const world = freshWorld();
+
+    try {
+      const missing = createActivity(world.connection, podcast(world));
+      const blank = createActivity(world.connection, podcast(world, "   "));
+
+      expect(promptOf(world, missing)).toBeNull();
+      expect(promptOf(world, blank)).toBeNull();
+    } finally {
+      world.connection.sqlite.close();
+    }
+  });
+
+  it("takes 200 characters and refuses 201", () => {
+    const world = freshWorld();
+
+    try {
+      const id = createActivity(
+        world.connection,
+        podcast(world, "x".repeat(200)),
+      );
+
+      expect(promptOf(world, id)).toHaveLength(200);
+      expect(() =>
+        updateActivity(world.connection, id, podcast(world, "x".repeat(201))),
+      ).toThrow(
+        "an observation prompt is at most 200 characters, received 201",
+      );
+    } finally {
+      world.connection.sqlite.close();
+    }
+  });
+
+  it("can be written, and cleared, with an entry waiting: it prices nothing (D37)", () => {
+    const world = freshWorld();
+
+    try {
+      const id = world.activityId("Ler livro");
+      const book = {
+        categoryId: world.categoryId("Mente"),
+        name: "Ler livro",
+        calcMode: "duration" as const,
+        value: 1.5,
+        maxSessionMinutes: 120,
+        minSessionMinutes: 5,
+        qualityGraded: false,
+        repeatCooldownDays: 0,
+        sortOrder: 1,
+      };
+
+      startTimer(
+        world.connection,
+        world.kidId,
+        id,
+        new Date("2026-09-13T12:00:00.000Z"),
+      );
+      stopTimer(
+        world.connection,
+        world.kidId,
+        null,
+        new Date("2026-09-13T13:00:00.000Z"),
+      );
+
+      updateActivity(world.connection, id, {
+        ...book,
+        observationPrompt: "Qual capítulo?",
+      });
+      expect(promptOf(world, id)).toBe("Qual capítulo?");
+
+      updateActivity(world.connection, id, { ...book, observationPrompt: "" });
+      expect(promptOf(world, id)).toBeNull();
+      expect(world.logRow(world.newestLogId()).status).toBe("pending");
+    } finally {
+      world.connection.sqlite.close();
+    }
+  });
+});
+
 describe("auditing and deleting never-used disabled activities (#83)", () => {
   function fileALog(world: ActivityWorld, name: string): void {
     startTimer(

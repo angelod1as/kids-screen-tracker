@@ -53,6 +53,8 @@ export type OpenSessionView = {
   minSessionMinutes: number;
   /** #44: *Enviar* waits for a note, and the screen says so first. */
   noteRequired?: boolean;
+  /** #85: replaces the generic observation prompt when set. */
+  observationPrompt?: string | null;
 };
 
 export type PendingProposal = {
@@ -272,6 +274,7 @@ function viewOf(read: TimerRead): OpenSessionView | null {
     maxSessionMinutes: open.activity.maxSessionMinutes,
     minSessionMinutes: open.activity.minSessionMinutes,
     noteRequired: open.activity.noteRequired,
+    observationPrompt: open.activity.observationPrompt,
   };
 }
 

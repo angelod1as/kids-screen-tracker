@@ -322,7 +322,9 @@ function Confirm({
         value={note}
       />
 
-      {missingNote ? <ErrorNote>{NOTE_REQUIRED_TEXT}</ErrorNote> : null}
+      {missingNote ? (
+        <ErrorNote>{open.observationPrompt ?? NOTE_REQUIRED_TEXT}</ErrorNote>
+      ) : null}
 
       <Button disabled={busy || missingNote} onClick={onConfirm} type="button">
         {short ? "Encerrar sem enviar" : "Enviar para aprovação"}
@@ -534,7 +536,11 @@ function RequestPanel({
             value={note}
           />
 
-          {missingNote ? <ErrorNote>{NOTE_REQUIRED_TEXT}</ErrorNote> : null}
+          {missingNote ? (
+            <ErrorNote>
+              {activity?.observationPrompt ?? NOTE_REQUIRED_TEXT}
+            </ErrorNote>
+          ) : null}
 
           <Button
             disabled={busy || !ready}

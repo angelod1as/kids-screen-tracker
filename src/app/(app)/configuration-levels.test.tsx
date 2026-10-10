@@ -283,6 +283,7 @@ describe("the activity's page, tapped into (#41)", () => {
       name: "Ler livro",
       description: null,
       noteRequired: false,
+      observationPrompt: null,
       calcMode: "duration",
       rate: 2,
       amount: null,

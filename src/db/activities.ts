@@ -31,6 +31,8 @@ export type ActivityRow = {
   description?: string | null;
   /** #44: the boy files it only with a note. Not a pricing field (D37). */
   noteRequired?: boolean;
+  /** #85: what the boy must explain; replaces the generic prompt. Null is blank. */
+  observationPrompt?: string | null;
   calcMode: "duration" | "fixed" | "delivery" | "free";
   /** Null only for `free`. */
   value: number | null;
@@ -54,6 +56,8 @@ export type ActivityInput = {
   description?: string | null;
   /** #44: absent is off. */
   noteRequired?: boolean;
+  /** #85: optional; blank is stored as null. */
+  observationPrompt?: string | null;
   calcMode: ActivityRow["calcMode"];
   /** D11. */
   value: number | null;
@@ -69,6 +73,9 @@ type Db = Connection["db"] | Transaction;
 
 /** #40: it sits under a picker on a phone, so shorter than `MAX_TEXT_LENGTH`. */
 export const MAX_DESCRIPTION_LENGTH = 200;
+
+/** #85: shown to the boy on the same phone surface as the description. */
+export const MAX_OBSERVATION_PROMPT_LENGTH = 200;
 
 /** So a raw POST cannot invent a fifth mode. */
 const CALC_MODES: readonly ActivityRow["calcMode"][] = [
@@ -90,6 +97,7 @@ export function listActivities(
       name: activities.name,
       description: activities.description,
       noteRequired: activities.noteRequired,
+      observationPrompt: activities.observationPrompt,
       calcMode: activities.calcMode,
       value: activities.value,
       maxSessionMinutes: activities.maxSessionMinutes,
@@ -135,6 +143,21 @@ function requireActivity(input: ActivityInput): ActivityInput {
   if (description !== null && description.length > MAX_DESCRIPTION_LENGTH) {
     throw new Error(
       `an activity description is at most ${MAX_DESCRIPTION_LENGTH} characters, received ${description.length}`,
+    );
+  }
+
+  if (input.observationPrompt != null) {
+    requireString(input.observationPrompt, "an observation prompt");
+  }
+
+  const observationPrompt = input.observationPrompt?.trim() || null;
+
+  if (
+    observationPrompt !== null &&
+    observationPrompt.length > MAX_OBSERVATION_PROMPT_LENGTH
+  ) {
+    throw new Error(
+      `an observation prompt is at most ${MAX_OBSERVATION_PROMPT_LENGTH} characters, received ${observationPrompt.length}`,
     );
   }
 
@@ -189,6 +212,7 @@ function requireActivity(input: ActivityInput): ActivityInput {
     name,
     description,
     noteRequired: input.noteRequired === true,
+    observationPrompt,
     calcMode: input.calcMode,
     value:
       input.value === null
@@ -264,6 +288,7 @@ export function createActivity(
         name: checked.name,
         description: checked.description,
         noteRequired: checked.noteRequired,
+        observationPrompt: checked.observationPrompt,
         calcMode: checked.calcMode,
         value: checked.value,
         maxSessionMinutes: checked.maxSessionMinutes,
@@ -326,6 +351,7 @@ export function updateActivity(
         name: checked.name,
         description: checked.description,
         noteRequired: checked.noteRequired,
+        observationPrompt: checked.observationPrompt,
         calcMode: checked.calcMode,
         value: checked.value,
         maxSessionMinutes: checked.maxSessionMinutes,

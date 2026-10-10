@@ -142,6 +142,8 @@ export const activities = sqliteTable(
     noteRequired: integer("note_required", { mode: "boolean" })
       .notNull()
       .default(false),
+    /** #85: replaces the generic observation prompt shown to the boy when set. */
+    observationPrompt: text("observation_prompt"),
     calcMode: text("calc_mode", {
       enum: ["duration", "fixed", "delivery", "free"],
     }).notNull(),
