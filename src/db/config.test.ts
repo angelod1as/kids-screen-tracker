@@ -4,6 +4,7 @@ import { join } from "node:path";
 
 import { afterEach, describe, expect, it } from "vitest";
 
+import { listActivities, setActivityActive } from "./activities";
 import {
   createCategory,
   listCategories,
@@ -164,5 +165,31 @@ describe("editing recalculates nothing already credited (D15)", () => {
     // And the scan is reading real code, not an emptied file.
     expect(source).toContain("categories");
     expect(source).toContain("activities");
+  });
+});
+
+describe("the activity count is the live ones, not every row (#82)", () => {
+  it("drops a switched-off activity from the count but not from the list", () => {
+    const world = freshWorld();
+
+    try {
+      const countOfMente = () =>
+        listCategories(world.connection).find((row) => row.name === MENTE)
+          ?.activityCount;
+
+      expect(countOfMente()).toBe(4);
+
+      setActivityActive(world.connection, world.activityId(BOOK), false);
+
+      expect(countOfMente()).toBe(3);
+      // D14: the off activity stays listed in Configuração; only the number drops.
+      expect(
+        listActivities(world.connection, world.categoryId(MENTE)).map(
+          (row) => row.name,
+        ),
+      ).toContain(BOOK);
+    } finally {
+      world.connection.sqlite.close();
+    }
   });
 });

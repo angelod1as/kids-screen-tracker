@@ -31,7 +31,7 @@ export type CategoryRow = {
   alternationBonusPct: number;
   sortOrder: number;
   active: boolean;
-  /** So switching a category off says what leaves the pickers with it (D14). */
+  /** Live activities only (#82): an off one is already out of the pickers (D14). */
   activityCount: number;
 };
 
@@ -62,7 +62,14 @@ export function listCategories(connection: Connection): CategoryRow[] {
       activityCount: count(activities.id),
     })
     .from(categories)
-    .leftJoin(activities, eq(activities.categoryId, categories.id))
+    .leftJoin(
+      activities,
+      // #82: live activities only; an off one already left the pickers (D14).
+      and(
+        eq(activities.categoryId, categories.id),
+        eq(activities.active, true),
+      ),
+    )
     .groupBy(categories.id)
     .orderBy(
       desc(categories.active),
