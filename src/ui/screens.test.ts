@@ -97,6 +97,7 @@ const ENTRIES: LedgerEntry[] = [
     occurredOn: "2026-09-02",
     at: Date.parse("2026-09-02T20:00:00Z"),
     label: "Xbox",
+    observation: null,
     override: null,
     voided: null,
     decidedBy: "Admin1",
@@ -108,6 +109,7 @@ const ENTRIES: LedgerEntry[] = [
     occurredOn: "2026-09-01",
     at: Date.parse("2026-09-01T15:00:00Z"),
     label: "Ler livro",
+    observation: null,
     override: null,
     voided: null,
     decidedBy: "Admin1",
@@ -119,6 +121,7 @@ const ENTRIES: LedgerEntry[] = [
     occurredOn: "2026-08-31",
     at: Date.parse("2026-08-31T12:30:00Z"),
     label: "Não usou",
+    observation: null,
     override: null,
     voided: null,
     decidedBy: "Admin1",
@@ -213,6 +216,37 @@ describe("the extract (#16)", () => {
 
     expect(empty.filter((element) => element.type === "li")).toEqual([]);
   });
+
+  it("surfaces the boy's observation under an earn, and nothing when there is none (#101)", () => {
+    const base: LedgerEntry = {
+      id: 60,
+      kind: "earn",
+      hours: 2,
+      occurredOn: "2026-09-01",
+      at: Date.parse("2026-09-01T15:00:00Z"),
+      label: "Ler livro",
+      observation: "Li dois capítulos",
+      override: null,
+      voided: null,
+      decidedBy: "Admin1",
+    };
+
+    const withNote = renderToStaticMarkup(
+      EntryList({ emptyText: "vazio", entries: [base] }),
+    );
+    const withoutNote = renderToStaticMarkup(
+      EntryList({
+        emptyText: "vazio",
+        entries: [{ ...base, observation: null }],
+      }),
+    );
+    const spanCount = (markup: string) => (markup.match(/<span/g) ?? []).length;
+
+    expect(withNote).toContain("Li dois capítulos");
+    // No note renders one span fewer, and never an empty one that reads as a line that failed to load.
+    expect(spanCount(withNote)).toBe(spanCount(withoutNote) + 1);
+    expect(withoutNote).not.toMatch(/<span[^>]*><\/span>/);
+  });
 });
 
 const ZERO: ZeroEntry = {
@@ -221,6 +255,7 @@ const ZERO: ZeroEntry = {
   occurredOn: "2026-09-03",
   at: Date.parse("2026-09-03T13:00:00Z"),
   label: "Nota zero",
+  observation: null,
   override: null,
   voided: null,
   decidedBy: "Admin1",
@@ -299,6 +334,7 @@ describe("the extract tabs (#78)", () => {
       occurredOn: "2026-09-01",
       at: 0,
       label: "x",
+      observation: null,
       override: null,
       voided: null,
       decidedBy: null,
@@ -315,6 +351,7 @@ describe("the extract tabs (#78)", () => {
       occurredOn: "2026-09-01",
       at: 0,
       label: "Ler livro",
+      observation: null,
       override: null,
       voided: { on: "2026-09-05", at: 0, by: "Admin1" },
       decidedBy: "Admin1",
