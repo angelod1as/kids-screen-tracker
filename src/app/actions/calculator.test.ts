@@ -507,6 +507,15 @@ describe("the calculator refuses the other boy's day (#13, #17)", () => {
       fetchCalculatorDataAction(idOf("kid1")),
     ).resolves.toMatchObject({ userId: idOf("kid1") });
   });
+
+  // The admin calculator (#76) picks either boy, so the admin reaches both days.
+  it("lets an admin simulate against the other boy too", async () => {
+    mocked.username = "admin1";
+
+    await expect(
+      fetchCalculatorDataAction(idOf("kid2")),
+    ).resolves.toMatchObject({ userId: idOf("kid2") });
+  });
 });
 
 describe("the calculator writes nothing (#17)", () => {

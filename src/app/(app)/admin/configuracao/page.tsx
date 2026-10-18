@@ -1,3 +1,4 @@
+import { LinkButton } from "../../../../ui/link-button";
 import { HEADING_CLASS } from "../../../../ui/style";
 import {
   fetchCategoriesAction,
@@ -22,6 +23,11 @@ export default async function AdminConfigurationPage() {
       </p>
 
       <CategoryList initial={categories} initialLocks={locks} />
+
+      {/* Hidden here, not in the nav bar: the admin uses it to estimate, not every day (#76). */}
+      <LinkButton href="/admin/calculadora" variant="secondary">
+        Calculadora
+      </LinkButton>
     </section>
   );
 }
