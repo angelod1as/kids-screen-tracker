@@ -131,7 +131,7 @@ describe("countPendingSpendRequests", () => {
       { hours: 1, destination: "TV" },
       NOW,
     );
-    rejectSpendRequest(connection, requestId, ADMIN1, NOW);
+    rejectSpendRequest(connection, requestId, ADMIN1, null, NOW);
 
     expect(countPendingSpendRequests(connection)).toBe(1);
   });
@@ -228,7 +228,7 @@ describe("rejectSpendRequest", () => {
       NOW,
     );
 
-    rejectSpendRequest(connection, requestId, ADMIN1, NOW);
+    rejectSpendRequest(connection, requestId, ADMIN1, null, NOW);
 
     const request = connection.db
       .select()
@@ -241,5 +241,24 @@ describe("rejectSpendRequest", () => {
       ledgerId: null,
     });
     expect(connection.db.select().from(ledger).all()).toEqual([]);
+  });
+
+  it("keeps the reason beside the boy's comment, never over it (#20)", () => {
+    const connection = fresh();
+    const { requestId } = requestSpend(
+      connection,
+      KID1,
+      { hours: 2, destination: "Xbox", note: "quero jogar" },
+      NOW,
+    );
+
+    rejectSpendRequest(connection, requestId, ADMIN1, "agora não", NOW);
+
+    const request = connection.db
+      .select()
+      .from(spendRequests)
+      .where(eq(spendRequests.id, requestId))
+      .get();
+    expect(request?.note).toBe("quero jogar\nRecusado: agora não");
   });
 });

@@ -407,6 +407,7 @@ function rejectedSpendEntries(
     .select({
       id: spendRequests.id,
       destination: spendRequests.destination,
+      note: spendRequests.note,
       createdAt: spendRequests.createdAt,
       reviewedAt: spendRequests.reviewedAt,
       reviewedBy: reviewer.displayName,
@@ -441,7 +442,8 @@ function rejectedSpendEntries(
           at: row.reviewedAt.getTime(),
           label: row.destination,
           durationMinutes: null,
-          reason: null,
+          // #20: the adult's reason, pulled back out of the note (#72).
+          reason: rejectionReason(row.note),
           decidedBy: row.reviewedBy,
           fromSpendRequest: true,
         },

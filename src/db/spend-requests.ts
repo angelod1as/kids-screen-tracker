@@ -1,10 +1,11 @@
 import { and, asc, count, eq } from "drizzle-orm";
 
 import { saoPauloDay } from "../engine/day";
-import type { Connection } from "./client";
+import type { Connection, Transaction } from "./client";
 import { writeTransaction } from "./client";
 import { requireHours, requireString, requireText } from "./input";
 import { requireActiveKid } from "./people";
+import { rejectionNote } from "./queue";
 import { ledger, spendRequests, users } from "./schema";
 
 /**
@@ -131,10 +132,7 @@ export function pendingSpendRequest(
 }
 
 /** The pending row, or a refusal naming it as the queue does (D32's manner). */
-function takePending(
-  tx: Parameters<Parameters<Connection["db"]["transaction"]>[0]>[0],
-  requestId: number,
-) {
+function takePending(tx: Transaction, requestId: number) {
   const request = tx
     .select()
     .from(spendRequests)
@@ -204,19 +202,25 @@ export function approveSpendRequest(
   });
 }
 
-/** D19: no ledger row, nothing moves. */
+/**
+ * D19: no ledger row, nothing moves. The reason is optional (#20) and appended
+ * to the boy's own comment, never over it — the same discipline as the D49
+ * rejection (`rejectionNote`), so the boy sees why he was turned down.
+ */
 export function rejectSpendRequest(
   connection: Connection,
   requestId: number,
   reviewerId: number,
+  reason: string | null,
   now: Date,
 ): void {
   writeTransaction(connection, (tx) => {
-    takePending(tx, requestId);
+    const request = takePending(tx, requestId);
 
     tx.update(spendRequests)
       .set({
         status: "rejected",
+        note: rejectionNote(request.note, reason),
         reviewedBy: reviewerId,
         reviewedAt: now,
       })

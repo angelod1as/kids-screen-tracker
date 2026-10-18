@@ -89,13 +89,29 @@ export async function approveSpendRequestAction(
   return { hours, balance: await fetchBalanceAction(userId) };
 }
 
+const MAX_REASON_LENGTH = 500;
+
 export async function rejectSpendRequestAction(
   requestId: number,
+  reason = "",
 ): Promise<void> {
   const session = await requireAdmin();
   const connection = getConnection();
 
-  rejectSpendRequest(connection, requestId, session.userId, new Date());
+  const trimmed = reason.trim();
+  if (trimmed.length > MAX_REASON_LENGTH) {
+    throw new Error(
+      `a reason is at most ${MAX_REASON_LENGTH} characters, received ${trimmed.length}`,
+    );
+  }
+
+  rejectSpendRequest(
+    connection,
+    requestId,
+    session.userId,
+    trimmed === "" ? null : trimmed,
+    new Date(),
+  );
   void notifySpendReviewed(connection, requestId);
 }
 

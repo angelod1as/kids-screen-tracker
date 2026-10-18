@@ -9,7 +9,7 @@ import { formatSignedHours } from "../../../../ui/dates";
 import { DeviceReminder } from "../../../../ui/device-reminder";
 import { ErrorNote } from "../../../../ui/error-note";
 import { failureText, previewFailureText } from "../../../../ui/failure";
-import { TimeFields } from "../../../../ui/field";
+import { Field, TimeFields } from "../../../../ui/field";
 import type { TypedTime } from "../../../../ui/hours";
 import { isZeroTime, parseTypedTime } from "../../../../ui/hours";
 import { Panel } from "../../../../ui/panel";
@@ -36,6 +36,7 @@ export function SpendRequestList({
 }) {
   const [requests, setRequests] = useState(initial);
   const [edits, setEdits] = useState<Record<number, TypedTime>>({});
+  const [reasons, setReasons] = useState<Record<number, string>>({});
   const [asked, setAsked] = useState<{
     requestId: number;
     time?: HoursMinutes;
@@ -101,9 +102,11 @@ export function SpendRequestList({
   }
 
   function reject(requestId: number) {
+    const reason = reasons[requestId] ?? "";
+
     startAction(async () => {
       try {
-        await rejectSpendRequestAction(requestId);
+        await rejectSpendRequestAction(requestId, reason);
         drop(requestId);
         setFailed(null);
       } catch (error) {
@@ -168,6 +171,22 @@ export function SpendRequestList({
                         setFailed(null);
                       }}
                       value={edits[request.id] ?? EMPTY_TIME}
+                    />
+
+                    <Field
+                      id={`motivo-${request.id}`}
+                      label="Motivo da recusa (opcional)"
+                      maxLength={500}
+                      onChange={(event) => {
+                        const { value } = event.target;
+                        setReasons((current) => ({
+                          ...current,
+                          [request.id]: value,
+                        }));
+                        setFailed(null);
+                      }}
+                      type="text"
+                      value={reasons[request.id] ?? ""}
                     />
 
                     <div className="flex flex-col gap-3">

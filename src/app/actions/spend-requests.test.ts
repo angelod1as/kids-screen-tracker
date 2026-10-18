@@ -195,7 +195,7 @@ describe("the admin decision (D58)", () => {
       { hours: 2, destination: "Xbox" },
       new Date(),
     );
-    await rejectSpendRequestAction(requestId);
+    await rejectSpendRequestAction(requestId, "agora não");
 
     mocked.username = "kid1";
     const [entry] = await fetchHistoryAction(KID1, 10);
@@ -203,6 +203,7 @@ describe("the admin decision (D58)", () => {
     expect(entry).toMatchObject({
       kind: "rejected",
       label: "Xbox",
+      reason: "agora não",
       decidedBy: "Admin1",
       fromSpendRequest: true,
     });
