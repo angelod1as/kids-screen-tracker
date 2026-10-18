@@ -15,14 +15,15 @@ export type Session = {
 
 /**
  * `targetUserId` names the subject, not the caller: a forged request is one
- * whose target is not the caller's. `proposeTimerLog` and `requestLog` are the
- * kid's only writes (D49).
+ * whose target is not the caller's. `proposeTimerLog`, `requestLog` and
+ * `requestSpend` are the kid's only writes (D49, D58).
  */
 export type AccessRequest =
   | { kind: "view"; targetUserId: number }
   | { kind: "simulate"; targetUserId: number }
   | { kind: "proposeTimerLog"; targetUserId: number }
   | { kind: "requestLog"; targetUserId: number }
+  | { kind: "requestSpend"; targetUserId: number }
   | { kind: "write"; targetUserId: number };
 
 export type AccessKind = AccessRequest["kind"];
@@ -38,6 +39,7 @@ const KID_ALLOWED_KINDS: readonly AccessKind[] = [
   "simulate",
   "proposeTimerLog",
   "requestLog",
+  "requestSpend",
 ];
 
 export function isAllowed(session: Session, request: AccessRequest): boolean {

@@ -563,6 +563,87 @@ export const pushSubscriptions = sqliteTable(
   ],
 );
 
+/**
+ * D58: the boy's own request to spend screen time. Born pending in the same
+ * review flow as his earns (D49); on approval it writes the `ledger` spend
+ * (`approveSpendRequest`). Not an activity: no engine, no bucket, no window.
+ */
+export const spendRequests = sqliteTable(
+  "spend_requests",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    userId: integer("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "restrict" }),
+    /** What the boy asked for; the adult may change it on approval (D58). */
+    hours: real("hours").notNull(),
+    /** Required (D58), unlike the adult's Tirar: the "what for" is the point. */
+    destination: text("destination").notNull(),
+    /** The boy's optional "why", shown on the spend row (D58). */
+    note: text("note"),
+    status: text("status", { enum: ["pending", "approved", "rejected"] })
+      .notNull()
+      .default("pending"),
+    /** The `ledger` spend written on approval; null while pending or rejected. */
+    ledgerId: integer("ledger_id").references(() => ledger.id, {
+      onDelete: "restrict",
+    }),
+    createdBy: integer("created_by")
+      .notNull()
+      .references(() => users.id, { onDelete: "restrict" }),
+    reviewedBy: integer("reviewed_by").references(() => users.id, {
+      onDelete: "restrict",
+    }),
+    createdAt: integer("created_at", { mode: "timestamp_ms" })
+      .notNull()
+      .default(sql`(cast(unixepoch('subsec') * 1000 as integer))`),
+    reviewedAt: integer("reviewed_at", { mode: "timestamp_ms" }),
+  },
+  (table) => [
+    index("spend_requests_user_idx").on(
+      table.userId,
+      table.createdAt,
+      table.id,
+    ),
+    index("spend_requests_status_idx").on(table.status),
+    // Each request credits one ledger row: a double tap would otherwise debit twice.
+    uniqueIndex("spend_requests_ledger_id_unique")
+      .on(table.ledgerId)
+      .where(sql`${table.ledgerId} is not null`),
+    check(
+      "spend_requests_status_check",
+      sql`${table.status} in ('pending', 'approved', 'rejected')`,
+    ),
+    check(
+      "spend_requests_hours_check",
+      numeric(table.hours, { min: 0, exclusiveMin: true, max: HOURS }),
+    ),
+    // D18, D19 shape: pending is the only unreviewed state; both stamps together.
+    check(
+      "spend_requests_review_check",
+      sql`(${table.status} = 'pending') = (${table.reviewedBy} is null) and (${table.reviewedBy} is null) = (${table.reviewedAt} is null)`,
+    ),
+    // The ledger spend exists exactly when approved (D58).
+    check(
+      "spend_requests_ledger_check",
+      sql`(${table.status} = 'approved') = (${table.ledgerId} is not null)`,
+    ),
+    check(
+      "spend_requests_created_at_check",
+      numeric(table.createdAt, { min: 0, max: INSTANT, integers: true }),
+    ),
+    check(
+      "spend_requests_reviewed_at_check",
+      numeric(table.reviewedAt, {
+        min: 0,
+        max: INSTANT,
+        integers: true,
+        nullable: true,
+      }),
+    ),
+  ],
+);
+
 export type User = typeof users.$inferSelect;
 export type NewUser = typeof users.$inferInsert;
 export type Category = typeof categories.$inferSelect;
@@ -578,3 +659,5 @@ export type NewRegime = typeof regimes.$inferInsert;
 export type Timer = typeof timers.$inferSelect;
 export type NewTimer = typeof timers.$inferInsert;
 export type PushSubscriptionRow = typeof pushSubscriptions.$inferSelect;
+export type SpendRequest = typeof spendRequests.$inferSelect;
+export type NewSpendRequest = typeof spendRequests.$inferInsert;

@@ -161,6 +161,28 @@ export const ACCESS_CASES: readonly AccessCase[] = [
   },
 
   {
+    rule: "the spend request is the kid's third write (D58)",
+    name: "Kid1 requests a spend for himself",
+    session: KID1,
+    request: { kind: "requestSpend", targetUserId: KID1.userId },
+    allowed: true,
+  },
+  {
+    rule: "the spend request is the kid's third write (D58)",
+    name: "Kid1 requests a spend in Kid2's name",
+    session: KID1,
+    request: { kind: "requestSpend", targetUserId: KID2.userId },
+    allowed: false,
+  },
+  {
+    rule: "the spend request is the kid's third write (D58)",
+    name: "Kid2 requests a spend in an admin's name",
+    session: KID2,
+    request: { kind: "requestSpend", targetUserId: ADMIN1.userId },
+    allowed: false,
+  },
+
+  {
     rule: "admin reads and changes everything of both",
     name: "Admin1 views Kid1",
     session: ADMIN1,

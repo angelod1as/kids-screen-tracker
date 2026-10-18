@@ -16,7 +16,7 @@ describe.each(RULES)("%s", (rule) => {
 });
 
 describe("every case of the table is exercised", () => {
-  it("covers all five kinds of request for a kid", () => {
+  it("covers all six kinds of request for a kid", () => {
     // A kind nobody wrote a case for is a kind whose rule nothing holds. The
     // sabotage matrix cannot catch a mutation in a branch the table never
     // reaches, so the table has to reach all of them.
@@ -29,6 +29,7 @@ describe("every case of the table is exercised", () => {
     expect([...kinds].sort()).toEqual([
       "proposeTimerLog",
       "requestLog",
+      "requestSpend",
       "simulate",
       "view",
       "write",

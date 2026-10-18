@@ -6,7 +6,13 @@ import { alias } from "drizzle-orm/sqlite-core";
 import { requireAccess } from "../../auth/guard";
 import { getDb } from "../../db";
 import { rejectionReason } from "../../db/queue";
-import { activities, activityLogs, ledger, users } from "../../db/schema";
+import {
+  activities,
+  activityLogs,
+  ledger,
+  spendRequests,
+  users,
+} from "../../db/schema";
 import { saoPauloDay } from "../../engine/day";
 import { HISTORY_LIMIT, MAX_HISTORY_DAYS } from "../../ui/entries";
 
@@ -28,6 +34,8 @@ export type LedgerEntry = {
   voided: VoidMark | null;
   /** The adult responsible (emenda à D50, #71): reviewer on a decided entry, creator on a spend or refund. */
   decidedBy: string | null;
+  /** D58: the boy who asked, when this spend came from his request; absent otherwise. */
+  requestedBy?: string | null;
 };
 
 /** D52: shown, not hidden, so the boy can see why the balance moved. */
@@ -246,6 +254,9 @@ function ledgerEntries(
       reviewedBy: reviewer.displayName,
       reviewedAt: activityLogs.reviewedAt,
       createdByName: creator.displayName,
+      // D58: a spend linked from a request carries the boy's ask and comment.
+      requestedBy: requester.displayName,
+      requestNote: spendRequests.note,
     })
     .from(ledger)
     // Left joins: `activity_log_id` is null on every `spend` and `refund` (D10).
@@ -253,6 +264,9 @@ function ledgerEntries(
     .leftJoin(activities, eq(activityLogs.activityId, activities.id))
     .leftJoin(reviewer, eq(reviewer.id, activityLogs.reviewedBy))
     .leftJoin(creator, eq(creator.id, ledger.createdBy))
+    // D58: null on every spend that is not a boy's request.
+    .leftJoin(spendRequests, eq(spendRequests.ledgerId, ledger.id))
+    .leftJoin(requester, eq(requester.id, spendRequests.userId))
     .leftJoin(
       voider,
       eq(
@@ -287,12 +301,19 @@ function ledgerEntries(
       // Activity first (D14 keeps a deactivated one readable), then the
       // destination, then the note that names a refund (#24).
       label: row.activityName ?? row.destination ?? row.note ?? NO_LABEL,
-      // #101: only an earn carries a log; a spend or refund has none.
-      observation: row.kind === "earn" ? row.logNote : null,
+      // #101, D58: an earn carries its log note; a requested spend the boy's comment.
+      observation:
+        row.kind === "earn"
+          ? row.logNote
+          : row.requestedBy === null
+            ? null
+            : row.requestNote,
       override: adultValue(row),
       voided: voidMark(row.voidedAt, row.voidedBy),
       // #71: a spend or refund has no reviewer; name the adult who made it.
       decidedBy: row.reviewedBy ?? row.createdByName,
+      // D58: present only on a spend that came from the boy's request.
+      requestedBy: row.requestedBy,
     },
   }));
 }
@@ -353,6 +374,7 @@ function rejectedEntries(
 const voider = alias(users, "voider");
 const reviewer = alias(users, "reviewer");
 const creator = alias(users, "creator");
+const requester = alias(users, "requester");
 
 /** D52. `at` is epoch ms: the `coalesce` above comes back unmapped. */
 function voidMark(at: number | null, by: string | null): VoidMark | null {

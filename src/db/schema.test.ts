@@ -89,6 +89,7 @@ describe("migrations", () => {
       "ledger",
       "push_subscriptions",
       "regimes",
+      "spend_requests",
       "timers",
       "users",
     ]);

@@ -85,8 +85,8 @@ export function EntryList({
                 {entry.label}
               </span>
               <span className={`${META_CLASS} text-black`}>
-                {kindLabel(entry.kind)} · {formatDay(entry.occurredOn)} às{" "}
-                {formatTime(entry.at)}
+                {entry.requestedBy ? "Usado" : kindLabel(entry.kind)} ·{" "}
+                {formatDay(entry.occurredOn)} às {formatTime(entry.at)}
                 {nameDecider && entry.override !== null
                   ? ` · ${overriddenText(entry.decidedBy)}`
                   : ""}
@@ -95,9 +95,16 @@ export function EntryList({
               {entry.override === null ? null : (
                 <AdultValueText override={entry.override} />
               )}
-              {nameDecider &&
-              entry.override === null &&
-              entry.decidedBy !== null ? (
+              {nameDecider && entry.requestedBy ? (
+                <span className={`${META_CLASS} text-black`}>
+                  Pedido por {entry.requestedBy}
+                  {entry.decidedBy === null
+                    ? ""
+                    : `, aprovado por ${entry.decidedBy}`}
+                </span>
+              ) : nameDecider &&
+                entry.override === null &&
+                entry.decidedBy !== null ? (
                 <ReviewerLine
                   by={entry.decidedBy}
                   className="text-black"
