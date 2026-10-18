@@ -9,7 +9,9 @@ vi.mock("../../../actions/spend-requests", () => ({
   rejectSpendRequestAction: async () => undefined,
 }));
 
-const { SpendRequestList } = await import("./spend-request-list");
+const { SpendRequestList, correctionInvalid } = await import(
+  "./spend-request-list"
+);
 
 function request(
   overrides: Partial<PendingSpendRequest> = {},
@@ -42,5 +44,14 @@ describe("the spend-request list on the queue (D58)", () => {
 
   it("renders nothing when there are no requests", () => {
     expect(renderToStaticMarkup(<SpendRequestList initial={[]} />)).toBe("");
+  });
+});
+
+describe("correctionInvalid", () => {
+  it("is false for nothing typed or a zero, true for an unparseable time", () => {
+    expect(correctionInvalid(undefined)).toBe(false);
+    expect(correctionInvalid({ hours: "", minutes: "" })).toBe(false);
+    expect(correctionInvalid({ hours: "1", minutes: "30" })).toBe(false);
+    expect(correctionInvalid({ hours: "1", minutes: "75" })).toBe(true);
   });
 });

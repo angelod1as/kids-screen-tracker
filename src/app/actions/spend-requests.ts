@@ -117,7 +117,7 @@ export async function rejectSpendRequestAction(
 
 /**
  * D53's manner: both balances read now, on the server, nothing written. The
- * adult sees the balance go red (D42) before confirming (D58, Q2 of the grill).
+ * adult sees the balance go red (D42) before confirming (D58).
  */
 export type SpendApprovalPreview = MovementPreview & { destination: string };
 

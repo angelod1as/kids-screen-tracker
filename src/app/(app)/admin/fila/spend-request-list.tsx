@@ -11,7 +11,7 @@ import { ErrorNote } from "../../../../ui/error-note";
 import { failureText, previewFailureText } from "../../../../ui/failure";
 import { Field, TimeFields } from "../../../../ui/field";
 import type { TypedTime } from "../../../../ui/hours";
-import { isZeroTime, parseTypedTime } from "../../../../ui/hours";
+import { isBlankTime, isZeroTime, parseTypedTime } from "../../../../ui/hours";
 import { Panel } from "../../../../ui/panel";
 import { META_CLASS, READOUT_CLASS, ROW_CLASS } from "../../../../ui/style";
 import type { SpendApprovalPreview } from "../../../actions/spend-requests";
@@ -28,6 +28,17 @@ import {
  */
 
 const EMPTY_TIME: TypedTime = { hours: "", minutes: "" };
+
+/**
+ * A correction that was typed, is not blank, and does not parse (minutes ≥ 60,
+ * say): distinct from a blank field, so it blocks instead of silently falling
+ * back to the asked amount.
+ */
+export function correctionInvalid(typed: TypedTime | undefined): boolean {
+  return (
+    typed !== undefined && !isBlankTime(typed) && parseTypedTime(typed) === null
+  );
+}
 
 export function SpendRequestList({
   initial,
@@ -173,6 +184,10 @@ export function SpendRequestList({
                       value={edits[request.id] ?? EMPTY_TIME}
                     />
 
+                    {correctionInvalid(edits[request.id]) ? (
+                      <ErrorNote>Minutos de 0 a 59.</ErrorNote>
+                    ) : null}
+
                     <Field
                       id={`motivo-${request.id}`}
                       label="Motivo da recusa (opcional)"
@@ -191,7 +206,7 @@ export function SpendRequestList({
 
                     <div className="flex flex-col gap-3">
                       <Button
-                        disabled={busy}
+                        disabled={busy || correctionInvalid(edits[request.id])}
                         onClick={() => ask(request.id)}
                         type="button"
                       >

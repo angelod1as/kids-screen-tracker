@@ -3,7 +3,7 @@ import { and, asc, count, eq } from "drizzle-orm";
 import { saoPauloDay } from "../engine/day";
 import type { Connection, Transaction } from "./client";
 import { writeTransaction } from "./client";
-import { requireHours, requireString, requireText } from "./input";
+import { isBlankNote, requireHours, requireString, requireText } from "./input";
 import { requireActiveKid } from "./people";
 import { rejectionNote } from "./queue";
 import { ledger, spendRequests, users } from "./schema";
@@ -48,7 +48,9 @@ export function requestSpend(
   requireString(request.destination, "a destination");
   const destination = request.destination.trim();
   requireText(destination, "a destination");
-  if (destination === "") {
+  // Not `=== ""`: `trim` keeps format characters (U+200B), so the required
+  // "what for" would be blank in name only (D33, D58). Same guard as a note.
+  if (isBlankNote(destination)) {
     throw new Error("a spend request needs a destination (D58)");
   }
 

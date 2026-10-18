@@ -78,6 +78,14 @@ describe("requestSpend", () => {
     ).toThrow(/destination/);
   });
 
+  it("refuses a destination blank but for format characters (D33)", () => {
+    const connection = fresh();
+
+    expect(() =>
+      requestSpend(connection, KID1, { hours: 1, destination: "​" }, NOW),
+    ).toThrow(/destination/);
+  });
+
   it("refuses an inactive or unknown kid (D33)", () => {
     const connection = fresh();
 
