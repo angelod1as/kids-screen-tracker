@@ -13,6 +13,7 @@ export type NavItem = {
 const KID_NAVIGATION: readonly NavItem[] = [
   { href: "/menino", label: "Início" },
   { href: "/menino/cronometro", label: "Cronômetro" },
+  { href: "/menino/usar", label: "Usar" },
   { href: "/menino/calculadora", label: "Calculadora" },
   { href: "/menino/historico", label: "Histórico" },
 ];

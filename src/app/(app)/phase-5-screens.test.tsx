@@ -192,7 +192,7 @@ describe("releasing hours (#23)", () => {
       await markup(() =>
         AdminReleasePage({ searchParams: Promise.resolve({}) }),
       ),
-    ).not.toContain("nos aparelhos: ligue");
+    ).not.toContain("Agora ligue o aparelho");
   });
 
   /** A button carries its boy's name and `aria-pressed` tells which is chosen. */

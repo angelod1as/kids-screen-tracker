@@ -5,6 +5,7 @@ import { Button } from "../../../../ui/button";
 import type { Choice } from "../../../../ui/choice";
 import { ChoiceGroup } from "../../../../ui/choice";
 import { ConfirmMovement } from "../../../../ui/confirm-movement";
+import { DeviceReminder } from "../../../../ui/device-reminder";
 import { ErrorNote } from "../../../../ui/error-note";
 import { failureText, previewFailureText } from "../../../../ui/failure";
 import { Field, TimeFields } from "../../../../ui/field";
@@ -145,10 +146,7 @@ export function ReleaseForm({
             >
               {formatHours(done.balance)}
             </p>
-            <p className="text-base text-black">
-              Agora, nos aparelhos: ligue o que ele vai usar e ajuste o limite à
-              mão. O app não liga nem desliga nada — ele só guarda o saldo.
-            </p>
+            <DeviceReminder />
           </section>
         )}
 

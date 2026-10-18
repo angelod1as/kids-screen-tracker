@@ -6,6 +6,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import type { Session } from "../../auth/access";
 import type { QueueEntry } from "../../db/queue";
+import type { PendingSpendRequest } from "../../db/spend-requests";
 import { PENDING_BG_CLASS } from "../../ui/style";
 import type { TimerScreenData } from "../actions/timer";
 
@@ -19,6 +20,7 @@ const mocked = vi.hoisted(() => ({
   timerFor: [] as number[],
   timer: null as TimerScreenData | null,
   queue: { entries: [] as QueueEntry[], activities: [] },
+  spendRequests: [] as PendingSpendRequest[],
 }));
 
 vi.mock("../../auth/guard", () => ({
@@ -41,6 +43,10 @@ vi.mock("../actions/queue", () => ({
   fetchQueueAction: async () => mocked.queue,
   approveLogAction: async () => mocked.queue,
   rejectLogAction: async () => mocked.queue,
+}));
+
+vi.mock("../actions/spend-requests", () => ({
+  fetchSpendRequestsAction: async () => mocked.spendRequests,
 }));
 
 const KidTimerPage = (await import("./menino/cronometro/page")).default;

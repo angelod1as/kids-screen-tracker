@@ -9,10 +9,11 @@ import {
 } from "./navigation";
 
 describe("the navigation is different per role (#14)", () => {
-  it("gives the boy his four screens", () => {
+  it("gives the boy his five screens", () => {
     expect(navigationFor("kid")).toEqual([
       { href: "/menino", label: "Início" },
       { href: "/menino/cronometro", label: "Cronômetro" },
+      { href: "/menino/usar", label: "Usar" },
       { href: "/menino/calculadora", label: "Calculadora" },
       { href: "/menino/historico", label: "Histórico" },
     ]);
@@ -58,6 +59,7 @@ describe("the navigation is different per role (#14)", () => {
     expect(labels).toEqual([
       "Início",
       "Cronômetro",
+      "Usar",
       "Calculadora",
       "Histórico",
       "Início",
