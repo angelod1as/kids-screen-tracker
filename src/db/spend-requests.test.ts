@@ -11,6 +11,7 @@ import { migrateDatabase } from "./migrate";
 import { ledger, spendRequests } from "./schema";
 import {
   approveSpendRequest,
+  countPendingSpendRequests,
   listPendingSpendRequests,
   rejectSpendRequest,
   requestSpend,
@@ -117,6 +118,22 @@ describe("listPendingSpendRequests", () => {
     approveSpendRequest(connection, requestId, ADMIN1, {}, NOW);
 
     expect(listPendingSpendRequests(connection)).toEqual([]);
+  });
+});
+
+describe("countPendingSpendRequests", () => {
+  it("counts only the pending ones", () => {
+    const connection = fresh();
+    requestSpend(connection, KID1, { hours: 2, destination: "Xbox" }, NOW);
+    const { requestId } = requestSpend(
+      connection,
+      KID2,
+      { hours: 1, destination: "TV" },
+      NOW,
+    );
+    rejectSpendRequest(connection, requestId, ADMIN1, NOW);
+
+    expect(countPendingSpendRequests(connection)).toBe(1);
   });
 });
 

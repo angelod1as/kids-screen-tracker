@@ -157,6 +157,7 @@ describe("the server actions this app has", () => {
       "approveLogAction",
       "approveSpendRequestAction",
       "countPendingLogsAction",
+      "countPendingSpendRequestsAction",
       "createActivityAction",
       "createCategoryAction",
       "fetchActivitiesAction",

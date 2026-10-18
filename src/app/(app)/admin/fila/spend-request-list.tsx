@@ -5,12 +5,13 @@ import type { HoursMinutes } from "../../../../db/input";
 import type { PendingSpendRequest } from "../../../../db/spend-requests";
 import { Button } from "../../../../ui/button";
 import { ConfirmMovement } from "../../../../ui/confirm-movement";
+import { formatSignedHours } from "../../../../ui/dates";
 import { DeviceReminder } from "../../../../ui/device-reminder";
 import { ErrorNote } from "../../../../ui/error-note";
 import { failureText, previewFailureText } from "../../../../ui/failure";
 import { TimeFields } from "../../../../ui/field";
 import type { TypedTime } from "../../../../ui/hours";
-import { formatHours, isZeroTime, parseTypedTime } from "../../../../ui/hours";
+import { isZeroTime, parseTypedTime } from "../../../../ui/hours";
 import { Panel } from "../../../../ui/panel";
 import { META_CLASS, READOUT_CLASS, ROW_CLASS } from "../../../../ui/style";
 import type { SpendApprovalPreview } from "../../../actions/spend-requests";
@@ -118,6 +119,7 @@ export function SpendRequestList({
           action="Usar"
           busy={busy}
           confirmLabel="Confirmar e aprovar"
+          destination={asked.preview.destination}
           onCancel={() => setAsked(null)}
           onConfirm={approve}
           preview={asked.preview}
@@ -187,8 +189,9 @@ export function SpendRequestList({
                     </div>
                   </div>
 
+                  {/* D58: the minus sign carries the direction, apart from an earn's plus. */}
                   <span className={`${READOUT_CLASS} shrink-0 text-black`}>
-                    {formatHours(request.hours)}
+                    {formatSignedHours(-request.hours)}
                   </span>
                 </li>
               ))}

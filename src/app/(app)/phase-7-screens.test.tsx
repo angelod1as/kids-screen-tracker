@@ -33,6 +33,10 @@ vi.mock("../actions/queue", () => ({
   countPendingLogsAction: async () => 0,
 }));
 
+vi.mock("../actions/spend-requests", () => ({
+  countPendingSpendRequestsAction: async () => 0,
+}));
+
 vi.mock("../actions/history", () => ({
   fetchHistoryDaysAction: async (userId: number, days: number) => {
     mocked.historyFor.push({ userId, days });

@@ -39,6 +39,10 @@ vi.mock("../actions/queue", () => ({
   countPendingLogsAction: async () => mocked.pending,
 }));
 
+vi.mock("../actions/spend-requests", () => ({
+  countPendingSpendRequestsAction: async () => 0,
+}));
+
 vi.mock("../actions/admin-timers", () => ({
   fetchRunningTimersAction: async () => [],
 }));

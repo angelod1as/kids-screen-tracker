@@ -14,6 +14,7 @@ import { seedWithTestUsers } from "../../db/test-users";
 import { fetchHistoryAction } from "./history";
 import {
   approveSpendRequestAction,
+  countPendingSpendRequestsAction,
   fetchSpendRequestsAction,
   previewSpendApprovalAction,
   rejectSpendRequestAction,
@@ -185,6 +186,37 @@ describe("the admin decision (D58)", () => {
       .all();
     expect(row).toMatchObject({ status: "rejected", ledgerId: null });
     expect(connection.db.select().from(ledger).all()).toEqual([]);
+  });
+
+  it("shows a rejected request in history, not only a push (D58, D52)", async () => {
+    const { requestId } = requestSpend(
+      connection,
+      KID1,
+      { hours: 2, destination: "Xbox" },
+      new Date(),
+    );
+    await rejectSpendRequestAction(requestId);
+
+    mocked.username = "kid1";
+    const [entry] = await fetchHistoryAction(KID1, 10);
+
+    expect(entry).toMatchObject({
+      kind: "rejected",
+      label: "Xbox",
+      decidedBy: "Admin1",
+      fromSpendRequest: true,
+    });
+  });
+
+  it("counts the pending requests for the admin home", async () => {
+    requestSpend(
+      connection,
+      KID1,
+      { hours: 2, destination: "Xbox" },
+      new Date(),
+    );
+
+    expect(await countPendingSpendRequestsAction()).toBe(1);
   });
 
   it("shows the approved spend in history as a request (D58)", async () => {

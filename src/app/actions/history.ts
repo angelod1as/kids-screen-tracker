@@ -71,6 +71,8 @@ export type RejectedEntry = {
   reason: string | null;
   /** Who refused it (emenda à D50). */
   decidedBy: string | null;
+  /** D58: a refused spend request, so its id is not an `activity_logs` id. */
+  fromSpendRequest?: boolean;
 };
 
 /** D10: an approved zero has no ledger row, so it is read off the log, like a refusal. */
@@ -131,6 +133,7 @@ export async function fetchHistoryAction(
   const rows: Placed<HistoryEntry>[] = [
     ...ledgerEntries(targetUserId, limit),
     ...rejectedEntries(targetUserId, limit),
+    ...rejectedSpendEntries(targetUserId, limit),
     ...zeroEntries(targetUserId, limit),
   ];
 
@@ -168,6 +171,7 @@ export async function fetchHistoryDaysAction(
   const rows: Placed<HistoryEntry>[] = [
     ...ledgerEntries(targetUserId, HISTORY_LIMIT, since),
     ...rejectedEntries(targetUserId, HISTORY_LIMIT, since),
+    ...rejectedSpendEntries(targetUserId, HISTORY_LIMIT, since),
     ...zeroEntries(targetUserId, HISTORY_LIMIT, since),
   ];
 
@@ -203,12 +207,30 @@ function entryDays(targetUserId: number, limit: number): string[] {
       ),
     );
 
-  return ledgerDays
+  const sqlDays = ledgerDays
     .union(logDays)
     .orderBy(sql`1 desc`)
     .limit(limit)
     .all()
     .map((row) => row.day);
+
+  // D58: a refused spend request has no `occurred_on` column; its day is the SP
+  // day of the decision, computed here rather than in SQL (D13). Few rows.
+  const spendDays = db
+    .select({ at: spendRequests.reviewedAt })
+    .from(spendRequests)
+    .where(
+      and(
+        eq(spendRequests.userId, targetUserId),
+        eq(spendRequests.status, "rejected"),
+      ),
+    )
+    .all()
+    .flatMap((row) => (row.at === null ? [] : [saoPauloDay(row.at)]));
+
+  return [...new Set([...sqlDays, ...spendDays])]
+    .sort((left, right) => (left < right ? 1 : left > right ? -1 : 0))
+    .slice(0, limit);
 }
 
 /** D8 read backwards: most recent first, and the same order on every visit. */
@@ -369,6 +391,63 @@ function rejectedEntries(
       decidedBy: row.reviewedBy,
     },
   }));
+}
+
+/**
+ * D58: a refused spend request, shown like a refused log so a rejection never
+ * disappears (D52: shown, not hidden). No `occurred_on` column, so the day is
+ * the São Paulo day of the decision, computed in the one place days are (D13).
+ */
+function rejectedSpendEntries(
+  targetUserId: number,
+  limit: number,
+  since?: string,
+): Placed<RejectedEntry>[] {
+  const rows = getDb()
+    .select({
+      id: spendRequests.id,
+      destination: spendRequests.destination,
+      createdAt: spendRequests.createdAt,
+      reviewedAt: spendRequests.reviewedAt,
+      reviewedBy: reviewer.displayName,
+    })
+    .from(spendRequests)
+    .leftJoin(reviewer, eq(reviewer.id, spendRequests.reviewedBy))
+    .where(
+      and(
+        eq(spendRequests.userId, targetUserId),
+        eq(spendRequests.status, "rejected"),
+      ),
+    )
+    .orderBy(desc(spendRequests.reviewedAt), desc(spendRequests.id))
+    .limit(limit)
+    .all();
+
+  return rows.flatMap((row) => {
+    if (row.reviewedAt === null) return [];
+
+    const occurredOn = saoPauloDay(row.reviewedAt);
+    if (since !== undefined && occurredOn < since) return [];
+
+    return [
+      {
+        occurredOn,
+        createdAt: row.createdAt.getTime(),
+        id: row.id,
+        entry: {
+          id: row.id,
+          kind: "rejected" as const,
+          occurredOn,
+          at: row.reviewedAt.getTime(),
+          label: row.destination,
+          durationMinutes: null,
+          reason: null,
+          decidedBy: row.reviewedBy,
+          fromSpendRequest: true,
+        },
+      },
+    ];
+  });
 }
 
 const voider = alias(users, "voider");

@@ -68,7 +68,7 @@ export function EntryList({
         entry.kind === "rejected" ? (
           <RejectedRow
             entry={entry}
-            key={`rejected-${entry.id}`}
+            key={`rejected-${entry.fromSpendRequest ? "spend-" : ""}${entry.id}`}
             nameDecider={nameDecider}
           />
         ) : entry.kind === "zero" ? (

@@ -1,4 +1,4 @@
-import { and, asc, eq } from "drizzle-orm";
+import { and, asc, count, eq } from "drizzle-orm";
 
 import { saoPauloDay } from "../engine/day";
 import type { Connection } from "./client";
@@ -94,6 +94,17 @@ export function listPendingSpendRequests(
     .where(eq(spendRequests.status, "pending"))
     .orderBy(asc(spendRequests.createdAt), asc(spendRequests.id))
     .all();
+}
+
+/** D58: the fila holds both, so the admin home's "N esperando" counts both. */
+export function countPendingSpendRequests(connection: Connection): number {
+  return (
+    connection.db
+      .select({ value: count() })
+      .from(spendRequests)
+      .where(eq(spendRequests.status, "pending"))
+      .get()?.value ?? 0
+  );
 }
 
 /** One pending request, for the approval preview (the resulting balance). */

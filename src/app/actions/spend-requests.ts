@@ -8,6 +8,7 @@ import { requireActiveKid } from "../../db/people";
 import type { PendingSpendRequest } from "../../db/spend-requests";
 import {
   approveSpendRequest,
+  countPendingSpendRequests,
   listPendingSpendRequests,
   pendingSpendRequest,
   rejectSpendRequest,
@@ -55,6 +56,13 @@ export async function fetchSpendRequestsAction(): Promise<
   await requireAdmin();
 
   return listPendingSpendRequests(getConnection());
+}
+
+/** Its own endpoint, beside `countPendingLogsAction`: the home sums the two. */
+export async function countPendingSpendRequestsAction(): Promise<number> {
+  await requireAdmin();
+
+  return countPendingSpendRequests(getConnection());
 }
 
 /** #48: the adult's corrected amount, if any, as hours and minutes (D58). */

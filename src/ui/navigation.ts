@@ -10,6 +10,10 @@ export type NavItem = {
   label: string;
 };
 
+/**
+ * Five cells: at 320 px each is 48,3 px, 0,3 px over the 48 px target
+ * (`nav.test.tsx`). A sixth would break it — the next kid screen goes elsewhere.
+ */
 const KID_NAVIGATION: readonly NavItem[] = [
   { href: "/menino", label: "Início" },
   { href: "/menino/cronometro", label: "Cronômetro" },

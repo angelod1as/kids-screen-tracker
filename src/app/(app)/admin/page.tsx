@@ -7,6 +7,7 @@ import { fetchRunningTimersAction } from "../../actions/admin-timers";
 import { fetchBalanceAction } from "../../actions/balance";
 import { listKidsAction } from "../../actions/people";
 import { countPendingLogsAction } from "../../actions/queue";
+import { countPendingSpendRequestsAction } from "../../actions/spend-requests";
 
 /**
  * Balances go through `fetchBalanceAction`, the endpoint a kid is refused on for
@@ -15,8 +16,9 @@ import { countPendingLogsAction } from "../../actions/queue";
  */
 export default async function AdminHomePage() {
   const kids = await listKidsAction();
-  const [pending, balances, running] = await Promise.all([
+  const [pendingLogs, pendingSpend, balances, running] = await Promise.all([
     countPendingLogsAction(),
+    countPendingSpendRequestsAction(),
     Promise.all(
       kids.map(async (kid) => ({
         ...kid,
@@ -25,6 +27,8 @@ export default async function AdminHomePage() {
     ),
     fetchRunningTimersAction(),
   ]);
+  // D58: the fila holds the earn queue and the spend requests both.
+  const pending = pendingLogs + pendingSpend;
   const timerStatusByKid = new Map(
     running.map((timer) => [timer.userId, timer.status] as const),
   );

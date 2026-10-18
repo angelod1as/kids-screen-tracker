@@ -35,7 +35,7 @@ describe("the spend-request list on the queue (D58)", () => {
     expect(markup).toContain("Kid1");
     expect(markup).toContain("Usar Xbox");
     expect(markup).toContain("quero jogar");
-    expect(markup).toContain("2h");
+    expect(markup).toContain("−2h");
     expect(markup).toContain("Aprovar");
     expect(markup).toContain("Recusar");
   });
