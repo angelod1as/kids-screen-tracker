@@ -20,6 +20,8 @@ export type LedgerEntry = {
   /** #77: the action's real instant — reviewed_at on an earn, created_at on a spend or refund (D13). */
   at: number;
   label: string;
+  /** #101: the boy's own note from the approved log; null on a spend or refund (no log). */
+  observation: string | null;
   /** D50: null when the rule priced it. */
   override: AdultValue | null;
   /** D52: null while it counts. */
@@ -72,6 +74,8 @@ export type ZeroEntry = {
   /** #77: reviewed_at, the instant the adult approved it (D13). */
   at: number;
   label: string;
+  /** #101: the boy's own note from the approved log. */
+  observation: string | null;
   override: AdultValue | null;
   voided: VoidMark | null;
   /** Who approved it (emenda à D50). */
@@ -229,6 +233,8 @@ function ledgerEntries(
       occurredOn: ledger.occurredOn,
       destination: ledger.destination,
       note: ledger.note,
+      // #101: the boy's own note, surfaced on an earn; the refund's note is already the label (#24).
+      logNote: activityLogs.note,
       createdAt: ledger.createdAt,
       activityName: activities.name,
       ...ADULT_VALUE_COLUMNS,
@@ -281,6 +287,8 @@ function ledgerEntries(
       // Activity first (D14 keeps a deactivated one readable), then the
       // destination, then the note that names a refund (#24).
       label: row.activityName ?? row.destination ?? row.note ?? NO_LABEL,
+      // #101: only an earn carries a log; a spend or refund has none.
+      observation: row.kind === "earn" ? row.logNote : null,
       override: adultValue(row),
       voided: voidMark(row.voidedAt, row.voidedBy),
       // #71: a spend or refund has no reviewer; name the adult who made it.
@@ -382,6 +390,8 @@ function zeroEntries(
       createdAt: activityLogs.createdAt,
       reviewedAt: activityLogs.reviewedAt,
       activityName: activities.name,
+      // #101: the boy's own note on an approved zero.
+      note: activityLogs.note,
       ...ADULT_VALUE_COLUMNS,
       voidedAt: activityLogs.voidedAt,
       voidedBy: voider.displayName,
@@ -417,6 +427,7 @@ function zeroEntries(
       occurredOn: row.occurredOn,
       at: (row.reviewedAt ?? row.createdAt).getTime(),
       label: row.activityName,
+      observation: row.note,
       override: adultValue(row),
       voided: voidMark(row.voidedAt?.getTime() ?? null, row.voidedBy),
       decidedBy: row.reviewedBy,

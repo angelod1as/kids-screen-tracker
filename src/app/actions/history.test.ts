@@ -872,6 +872,110 @@ describe("the history opens on the newest days with an entry (#64)", () => {
   });
 });
 
+describe("the history keeps the boy's observation after approval (#101)", () => {
+  const admin1 = () => idOf("admin1");
+
+  function addApprovedEarn(note: string | null): void {
+    const log = connection.db
+      .insert(activityLogs)
+      .values({
+        userId: idOf("kid1"),
+        activityId: 5,
+        categoryId: 2,
+        status: "approved",
+        source: "admin",
+        occurredOn: "2026-09-10",
+        durationMinutes: 60,
+        computedHours: 2,
+        note,
+        createdBy: admin1(),
+        reviewedBy: admin1(),
+        reviewedAt: new Date("2026-09-10T15:00:00Z"),
+        createdAt: new Date("2026-09-10T15:00:00Z"),
+      })
+      .returning({ id: activityLogs.id })
+      .get();
+
+    connection.db
+      .insert(ledger)
+      .values({
+        userId: idOf("kid1"),
+        kind: "earn",
+        hours: 2,
+        occurredOn: "2026-09-10",
+        activityLogId: log.id,
+        createdBy: admin1(),
+        createdAt: new Date("2026-09-10T15:00:00Z"),
+      })
+      .run();
+  }
+
+  it("surfaces an approved earn's note, which the activity-name label hides", async () => {
+    addApprovedEarn("Li dois capítulos");
+    mocked.username = "kid1";
+
+    const [latest] = await fetchHistoryAction(idOf("kid1"), 10);
+
+    expect(latest).toMatchObject({
+      kind: "earn",
+      label: "Ler livro",
+      observation: "Li dois capítulos",
+    });
+  });
+
+  it("leaves the observation null on an earn with no note", async () => {
+    addApprovedEarn(null);
+    mocked.username = "kid1";
+
+    const [latest] = await fetchHistoryAction(idOf("kid1"), 10);
+
+    expect(latest).toMatchObject({ kind: "earn", observation: null });
+  });
+
+  it("carries no observation on a spend or refund, which have no log", async () => {
+    mocked.username = "kid1";
+
+    const byKind = new Map(
+      (await fetchHistoryAction(idOf("kid1"), HISTORY_LIMIT)).map((entry) => [
+        entry.kind,
+        entry,
+      ]),
+    );
+
+    expect(byKind.get("spend")).toMatchObject({ observation: null });
+    expect(byKind.get("refund")).toMatchObject({ observation: null });
+  });
+
+  it("surfaces an approved zero's note too", async () => {
+    connection.db
+      .insert(activityLogs)
+      .values({
+        userId: idOf("kid1"),
+        activityId: 5,
+        categoryId: 2,
+        status: "approved",
+        source: "admin",
+        occurredOn: "2026-09-11",
+        durationMinutes: 30,
+        computedHours: 0,
+        note: "Esqueci de parar o cronômetro",
+        createdBy: admin1(),
+        reviewedBy: admin1(),
+        reviewedAt: new Date("2026-09-11T08:00:00Z"),
+        createdAt: new Date("2026-09-11T08:00:00Z"),
+      })
+      .run();
+    mocked.username = "kid1";
+
+    const [latest] = await fetchHistoryAction(idOf("kid1"), 10);
+
+    expect(latest).toMatchObject({
+      kind: "zero",
+      observation: "Esqueci de parar o cronômetro",
+    });
+  });
+});
+
 describe("the history carries the time of each action (#77)", () => {
   const DATE = /^\d{4}-\d{2}-\d{2}$/;
 

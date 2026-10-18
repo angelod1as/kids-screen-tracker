@@ -91,6 +91,7 @@ export function EntryList({
                   ? ` · ${overriddenText(entry.decidedBy)}`
                   : ""}
               </span>
+              <ObservationLine note={entry.observation} />
               {entry.override === null ? null : (
                 <AdultValueText override={entry.override} />
               )}
@@ -198,6 +199,13 @@ function ReviewerLine({
   );
 }
 
+/** #101: the boy's own note, surfaced after approval; empty renders nothing, not an empty line. */
+function ObservationLine({ note }: { note: string | null }) {
+  if (note === null || note === "") return null;
+
+  return <span className={`${META_CLASS} text-black`}>{note}</span>;
+}
+
 /** No invented line: the rule's number only where it could price, the reason only if written. */
 function AdultValueText({ override }: { override: AdultValue }) {
   return (
@@ -249,6 +257,7 @@ function ZeroRow({
             ? ` · ${overriddenText(entry.decidedBy)}`
             : ""}
         </span>
+        <ObservationLine note={entry.observation} />
         {entry.override === null ? null : (
           <AdultValueText override={entry.override} />
         )}
