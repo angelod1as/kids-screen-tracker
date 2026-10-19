@@ -2323,3 +2323,60 @@ categoria nem variável de ambiente. Com `false`, o motor pula a etapa do bônus
 some da Configuração. Religar é trocar a constante para `true`; nada é apagado, a
 D56 fica no código e os testes cobrem os dois estados. O seed mantém +50% em
 Corpo, Mente e Criativo para quando religar.
+
+## A decisão que veio da #103
+
+### D58 — O menino pede para gastar
+
+As duas escritas do menino eram só de ganho: propor pelo cronômetro e o pedido
+sem cronômetro (D49). O gasto era só do adulto, instantâneo e sem fila (D53,
+"Tirar horas").
+
+**Decisão.** Existe uma terceira escrita do menino: o **pedido de gasto**. Ele
+escolhe quantas horas e minutos quer usar e o **destino** (para quê), com um
+**comentário opcional**. A entrada nasce `pending`, na mesma fila (D49), só para
+si (D33). **Não é atividade:** o motor não roda, não entra no balde (D1–D3) nem
+em janela nenhuma (D32/D47). O adulto aprova — e a entrada vira um `ledger`
+`kind='spend'` na mesma transação — ou recusa, e nada se move (D19).
+
+Decisões do dono (18/10/2026):
+
+- **Campos.** Horas e minutos, dois inteiros com teclado numérico — minuto de 0
+  a 59, total de 1 a 1.000.000 minutos, como a D49 e a Tirar. Destino
+  obrigatório, texto livre até 500 caracteres (não há lista fechada — o campo já
+  é texto livre em Tirar). Comentário opcional, até 500.
+- **Pode passar do saldo.** Sem piso, como o resto do app — o saldo pode ficar
+  negativo sem limite. O servidor só recusa o que a D33/D49 recusa: pedido em
+  nome de outra pessoa, menino desativado, corpo mal formado.
+- **Aprovar pode corrigir as horas,** com padrão exatamente o pedido. É horas
+  direto, como a Tirar — não passa pelo motor nem arbitra valor pela D50 (que
+  vale para o ganho).
+- **Nomes.** O `spend` resultante tem `created_by` = adulto que aprovou, o
+  responsável, como em Tirar (D50 emenda). O histórico nomeia os dois: "Pedido
+  por {menino}, aprovado por {nome}".
+- **Palavras.** O menino "pede pra usar"; a linha do ledger lê "Usado", distinta
+  de "Tirado" (gasto iniciado pelo adulto). Na fila, o pedido de gasto se separa
+  do de ganho pela direção: sinal de menos e o destino ("−2h · Xbox").
+- **`occurred_on` = dia da aprovação** (hoje, America/Sao_Paulo, D13), como a
+  Tirar.
+- **O comentário do menino aparece na linha do gasto** no histórico — exceção à
+  regra atual, que esconde nota em `spend`/`refund`. É o "por que eu pedi".
+- **Sem cancelamento pelo menino.** Simetria com a D49, que não tem caminho de
+  retirada; nada se apaga (D14); recusar resolve (D19).
+- **Fora da ordenação (D32/D47).** Sem atividade e sem janela, o pedido de gasto
+  não bloqueia nem é bloqueado por nenhuma entrada.
+- **Anulação (D52)** vale no `spend` resultante como em qualquer outro.
+
+**Emenda à D51 — push.** O nascimento de um pedido de gasto avisa os dois
+adultos (gatilho 1); a decisão avisa o menino (gatilho 2) — a mesma forma da
+D49. Tirar e Dar continuam sem push.
+
+**Emenda à D41/D53 — o lembrete do aparelho.** O parágrafo pós-Tirar ("Agora,
+nos aparelhos: …") vira uma linha curta — "Pronto. Agora ligue o aparelho." —
+mostrada ao adulto que aprovou (ou que tirou), sem push. A mesma linha serve aos
+dois caminhos. O app continua sem saber o que foi feito no aparelho (D41); o
+lembrete é só lembrete.
+
+**A migration não move saldo.** A estrutura do pedido pendente de gasto é nova e
+não toca `ledger`, `activity_logs` nem `timers`; na aprovação, o `ledger spend`
+é gravado como em Tirar.

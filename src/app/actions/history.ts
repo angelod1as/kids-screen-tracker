@@ -6,7 +6,13 @@ import { alias } from "drizzle-orm/sqlite-core";
 import { requireAccess } from "../../auth/guard";
 import { getDb } from "../../db";
 import { rejectionReason } from "../../db/queue";
-import { activities, activityLogs, ledger, users } from "../../db/schema";
+import {
+  activities,
+  activityLogs,
+  ledger,
+  spendRequests,
+  users,
+} from "../../db/schema";
 import { saoPauloDay } from "../../engine/day";
 import { HISTORY_LIMIT, MAX_HISTORY_DAYS } from "../../ui/entries";
 
@@ -28,6 +34,8 @@ export type LedgerEntry = {
   voided: VoidMark | null;
   /** The adult responsible (emenda à D50, #71): reviewer on a decided entry, creator on a spend or refund. */
   decidedBy: string | null;
+  /** D58: the boy who asked, when this spend came from his request; absent otherwise. */
+  requestedBy?: string | null;
 };
 
 /** D52: shown, not hidden, so the boy can see why the balance moved. */
@@ -63,6 +71,8 @@ export type RejectedEntry = {
   reason: string | null;
   /** Who refused it (emenda à D50). */
   decidedBy: string | null;
+  /** D58: a refused spend request, so its id is not an `activity_logs` id. */
+  fromSpendRequest?: boolean;
 };
 
 /** D10: an approved zero has no ledger row, so it is read off the log, like a refusal. */
@@ -123,6 +133,7 @@ export async function fetchHistoryAction(
   const rows: Placed<HistoryEntry>[] = [
     ...ledgerEntries(targetUserId, limit),
     ...rejectedEntries(targetUserId, limit),
+    ...rejectedSpendEntries(targetUserId, limit),
     ...zeroEntries(targetUserId, limit),
   ];
 
@@ -160,6 +171,7 @@ export async function fetchHistoryDaysAction(
   const rows: Placed<HistoryEntry>[] = [
     ...ledgerEntries(targetUserId, HISTORY_LIMIT, since),
     ...rejectedEntries(targetUserId, HISTORY_LIMIT, since),
+    ...rejectedSpendEntries(targetUserId, HISTORY_LIMIT, since),
     ...zeroEntries(targetUserId, HISTORY_LIMIT, since),
   ];
 
@@ -195,12 +207,30 @@ function entryDays(targetUserId: number, limit: number): string[] {
       ),
     );
 
-  return ledgerDays
+  const sqlDays = ledgerDays
     .union(logDays)
     .orderBy(sql`1 desc`)
     .limit(limit)
     .all()
     .map((row) => row.day);
+
+  // D58: a refused spend request has no `occurred_on` column; its day is the SP
+  // day of the decision, computed here rather than in SQL (D13). Few rows.
+  const spendDays = db
+    .select({ at: spendRequests.reviewedAt })
+    .from(spendRequests)
+    .where(
+      and(
+        eq(spendRequests.userId, targetUserId),
+        eq(spendRequests.status, "rejected"),
+      ),
+    )
+    .all()
+    .flatMap((row) => (row.at === null ? [] : [saoPauloDay(row.at)]));
+
+  return [...new Set([...sqlDays, ...spendDays])]
+    .sort((left, right) => (left < right ? 1 : left > right ? -1 : 0))
+    .slice(0, limit);
 }
 
 /** D8 read backwards: most recent first, and the same order on every visit. */
@@ -246,6 +276,9 @@ function ledgerEntries(
       reviewedBy: reviewer.displayName,
       reviewedAt: activityLogs.reviewedAt,
       createdByName: creator.displayName,
+      // D58: a spend linked from a request carries the boy's ask and comment.
+      requestedBy: requester.displayName,
+      requestNote: spendRequests.note,
     })
     .from(ledger)
     // Left joins: `activity_log_id` is null on every `spend` and `refund` (D10).
@@ -253,6 +286,9 @@ function ledgerEntries(
     .leftJoin(activities, eq(activityLogs.activityId, activities.id))
     .leftJoin(reviewer, eq(reviewer.id, activityLogs.reviewedBy))
     .leftJoin(creator, eq(creator.id, ledger.createdBy))
+    // D58: null on every spend that is not a boy's request.
+    .leftJoin(spendRequests, eq(spendRequests.ledgerId, ledger.id))
+    .leftJoin(requester, eq(requester.id, spendRequests.userId))
     .leftJoin(
       voider,
       eq(
@@ -287,12 +323,19 @@ function ledgerEntries(
       // Activity first (D14 keeps a deactivated one readable), then the
       // destination, then the note that names a refund (#24).
       label: row.activityName ?? row.destination ?? row.note ?? NO_LABEL,
-      // #101: only an earn carries a log; a spend or refund has none.
-      observation: row.kind === "earn" ? row.logNote : null,
+      // #101, D58: an earn carries its log note; a requested spend the boy's comment.
+      observation:
+        row.kind === "earn"
+          ? row.logNote
+          : row.requestedBy === null
+            ? null
+            : row.requestNote,
       override: adultValue(row),
       voided: voidMark(row.voidedAt, row.voidedBy),
       // #71: a spend or refund has no reviewer; name the adult who made it.
       decidedBy: row.reviewedBy ?? row.createdByName,
+      // D58: present only on a spend that came from the boy's request.
+      requestedBy: row.requestedBy,
     },
   }));
 }
@@ -350,9 +393,69 @@ function rejectedEntries(
   }));
 }
 
+/**
+ * D58: a refused spend request, shown like a refused log so a rejection never
+ * disappears (D52: shown, not hidden). No `occurred_on` column, so the day is
+ * the São Paulo day of the decision, computed in the one place days are (D13).
+ */
+function rejectedSpendEntries(
+  targetUserId: number,
+  limit: number,
+  since?: string,
+): Placed<RejectedEntry>[] {
+  const rows = getDb()
+    .select({
+      id: spendRequests.id,
+      destination: spendRequests.destination,
+      note: spendRequests.note,
+      createdAt: spendRequests.createdAt,
+      reviewedAt: spendRequests.reviewedAt,
+      reviewedBy: reviewer.displayName,
+    })
+    .from(spendRequests)
+    .leftJoin(reviewer, eq(reviewer.id, spendRequests.reviewedBy))
+    .where(
+      and(
+        eq(spendRequests.userId, targetUserId),
+        eq(spendRequests.status, "rejected"),
+      ),
+    )
+    .orderBy(desc(spendRequests.reviewedAt), desc(spendRequests.id))
+    .limit(limit)
+    .all();
+
+  return rows.flatMap((row) => {
+    if (row.reviewedAt === null) return [];
+
+    const occurredOn = saoPauloDay(row.reviewedAt);
+    if (since !== undefined && occurredOn < since) return [];
+
+    return [
+      {
+        occurredOn,
+        createdAt: row.createdAt.getTime(),
+        id: row.id,
+        entry: {
+          id: row.id,
+          kind: "rejected" as const,
+          occurredOn,
+          at: row.reviewedAt.getTime(),
+          label: row.destination,
+          durationMinutes: null,
+          // #20: the adult's reason, pulled back out of the note (#72).
+          reason: rejectionReason(row.note),
+          decidedBy: row.reviewedBy,
+          fromSpendRequest: true,
+        },
+      },
+    ];
+  });
+}
+
 const voider = alias(users, "voider");
 const reviewer = alias(users, "reviewer");
 const creator = alias(users, "creator");
+const requester = alias(users, "requester");
 
 /** D52. `at` is epoch ms: the `coalesce` above comes back unmapped. */
 function voidMark(at: number | null, by: string | null): VoidMark | null {

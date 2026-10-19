@@ -81,6 +81,16 @@ function AddIcon() {
   );
 }
 
+/** A gamepad: the spend is the boy going to use a screen (D58). */
+function ControllerIcon() {
+  return (
+    <Glyph
+      d="M7 8.5h10a4.5 4.5 0 0 1 4.4 3.6l.6 3a2 2 0 0 1-3.5 1.7L16.8 15H7.2l-1.7 1.8a2 2 0 0 1-3.5-1.7l.6-3A4.5 4.5 0 0 1 7 8.5z"
+      extra="M6 11.5v2M5 12.5h2M16.5 12.5h.01M18 11.5h.01"
+    />
+  );
+}
+
 function SettingsIcon() {
   return <Glyph d="M4 7h16M4 17h16" extra="M9 4.5v5M15 14.5v5" />;
 }
@@ -102,6 +112,8 @@ export function iconFor(href: string) {
       return <HomeIcon />;
     case "/menino/cronometro":
       return <StopwatchIcon />;
+    case "/menino/usar":
+      return <ControllerIcon />;
     case "/menino/calculadora":
       return <CalculatorIcon />;
     case "/menino/historico":

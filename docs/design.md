@@ -168,11 +168,11 @@ tingida ele já é painel antes de a moldura ser lida.
 
 ## Ícones
 
-Oito glifos, só na barra de navegação, desenhados à mão em `src/ui/icons.tsx`.
+Nove glifos, só na barra de navegação, desenhados à mão em `src/ui/icons.tsx`.
 
 **Nunca emoji.** Emoji é uma fonte que o sistema escolhe: chega colorido, com
 forma diferente no Android e no iOS, e num tamanho que ninguém controla. Estes
-são oito traçados numa grade de 24, mesmo peso, mesmas terminações.
+são nove traçados numa grade de 24, mesmo peso, mesmas terminações.
 
 **`currentColor` em todos.** É o que faz o item atual funcionar: o glifo e o
 rótulo invertem juntos porque nenhum dos dois nomeia uma cor. Um glifo com cor
@@ -182,7 +182,8 @@ própria sobreviveria à inversão e sumiria no azul.
 build e 40 kB de sprite, e um conjunto desenhado para um briefing é mais
 coerente que um conjunto montado a partir de um.
 
-Casa (Início), cronômetro (Cronômetro), calculadora (Calculadora), extrato
+Casa (Início), cronômetro (Cronômetro), controle de videogame (Usar, D58),
+calculadora (Calculadora), extrato
 (Histórico), bandeja (Fila), mais (Lançar), controles deslizantes (Configuração, que a #70 tirou da barra e
 que hoje não é desenhado), e
 uma pessoa na célula de identidade que a #70 pôs à esquerda da barra — a única

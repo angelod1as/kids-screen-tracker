@@ -26,6 +26,7 @@ export function ConfirmMovement({
   action,
   busy,
   confirmLabel,
+  destination,
   onCancel,
   onConfirm,
   preview,
@@ -33,6 +34,8 @@ export function ConfirmMovement({
   action: string;
   busy: boolean;
   confirmLabel: string;
+  /** D58: the "para quê" of a spend request, kept in view under the full-screen dialog. */
+  destination?: string;
   onCancel: () => void;
   onConfirm: () => void;
   preview: MovementPreview;
@@ -66,6 +69,12 @@ export function ConfirmMovement({
               <dt className={META_CLASS}>Ação</dt>
               <dd className="text-lg font-bold">{action}</dd>
             </div>
+            {destination === undefined ? null : (
+              <div className={ROW_CLASS}>
+                <dt className={META_CLASS}>Para quê</dt>
+                <dd className="break-words text-lg font-bold">{destination}</dd>
+              </div>
+            )}
             <div className={ROW_CLASS}>
               <dt className={META_CLASS}>Horas</dt>
               <dd className={READOUT_CLASS}>{formatHours(preview.hours)}</dd>

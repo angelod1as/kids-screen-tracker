@@ -1,7 +1,13 @@
 import { and, eq, inArray } from "drizzle-orm";
 
 import type { Connection } from "../db/client";
-import { activities, activityLogs, users } from "../db/schema";
+import {
+  activities,
+  activityLogs,
+  ledger,
+  spendRequests,
+  users,
+} from "../db/schema";
 import { formatHours } from "../ui/hours";
 import { deleteSubscription, subscriptionsOf } from "./subscriptions";
 import type { PushSender } from "./vapid";
@@ -76,6 +82,90 @@ export async function notifyPending(
         body: `${kid?.name ?? "Menino"}: ${activityNames.join(", ")}`,
         url: "/admin/fila",
       },
+      pushSender(),
+    );
+  } catch {
+    // D51.
+  }
+}
+
+/** Trigger 1, for the spend request (D58, emenda à D51): both adults. */
+export async function notifySpendRequested(
+  connection: Connection,
+  requestId: number,
+): Promise<void> {
+  try {
+    const request = connection.db
+      .select({
+        kidName: users.displayName,
+        destination: spendRequests.destination,
+      })
+      .from(spendRequests)
+      .innerJoin(users, eq(spendRequests.userId, users.id))
+      .where(eq(spendRequests.id, requestId))
+      .get();
+
+    if (request === undefined) {
+      return;
+    }
+
+    const admins = connection.db
+      .select({ id: users.id })
+      .from(users)
+      .where(and(eq(users.role, "admin"), eq(users.active, true)))
+      .all();
+
+    await deliver(
+      connection,
+      admins.map((admin) => admin.id),
+      {
+        title: "Para aprovar",
+        body: `${request.kidName}: usar ${request.destination}`,
+        url: "/admin/fila",
+      },
+      pushSender(),
+    );
+  } catch {
+    // D51.
+  }
+}
+
+/** Trigger 2, for the spend request (D58): the boy who asked, about it alone. */
+export async function notifySpendReviewed(
+  connection: Connection,
+  requestId: number,
+): Promise<void> {
+  try {
+    const request = connection.db
+      .select({
+        userId: spendRequests.userId,
+        status: spendRequests.status,
+        hours: ledger.hours,
+      })
+      .from(spendRequests)
+      .leftJoin(ledger, eq(spendRequests.ledgerId, ledger.id))
+      .where(
+        and(
+          eq(spendRequests.id, requestId),
+          inArray(spendRequests.status, ["approved", "rejected"]),
+        ),
+      )
+      .get();
+
+    if (request === undefined) {
+      return;
+    }
+
+    await deliver(
+      connection,
+      [request.userId],
+      request.status === "approved"
+        ? {
+            title: "Aprovado",
+            body: `Usado: ${formatHours(request.hours ?? 0)}`,
+            url: "/menino",
+          }
+        : { title: "Recusado", body: "Pedido de uso", url: "/menino" },
       pushSender(),
     );
   } catch {

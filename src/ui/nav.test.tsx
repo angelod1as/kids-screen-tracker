@@ -62,7 +62,7 @@ describe("the bar is exactly as wide as the screen (#14)", () => {
     const cell =
       (NARROWEST_PHONE_PX - 2 * BORDER_PX - widestAccountCell) / items.length;
 
-    expect(Math.round(cell * 10) / 10).toBe(60.4);
+    expect(Math.round(cell * 10) / 10).toBe(48.3);
     expect(cell).toBeGreaterThanOrEqual(TOUCH_TARGET_PX);
   });
 });
