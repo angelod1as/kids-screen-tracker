@@ -192,14 +192,15 @@ describe("the extract (#16)", () => {
     );
   });
 
-  it("draws a spend and an earn apart by sign and word, never by colour", () => {
+  it("uses no colour in the extract but the negative red (#105)", () => {
     const classes = elements(
       EntryList({ emptyText: "vazio", entries: ENTRIES }),
     )
       .map((element) => String(element.props.className ?? ""))
       .join(" ");
 
-    expect(classes).not.toMatch(/-(?:red|green|amber|yellow|blue)-\d/);
+    expect(classes).not.toMatch(/-(?:green|amber|yellow|blue)-\d/);
+    expect(classes.replaceAll(NEGATIVE_CLASS, "")).not.toMatch(/-red-\d/);
   });
 
   it("writes a sentence when there is nothing to show", () => {
@@ -393,5 +394,85 @@ describe("the extract tabs (#78)", () => {
     expect(markup).toContain('href="/menino/historico?dias=3&amp;aba=geral"');
     expect(markup).toContain('href="/menino/historico?dias=3&amp;aba=perdas"');
     expect(markup).toContain('aria-current="page"');
+  });
+});
+
+describe("every negative value shown in a row reads red (#105, D42 emenda)", () => {
+  const ROWS: HistoryEntry[] = [
+    {
+      id: 1,
+      kind: "spend",
+      hours: 1.5,
+      occurredOn: "2026-09-02",
+      at: 0,
+      label: "Xbox",
+      observation: null,
+      override: null,
+      voided: null,
+      decidedBy: "Admin1",
+    },
+    {
+      id: 2,
+      kind: "earn",
+      hours: 2,
+      occurredOn: "2026-09-01",
+      at: 0,
+      label: "Ler livro",
+      observation: null,
+      override: null,
+      voided: null,
+      decidedBy: "Admin1",
+    },
+    {
+      id: 3,
+      kind: "zero",
+      occurredOn: "2026-08-31",
+      at: 0,
+      label: "Não usou",
+      observation: null,
+      override: null,
+      voided: null,
+      decidedBy: "Admin1",
+    },
+    {
+      id: 4,
+      kind: "spend",
+      hours: 2.5,
+      occurredOn: "2026-08-30",
+      at: 0,
+      label: "PlayStation",
+      observation: null,
+      override: null,
+      voided: { on: "2026-09-05", at: 0, by: "Admin1" },
+      decidedBy: "Admin1",
+    },
+  ];
+
+  const readoutFor = (value: string) =>
+    elements(EntryList({ emptyText: "vazio", entries: ROWS }))
+      .filter(
+        (element) =>
+          typeof element.props.className === "string" &&
+          element.props.className.includes("shrink-0") &&
+          textOf(element.props.children as ReactNode) === value,
+      )
+      .map((element) => String(element.props.className))
+      .join(" ");
+
+  it("paints a negative row red", () => {
+    expect(readoutFor("−1h30")).toContain(NEGATIVE_CLASS);
+  });
+
+  it("leaves a positive row black", () => {
+    expect(readoutFor("+2h")).not.toContain(NEGATIVE_CLASS);
+  });
+
+  it("leaves a zero row black", () => {
+    expect(readoutFor("0 min")).not.toContain(NEGATIVE_CLASS);
+  });
+
+  it("keeps a voided negative row black, since it no longer counts (D52)", () => {
+    expect(readoutFor("−2h30")).not.toContain(NEGATIVE_CLASS);
+    expect(readoutFor("−2h30")).toContain("line-through");
   });
 });

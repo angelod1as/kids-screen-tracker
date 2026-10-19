@@ -1329,6 +1329,21 @@ Configuração é um `CardLink` (um `<Link>`, que nunca recebe o atributo
 (`slate-100`, `border-dashed`, preto) sem o prefixo. Mesmo recuo, mesma régua,
 nenhuma cor nova; só o gancho muda. O dono aprovou dentro da D42.
 
+**Emenda (#105) — o vermelho-tinta vale qualquer valor negativo, não só o
+saldo.** O `red-700` como tinta passa a pintar todo número negativo exibido,
+onde quer que apareça — a linha de gasto no extrato, o pedido de uso na fila do
+adulto, o desgaste nos Números, a linha de cálculo — e não apenas o saldo. O
+significado segue um só ("está abaixo de zero / é perda"); o que muda é que ele
+deixa de depender de o número ser o saldo. O guarda registra a regra como
+"a negative value".
+
+Continua valendo tudo o que a regra protegia: nenhuma cor nova, o literal só em
+`src/ui/style.ts` aplicado pelo helper (`balanceToneClass` / `NEGATIVE_CLASS`) e
+nunca inline, contraste de 6,42:1, e a forma separando do *Sair* — número
+pintado contra botão cheio. Um valor anulado (riscado, "não conta no saldo")
+fica preto: ele já não conta, então não grita vermelho. O dono pediu: todo
+negativo em vermelho.
+
 ---
 
 ### D43 — Produção só recebe o que passou pelo CI

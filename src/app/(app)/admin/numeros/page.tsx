@@ -54,7 +54,9 @@ function DecayAndBonus({ category }: { category: CategoryStats }) {
         {category.decayStepHours === null ? null : (
           <>
             <dt>Desgaste</dt>
-            <dd className="text-right font-mono tabular-nums">
+            <dd
+              className={`text-right font-mono tabular-nums ${balanceToneClass(split.decay)}`}
+            >
               {formatHours(split.decay)}
             </dd>
           </>

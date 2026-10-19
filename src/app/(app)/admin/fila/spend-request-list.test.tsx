@@ -2,6 +2,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 
 import type { PendingSpendRequest } from "../../../../db/spend-requests";
+import { NEGATIVE_CLASS } from "../../../../ui/style";
 
 vi.mock("../../../actions/spend-requests", () => ({
   previewSpendApprovalAction: async () => undefined,
@@ -44,6 +45,14 @@ describe("the spend-request list on the queue (D58)", () => {
 
   it("renders nothing when there are no requests", () => {
     expect(renderToStaticMarkup(<SpendRequestList initial={[]} />)).toBe("");
+  });
+
+  it("paints the taken hours red, since they are negative (#105)", () => {
+    const markup = renderToStaticMarkup(
+      <SpendRequestList initial={[request()]} />,
+    );
+
+    expect(markup).toContain(NEGATIVE_CLASS);
   });
 });
 

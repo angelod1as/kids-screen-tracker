@@ -1,7 +1,7 @@
 import type { Calculation } from "../engine/calculate";
 import { formatSignedHours } from "./dates";
 import { formatHours } from "./hours";
-import { BORDER_CLASS, HEADING_CLASS } from "./style";
+import { BORDER_CLASS, balanceToneClass, HEADING_CLASS } from "./style";
 
 /**
  * Each line in whole minutes, as the step between the running totals rounded:
@@ -54,7 +54,9 @@ export function Result({
             <span className="min-w-0 break-words text-lg text-black">
               {line.text}
             </span>
-            <span className="shrink-0 text-lg font-bold tabular-nums text-black">
+            <span
+              className={`shrink-0 text-lg font-bold tabular-nums ${balanceToneClass((minutes[index] ?? 0) / 60)}`}
+            >
               {formatSignedHours((minutes[index] ?? 0) / 60)}
             </span>
           </li>

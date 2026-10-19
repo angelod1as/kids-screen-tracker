@@ -118,7 +118,7 @@ export function EntryList({
               )}
             </span>
             <span
-              className={`${READOUT_CLASS} shrink-0 text-black ${entry.voided === null ? "" : "line-through"}`}
+              className={`${READOUT_CLASS} shrink-0 ${entry.voided === null ? balanceToneClass(signedHours(entry)) : "text-black line-through"}`}
             >
               {formatSignedHours(signedHours(entry))}
             </span>

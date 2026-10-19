@@ -100,7 +100,7 @@ const PALETTE = [
     utility: NEGATIVE_CLASS,
     file: join("ui", "style.ts"),
     kind: "meaning",
-    rule: "a negative balance",
+    rule: "a negative value",
   },
   {
     utility: PENDING_BG_CLASS,
@@ -152,7 +152,7 @@ describe("the palette is declared, and nothing else is served (#14, #74, D42)", 
       PALETTE.filter((entry) => entry.kind === "meaning")
         .map((entry) => entry.rule)
         .sort(),
-    ).toEqual(["a destructive action", "a negative balance", "a pendency"]);
+    ).toEqual(["a destructive action", "a negative value", "a pendency"]);
   });
 
   it("lets only red carry two meanings", () => {
