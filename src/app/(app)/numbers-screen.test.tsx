@@ -14,7 +14,7 @@ import { seedDemoData } from "../../db/demo";
 import { migrateDatabase } from "../../db/migrate";
 import { seedWithTestUsers } from "../../db/test-users";
 import { formatHours } from "../../ui/hours";
-import { TOUCH_TARGET_CLASS } from "../../ui/style";
+import { NEGATIVE_CLASS, TOUCH_TARGET_CLASS } from "../../ui/style";
 
 /** #9, the screen half: it renders seeded, with a week in it, and empty. The guard is `dashboard.test.ts`'s. */
 
@@ -89,6 +89,22 @@ describe("the numbers screen (#9)", () => {
     expect(page).toContain("Desgaste e bônus");
     expect(page).toContain("Ler livro");
     expect(page).toContain("Sem uso no período");
+  });
+
+  it("paints the decay red, since it is a negative value (#105)", async () => {
+    const dashboard = readDashboard(connection, {
+      kidIds: [3, 4],
+      from: "2026-08-24",
+      to: TODAY,
+    });
+    const withDecay = dashboard.categories.filter(
+      (category) => category.entries > 0 && category.split.decay < 0,
+    );
+    const page = await markup({});
+
+    // Non-vacuous: the seeded week must actually push a category past a step.
+    expect(withDecay.length).toBeGreaterThan(0);
+    expect(page).toContain(`tabular-nums ${NEGATIVE_CLASS}`);
   });
 
   it("labels each flow row with its own total, wired end to end (#87)", async () => {

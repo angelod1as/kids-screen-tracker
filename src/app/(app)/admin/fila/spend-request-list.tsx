@@ -13,7 +13,12 @@ import { Field, TimeFields } from "../../../../ui/field";
 import type { TypedTime } from "../../../../ui/hours";
 import { isBlankTime, isZeroTime, parseTypedTime } from "../../../../ui/hours";
 import { Panel } from "../../../../ui/panel";
-import { META_CLASS, READOUT_CLASS, ROW_CLASS } from "../../../../ui/style";
+import {
+  balanceToneClass,
+  META_CLASS,
+  READOUT_CLASS,
+  ROW_CLASS,
+} from "../../../../ui/style";
 import type { SpendApprovalPreview } from "../../../actions/spend-requests";
 import {
   approveSpendRequestAction,
@@ -224,7 +229,9 @@ export function SpendRequestList({
                   </div>
 
                   {/* D58: the minus sign carries the direction, apart from an earn's plus. */}
-                  <span className={`${READOUT_CLASS} shrink-0 text-black`}>
+                  <span
+                    className={`${READOUT_CLASS} shrink-0 ${balanceToneClass(-request.hours)}`}
+                  >
                     {formatSignedHours(-request.hours)}
                   </span>
                 </li>
