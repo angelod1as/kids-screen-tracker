@@ -14,7 +14,9 @@ import { seedWithTestUsers } from "../../db/test-users";
 import { fetchHistoryAction } from "./history";
 import {
   approveSpendRequestAction,
+  cancelSpendRequestAction,
   countPendingSpendRequestsAction,
+  fetchOwnSpendRequestsAction,
   fetchSpendRequestsAction,
   previewSpendApprovalAction,
   rejectSpendRequestAction,
@@ -253,5 +255,138 @@ describe("the admin decision (D58)", () => {
 
     await expect(fetchSpendRequestsAction()).rejects.toThrow();
     await expect(approveSpendRequestAction(requestId)).rejects.toThrow();
+  });
+});
+
+describe("the boy's own requests and cancelling (D59)", () => {
+  function filed(userId: number, destination: string): number {
+    return requestSpend(
+      connection,
+      userId,
+      { hours: 2, destination },
+      new Date(),
+    ).requestId;
+  }
+
+  function statusOf(requestId: number) {
+    return connection.db
+      .select()
+      .from(spendRequests)
+      .where(eq(spendRequests.id, requestId))
+      .get();
+  }
+
+  it("shows him his own pending, approved and rejected requests, and only his", async () => {
+    const pending = filed(KID1, "Xbox");
+    const approved = filed(KID1, "TV");
+    const rejected = filed(KID1, "Celular");
+    filed(KID2, "Do irmão");
+
+    mocked.username = "admin1";
+    await approveSpendRequestAction(approved, {
+      time: { hours: 1, minutes: 30 },
+    });
+    await rejectSpendRequestAction(rejected);
+
+    mocked.username = "kid1";
+    const own = await fetchOwnSpendRequestsAction(KID1);
+
+    expect(own.map((request) => [request.id, request.status])).toEqual(
+      expect.arrayContaining([
+        [pending, "pending"],
+        [approved, "approved"],
+        [rejected, "rejected"],
+      ]),
+    );
+    expect(own).toHaveLength(3);
+    expect(own.find((request) => request.id === approved)).toMatchObject({
+      hours: 2,
+      approvedHours: 1.5,
+    });
+    expect(own.some((request) => request.destination === "Do irmão")).toBe(
+      false,
+    );
+  });
+
+  it("refuses to show him his brother's requests", async () => {
+    filed(KID2, "Do irmão");
+
+    await expect(fetchOwnSpendRequestsAction(KID2)).rejects.toThrow(
+      "Acesso negado.",
+    );
+  });
+
+  it("cancels his own pending request and leaves no ledger row", async () => {
+    const requestId = filed(KID1, "Xbox");
+
+    await cancelSpendRequestAction(requestId);
+
+    expect(statusOf(requestId)).toMatchObject({
+      status: "cancelled",
+      ledgerId: null,
+      reviewedBy: KID1,
+    });
+    expect(connection.db.select().from(ledger).all()).toEqual([]);
+
+    mocked.username = "admin1";
+    expect(await fetchSpendRequestsAction()).toEqual([]);
+    expect(await countPendingSpendRequestsAction()).toBe(0);
+    await expect(approveSpendRequestAction(requestId)).rejects.toThrow(
+      /no pending spend request/,
+    );
+    expect(connection.db.select().from(ledger).all()).toEqual([]);
+  });
+
+  it("refuses to cancel an approved or a rejected request, and changes nothing", async () => {
+    const approved = filed(KID1, "TV");
+    const rejected = filed(KID1, "Celular");
+    mocked.username = "admin1";
+    await approveSpendRequestAction(approved);
+    await rejectSpendRequestAction(rejected);
+    const before = connection.db.select().from(spendRequests).all();
+
+    mocked.username = "kid1";
+    await expect(cancelSpendRequestAction(approved)).rejects.toThrow();
+    await expect(cancelSpendRequestAction(rejected)).rejects.toThrow();
+
+    expect(connection.db.select().from(spendRequests).all()).toEqual(before);
+    expect(connection.db.select().from(ledger).all()).toHaveLength(1);
+  });
+
+  it("refuses to cancel his brother's request with the fixed sentence an unknown id gets", async () => {
+    const brothers = filed(KID2, "Do irmão");
+
+    await expect(cancelSpendRequestAction(brothers)).rejects.toThrow(
+      "Acesso negado.",
+    );
+    await expect(cancelSpendRequestAction(9999)).rejects.toThrow(
+      "Acesso negado.",
+    );
+    expect(statusOf(brothers)).toMatchObject({ status: "pending" });
+  });
+
+  it("does not let an adult cancel: he refuses instead (D19)", async () => {
+    const requestId = filed(KID1, "Xbox");
+    mocked.username = "admin1";
+
+    await expect(cancelSpendRequestAction(requestId)).rejects.toThrow();
+    expect(statusOf(requestId)).toMatchObject({ status: "pending" });
+  });
+
+  it("refuses a signed-out caller before reading anything", async () => {
+    const requestId = filed(KID1, "Xbox");
+    mocked.username = null;
+
+    await expect(cancelSpendRequestAction(requestId)).rejects.toThrow(
+      "Acesso negado.",
+    );
+    expect(statusOf(requestId)).toMatchObject({ status: "pending" });
+  });
+
+  it("keeps a cancelled request out of the history", async () => {
+    const requestId = filed(KID1, "Xbox");
+    await cancelSpendRequestAction(requestId);
+
+    expect(await fetchHistoryAction(KID1, 10)).toEqual([]);
   });
 });

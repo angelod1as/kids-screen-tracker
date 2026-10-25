@@ -9,6 +9,8 @@ import {
   balanceToneClass,
 } from "../../../../ui/style";
 import { fetchBalanceAction } from "../../../actions/balance";
+import { fetchOwnSpendRequestsAction } from "../../../actions/spend-requests";
+import { MyRequests } from "./my-requests";
 import { SpendRequestForm } from "./spend-request-form";
 
 /**
@@ -19,6 +21,7 @@ import { SpendRequestForm } from "./spend-request-form";
 export default async function KidUsePage() {
   const session = await requireSession();
   const balance = await fetchBalanceAction(session.userId);
+  const requests = await fetchOwnSpendRequestsAction(session.userId);
   const today = saoPauloDay(new Date());
 
   return (
@@ -33,6 +36,10 @@ export default async function KidUsePage() {
 
       <Panel title="Pedir pra usar">
         <SpendRequestForm userId={session.userId} />
+      </Panel>
+
+      <Panel title="Meus pedidos">
+        <MyRequests requests={requests} />
       </Panel>
     </div>
   );

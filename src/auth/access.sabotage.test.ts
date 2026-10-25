@@ -65,17 +65,22 @@ const MUTATIONS: readonly Mutation[] = [
   },
   {
     name: "plain writes are added to what a kid may do",
-    find: '  "requestSpend",\n];',
-    replace: '  "requestSpend",\n  "write",\n];',
+    find: '  "cancelSpend",\n];',
+    replace: '  "cancelSpend",\n  "write",\n];',
   },
   {
     name: "a kid may no longer request an untimed log (D49)",
-    find: '  "requestLog",\n  "requestSpend",\n];',
-    replace: '  "requestSpend",\n];',
+    find: '  "requestLog",\n  "requestSpend",\n',
+    replace: '  "requestSpend",\n',
   },
   {
     name: "a kid may no longer request a spend (D58)",
-    find: '  "requestSpend",\n];',
+    find: '  "requestSpend",\n  "cancelSpend",\n];',
+    replace: '  "cancelSpend",\n];',
+  },
+  {
+    name: "a kid may no longer cancel his pending spend request (D59)",
+    find: '  "cancelSpend",\n];',
     replace: "];",
   },
   {

@@ -2,7 +2,7 @@
 
 Vinte e cinco ambiguidades da spec, resolvidas e justificadas antes da primeira
 linha de código, mais as que cada fase mediu depois. Hoje são cinquenta e
-seis, D1–D56, mais dezesseis emendas e as duas declarações da Fase 4, uma delas
+nove, D1–D59, mais dezesseis emendas e as duas declarações da Fase 4, uma delas
 revogada.
 
 **Onde este documento e `spec.md` discordarem, este documento vence.**
@@ -2376,8 +2376,8 @@ Decisões do dono (18/10/2026):
   Tirar.
 - **O comentário do menino aparece na linha do gasto** no histórico — exceção à
   regra atual, que esconde nota em `spend`/`refund`. É o "por que eu pedi".
-- **Sem cancelamento pelo menino.** Simetria com a D49, que não tem caminho de
-  retirada; nada se apaga (D14); recusar resolve (D19).
+- ~~**Sem cancelamento pelo menino.** Simetria com a D49, que não tem caminho de
+  retirada; nada se apaga (D14); recusar resolve (D19).~~ — revogado pela D59.
 - **Fora da ordenação (D32/D47).** Sem atividade e sem janela, o pedido de gasto
   não bloqueia nem é bloqueado por nenhuma entrada.
 - **Anulação (D52)** vale no `spend` resultante como em qualquer outro.
@@ -2395,3 +2395,42 @@ lembrete é só lembrete.
 **A migration não move saldo.** A estrutura do pedido pendente de gasto é nova e
 não toca `ledger`, `activity_logs` nem `timers`; na aprovação, o `ledger spend`
 é gravado como em Tirar.
+
+---
+
+## A decisão que veio da #109
+
+### D59 — O menino cancela o próprio pedido de gasto ainda não decidido
+
+**Revoga o item "Sem cancelamento pelo menino" da D58.** Depois de pedir, o
+menino não via o que tinha pedido nem podia desistir.
+
+**Decisão.** Uma quarta escrita do menino: **cancelar** um pedido de gasto
+(D58) **pendente e dele** (D49, D33). O pedido vai de `pending` a `cancelled`
+— status, nunca linha apagada (espírito da D14). `reviewed_by` é o próprio
+menino, `reviewed_at` o instante. Nenhuma linha no ledger, nada se move, como a
+D19. Decisão do dono (25/10/2026): *"o menino pode cancelar o ainda não
+aceito."*
+
+- **Só pendente.** Aprovado, recusado ou já cancelado não muda; a escrita é
+  recusada.
+- **Só o dele.** A guarda `cancelSpend` lê o dono no servidor; pedido do irmão
+  e id que não existe recebem a mesma frase fixa, que não responde nada. O
+  adulto não cancela: ele recusa (D19).
+- **O menino vê os próprios pedidos** — tempo pedido, destino e status
+  (esperando, aprovado, recusado, cancelado) — em "Pedir pra usar", e nunca os
+  do irmão. O aprovado com horas corrigidas mostra também as horas aprovadas.
+- **Sem push.** Cancelar não é gatilho (D51).
+- **Vale só para pedido de gasto.** O pedido de ganho (D49) continua sem
+  retirada.
+- **O cancelado não entra no histórico:** não moveu hora nem foi decisão de
+  adulto. Sai da fila e da contagem do adulto; aprovar ou recusar um pedido já
+  cancelado é recusado como qualquer pedido que não está pendente.
+
+**Por quê.** Gastar é pedir licença para algo que ainda não aconteceu, e mudar
+de ideia antes do adulto decidir é o caso comum. Sem retirada, a fila guardava
+pedido que ninguém mais queria, e o adulto aprovava um gasto que o menino já
+tinha desistido de fazer.
+
+**A migration não move saldo.** `0015` reconstrói `spend_requests` (a lista de
+`status` ganha `cancelled`) copiando todas as colunas; `ledger` não é tocado.

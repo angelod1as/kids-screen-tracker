@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 
 import { Button } from "../../../../ui/button";
@@ -33,6 +34,7 @@ const MINUTE_CHOICES: readonly Choice[] = [30, 60, 90, 120, 180, 240].map(
 const DEFAULT_TIME: TypedTime = { hours: "1", minutes: "" };
 
 export function SpendRequestForm({ userId }: { userId: number }) {
+  const router = useRouter();
   const [time, setTime] = useState(DEFAULT_TIME);
   const [destination, setDestination] = useState("");
   const [note, setNote] = useState("");
@@ -64,6 +66,7 @@ export function SpendRequestForm({ userId }: { userId: number }) {
         setNote("");
         setDone(true);
         setFailed(null);
+        router.refresh();
       } catch (error) {
         setFailed(failureText(error));
       }

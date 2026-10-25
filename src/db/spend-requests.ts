@@ -1,4 +1,4 @@
-import { and, asc, count, eq } from "drizzle-orm";
+import { and, asc, count, desc, eq } from "drizzle-orm";
 
 import { saoPauloDay } from "../engine/day";
 import type { Connection, Transaction } from "./client";
@@ -29,6 +29,17 @@ export type PendingSpendRequest = {
   hours: number;
   destination: string;
   note: string | null;
+  createdAt: Date;
+};
+
+/** One of the boy's own requests, in any state, for "Meus pedidos" (D59). */
+export type OwnSpendRequest = {
+  id: number;
+  hours: number;
+  /** The `ledger` spend's hours once approved, which the adult may have corrected (D58). */
+  approvedHours: number | null;
+  destination: string;
+  status: "pending" | "approved" | "rejected" | "cancelled";
   createdAt: Date;
 };
 
@@ -133,6 +144,41 @@ export function pendingSpendRequest(
     .get();
 }
 
+/** The boy's own requests, newest first. */
+export function listOwnSpendRequests(
+  connection: Connection,
+  userId: number,
+  limit: number,
+): OwnSpendRequest[] {
+  return connection.db
+    .select({
+      id: spendRequests.id,
+      hours: spendRequests.hours,
+      approvedHours: ledger.hours,
+      destination: spendRequests.destination,
+      status: spendRequests.status,
+      createdAt: spendRequests.createdAt,
+    })
+    .from(spendRequests)
+    .leftJoin(ledger, eq(spendRequests.ledgerId, ledger.id))
+    .where(eq(spendRequests.userId, userId))
+    .orderBy(desc(spendRequests.createdAt), desc(spendRequests.id))
+    .limit(limit)
+    .all();
+}
+
+/** Whose request this is, in any state; the action's guard is checked against it. */
+export function spendRequestOwner(
+  connection: Connection,
+  requestId: number,
+): number | undefined {
+  return connection.db
+    .select({ userId: spendRequests.userId })
+    .from(spendRequests)
+    .where(eq(spendRequests.id, requestId))
+    .get()?.userId;
+}
+
 /** The pending row, or a refusal naming it as the queue does (D32's manner). */
 function takePending(tx: Transaction, requestId: number) {
   const request = tx
@@ -226,6 +272,29 @@ export function rejectSpendRequest(
         reviewedBy: reviewerId,
         reviewedAt: now,
       })
+      .where(eq(spendRequests.id, requestId))
+      .run();
+  });
+}
+
+/**
+ * D59: the boy withdraws his own pending request. No ledger row, nothing moves
+ * (D19's manner); he is the one stamped as having closed it.
+ */
+export function cancelSpendRequest(
+  connection: Connection,
+  requestId: number,
+  userId: number,
+  now: Date,
+): void {
+  writeTransaction(connection, (tx) => {
+    const request = takePending(tx, requestId);
+    if (request.userId !== userId) {
+      throw new Error(`there is no pending spend request ${requestId}`);
+    }
+
+    tx.update(spendRequests)
+      .set({ status: "cancelled", reviewedBy: userId, reviewedAt: now })
       .where(eq(spendRequests.id, requestId))
       .run();
   });

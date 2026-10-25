@@ -183,6 +183,21 @@ export const ACCESS_CASES: readonly AccessCase[] = [
   },
 
   {
+    rule: "cancelling his pending spend request is the kid's fourth write (D59)",
+    name: "Kid1 cancels a spend request of his own",
+    session: KID1,
+    request: { kind: "cancelSpend", targetUserId: KID1.userId },
+    allowed: true,
+  },
+  {
+    rule: "cancelling his pending spend request is the kid's fourth write (D59)",
+    name: "Kid1 cancels a spend request of Kid2's",
+    session: KID1,
+    request: { kind: "cancelSpend", targetUserId: KID2.userId },
+    allowed: false,
+  },
+
+  {
     rule: "admin reads and changes everything of both",
     name: "Admin1 views Kid1",
     session: ADMIN1,
