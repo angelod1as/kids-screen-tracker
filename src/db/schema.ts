@@ -581,10 +581,13 @@ export const spendRequests = sqliteTable(
     destination: text("destination").notNull(),
     /** The boy's optional "why", shown on the spend row (D58). */
     note: text("note"),
-    status: text("status", { enum: ["pending", "approved", "rejected"] })
+    /** `cancelled` is the boy withdrawing it while pending (D59). */
+    status: text("status", {
+      enum: ["pending", "approved", "rejected", "cancelled"],
+    })
       .notNull()
       .default("pending"),
-    /** The `ledger` spend written on approval; null while pending or rejected. */
+    /** The `ledger` spend written on approval; null otherwise. */
     ledgerId: integer("ledger_id").references(() => ledger.id, {
       onDelete: "restrict",
     }),
@@ -612,7 +615,7 @@ export const spendRequests = sqliteTable(
       .where(sql`${table.ledgerId} is not null`),
     check(
       "spend_requests_status_check",
-      sql`${table.status} in ('pending', 'approved', 'rejected')`,
+      sql`${table.status} in ('pending', 'approved', 'rejected', 'cancelled')`,
     ),
     check(
       "spend_requests_hours_check",

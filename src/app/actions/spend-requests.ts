@@ -1,18 +1,29 @@
 "use server";
 
-import { requireAccess, requireAdmin } from "../../auth/guard";
+import {
+  AccessDeniedError,
+  requireAccess,
+  requireAdmin,
+  requireSession,
+} from "../../auth/guard";
 import { getConnection, getDb } from "../../db";
 import type { HoursMinutes } from "../../db/input";
 import { hoursFromTime, requireHours } from "../../db/input";
 import { requireActiveKid } from "../../db/people";
-import type { PendingSpendRequest } from "../../db/spend-requests";
+import type {
+  OwnSpendRequest,
+  PendingSpendRequest,
+} from "../../db/spend-requests";
 import {
   approveSpendRequest,
+  cancelSpendRequest,
   countPendingSpendRequests,
+  listOwnSpendRequests,
   listPendingSpendRequests,
   pendingSpendRequest,
   rejectSpendRequest,
   requestSpend,
+  spendRequestOwner,
 } from "../../db/spend-requests";
 import { notifySpendRequested, notifySpendReviewed } from "../../push/notify";
 import { fetchBalanceAction } from "./balance";
@@ -48,6 +59,44 @@ export async function requestSpendAction(
   );
   // D51 emenda: a reminder, not awaited, and it never rejects.
   void notifySpendRequested(connection, requestId);
+}
+
+const OWN_REQUESTS_LIMIT = 20;
+
+/** "Meus pedidos" (D59): only the caller's own, refused for the brother's id. */
+export async function fetchOwnSpendRequestsAction(
+  targetUserId: number,
+): Promise<OwnSpendRequest[]> {
+  await requireAccess({ kind: "view", targetUserId });
+
+  return listOwnSpendRequests(
+    getConnection(),
+    targetUserId,
+    OWN_REQUESTS_LIMIT,
+  );
+}
+
+/**
+ * D59: the boy's fourth write. The owner is read here, never sent; an unknown
+ * id is refused like the brother's, so the refusal answers nothing. The adult
+ * refuses instead: the db write accepts only the owner as canceller.
+ */
+export async function cancelSpendRequestAction(
+  requestId: number,
+): Promise<void> {
+  await requireSession();
+  const connection = getConnection();
+
+  const owner = spendRequestOwner(connection, requestId);
+  if (owner === undefined) {
+    throw new AccessDeniedError("forbidden");
+  }
+  const session = await requireAccess({
+    kind: "cancelSpend",
+    targetUserId: owner,
+  });
+
+  cancelSpendRequest(connection, requestId, session.userId, new Date());
 }
 
 export async function fetchSpendRequestsAction(): Promise<
