@@ -2396,6 +2396,12 @@ lembrete é só lembrete.
 não toca `ledger`, `activity_logs` nem `timers`; na aprovação, o `ledger spend`
 é gravado como em Tirar.
 
+**Emenda (#107) — aprovar é um toque.** "Aprovar" grava direto da linha da
+fila, sem o modal de confirmação e sem o preview do saldo antes de gravar. O
+dono aceitou perder ali o aviso do saldo ficando vermelho (D42): o adulto não vê
+o saldo resultante antes do toque. A correção de horas também aprova no mesmo
+toque, como na fila de ganho. Recusar não muda.
+
 ---
 
 ## A decisão que veio da #109
