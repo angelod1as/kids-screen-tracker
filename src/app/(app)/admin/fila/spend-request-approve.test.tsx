@@ -15,6 +15,7 @@ const actions = vi.hoisted(() => ({
 vi.mock("../../../actions/spend-requests", () => actions);
 
 const { SpendRequestList } = await import("./spend-request-list");
+const { UNCERTAIN_TEXT } = await import("../../../../ui/failure");
 
 (
   globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }
@@ -95,6 +96,18 @@ describe("approving a spend request in one tap (#107, D58)", () => {
     expect(actions.approveSpendRequestAction).toHaveBeenCalledWith(1, {
       time: { hours: 1, minutes: 30 },
     });
+  });
+
+  it("keeps the request on the list when the write's answer is lost", async () => {
+    actions.approveSpendRequestAction.mockRejectedValue(
+      new TypeError("Failed to fetch"),
+    );
+
+    await act(async () => button("Aprovar").click());
+
+    expect(container.textContent).toContain(UNCERTAIN_TEXT);
+    expect(container.textContent).toContain("Usar Xbox");
+    expect(container.textContent).not.toContain("Pedido aprovado");
   });
 
   it("keeps Aprovar off for an unparseable correction", async () => {
