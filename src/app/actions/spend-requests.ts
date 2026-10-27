@@ -165,8 +165,8 @@ export async function rejectSpendRequestAction(
 }
 
 /**
- * D53's manner: both balances read now, on the server, nothing written. The
- * adult sees the balance go red (D42) before confirming (D58).
+ * D53's manner: both balances read now, on the server, nothing written. No
+ * screen calls it: approval is one tap, with no preview (D58 emenda).
  */
 export type SpendApprovalPreview = MovementPreview & { destination: string };
 
