@@ -28,8 +28,11 @@ const MINUTES_PER_HOUR = 60;
 /** `activity_logs_computed_hours_check`'s ceiling, refused here so the queue shows a reason. */
 const MAX_ENTRY_HOURS = 1_000_000;
 
-/** The five grades the spec allows, and the same five the schema's CHECK holds. */
-const QUALITY_GRADES = [0, 0.3, 0.5, 0.7, 1];
+/** The five grades a new entry may take (D60). */
+export const QUALITY_GRADES = [0, 0.25, 0.5, 0.75, 1];
+
+/** Retired by D60 but still frozen on old entries (D37), so still explained. */
+const LEGACY_QUALITY_GRADES = [0.3, 0.7];
 
 const COOLDOWN_MULTIPLIER: Fraction = { n: 1n, d: 2n };
 
@@ -107,7 +110,7 @@ export type CalculationInput = {
   occurredOn: string;
   /** Required by `duration`; ignored by every other mode. */
   durationMinutes?: number | null;
-  /** Required when the activity is `quality_graded`: 0 · 0,3 · 0,5 · 0,7 · 1,0. */
+  /** Required when the activity is `quality_graded`: one of `QUALITY_GRADES`, or a legacy grade (D60). */
   quality?: number | null;
   /** Required by `free`: the value the admin typed. */
   freeValue?: number | null;
@@ -524,9 +527,9 @@ function formatHours(value: number): string {
   return `${formatNumber(value)}h`;
 }
 
-/** One decimal always, matching the grade buttons ("0,0", "1,0"). */
-function formatGrade(value: number): string {
-  return value.toFixed(1).replace(".", ",");
+/** A percentage, matching the grade buttons (D60). */
+export function formatGrade(value: number): string {
+  return `${Math.round(value * 100)}%`;
 }
 
 // Hours only when exact at two decimals, so the line's own product closes: a rounded
@@ -642,11 +645,38 @@ function requireQuality(input: CalculationInput): number {
   }
 
   // The calculator never reaches the schema's CHECK.
-  if (!QUALITY_GRADES.includes(quality)) {
-    throw new Error(
-      `${input.activity.name}: quality must be one of ${QUALITY_GRADES.join(" · ")}, received ${quality}`,
-    );
+  if (!LEGACY_QUALITY_GRADES.includes(quality)) {
+    requireNewGrade(input.activity.name, quality);
   }
 
   return quality;
+}
+
+/** What a write checks: a legacy grade is only explained, never stored anew (D60). */
+export function requireNewGrade(activityName: string, quality: number): void {
+  if (!QUALITY_GRADES.includes(quality)) {
+    throw new Error(
+      `${activityName}: quality must be one of ${QUALITY_GRADES.join(" · ")}, received ${quality}`,
+    );
+  }
+}
+
+/** The grade times the activity's full value, before cooldown, decay and bonus (D60). */
+export function gradedFullHours(
+  activity: Pick<EngineActivity, "calcMode" | "value">,
+  durationMinutes: number | null,
+  grade: number,
+): number | null {
+  if (activity.value == null) return null;
+
+  let full = fromNumber(activity.value);
+  if (activity.calcMode === "duration") {
+    if (durationMinutes == null) return null;
+    full = multiply(exactHours(durationMinutes), full);
+  } else if (activity.calcMode === "free") {
+    return null;
+  }
+
+  // D9 once, on the exact product (D39).
+  return Number(toCents(multiply(full, fromNumber(grade)))) / 100;
 }

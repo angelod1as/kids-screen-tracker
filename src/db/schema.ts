@@ -308,10 +308,10 @@ export const activityLogs = sqliteTable(
       sql`${table.source} in ('timer', 'request', 'admin')`,
     ),
     check("activity_logs_occurred_on_check", calendarDate(table.occurredOn)),
-    // The spec's five grades, as a list: a range let 0,4 in.
+    // A list, since a range let 0,4 in. 0,3 and 0,7 stay for frozen entries (D60).
     check(
       "activity_logs_quality_check",
-      sql`${table.quality} is null or ${table.quality} in (0, 0.3, 0.5, 0.7, 1.0)`,
+      sql`${table.quality} is null or ${table.quality} in (0, 0.25, 0.3, 0.5, 0.7, 0.75, 1.0)`,
     ),
     check(
       "activity_logs_started_at_check",

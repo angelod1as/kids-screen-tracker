@@ -45,7 +45,7 @@ type DemoSpend = {
 const KID1_LOGS: readonly DemoLog[] = [
   { username: "kid1", activityId: 1, daysAgo: 6, durationMinutes: 90 },
   { username: "kid1", activityId: 5, daysAgo: 5, durationMinutes: 45 },
-  { username: "kid1", activityId: 23, daysAgo: 5, quality: 0.7 },
+  { username: "kid1", activityId: 23, daysAgo: 5, quality: 0.75 },
   // Casa carries a seven-day cooldown, so this one is inside it from today.
   { username: "kid1", activityId: 26, daysAgo: 4, quality: 1 },
   { username: "kid1", activityId: 10, daysAgo: 3, durationMinutes: 60 },

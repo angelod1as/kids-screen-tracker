@@ -7,6 +7,7 @@ import {
   historyWindowEnd,
   historyWindowStart,
   isEarlier,
+  requireNewGrade,
 } from "../engine/calculate";
 import type { Connection, Transaction } from "./client";
 import { writeTransaction } from "./client";
@@ -43,6 +44,8 @@ export type QueueEntry = {
   /** The stopwatch never grades, so an entry may need one at approval (D37). */
   qualityGraded: boolean;
   quality: number | null;
+  /** Beside each grade, the hours it would give (D60). */
+  activityValue: number | null;
   /**
    * Null when the engine cannot price the entry: one such entry is one row with
    * a sentence on it, never a queue page that fails (D19).
@@ -299,6 +302,7 @@ export function listPendingLogs(connection: Connection): QueueEntry[] {
       autoStopped: activityLogs.autoStopped,
       qualityGraded: activities.qualityGraded,
       calcMode: activities.calcMode,
+      activityValue: activities.value,
     })
     .from(activityLogs)
     .innerJoin(users, eq(activityLogs.userId, users.id))
@@ -328,6 +332,7 @@ export function listPendingLogs(connection: Connection): QueueEntry[] {
     calcMode: row.calcMode,
     qualityGraded: row.qualityGraded,
     quality: row.quality,
+    activityValue: row.activityValue,
     ...priceOrExplain(connection.db, row),
     blockedBy: pendingBefore(connection.db, row) ?? null,
   }));
@@ -432,6 +437,8 @@ function requireEditableActivity(
       `a timed session cannot be approved as ${target.name}, which is not measured by duration`,
     );
   }
+
+  if (log.quality !== null) requireNewGrade(target.name, log.quality);
 }
 
 /**

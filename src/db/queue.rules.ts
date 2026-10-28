@@ -805,6 +805,43 @@ export const QUEUE_CASES: readonly QueueCase[] = [
   },
 
   {
+    rule: "a new grade is a quarter (D60)",
+    name: "a retired grade is refused at approval",
+    run: (queue, world) => {
+      const id = world.addPending({ activity: CAR, durationMinutes: null });
+
+      return refused(() =>
+        queue.approveLog(
+          world.connection,
+          id,
+          world.adminId,
+          { quality: 0.3 },
+          REVIEWED_AT,
+        ),
+      );
+    },
+    expected: `refused: ${CAR}: quality must be one of 0 · 0.25 · 0.5 · 0.75 · 1, received 0.3`,
+  },
+  {
+    rule: "a new grade is a quarter (D60)",
+    name: "a quarter grade prices the entry",
+    run: (queue, world) => {
+      const id = world.addPending({ activity: CAR, durationMinutes: null });
+      queue.approveLog(
+        world.connection,
+        id,
+        world.adminId,
+        { quality: 0.25 },
+        REVIEWED_AT,
+      );
+
+      return logText(world, id);
+    },
+    // 3h × 0,25.
+    expected: `approved · 0.75 h · null min · ${CAR} · by 1 · no note`,
+  },
+
+  {
     rule: "an edit applies before the value is computed",
     name: "half the duration is half the value",
     run: (queue, world) => {
