@@ -6,6 +6,7 @@ import {
   calculateEarnedHours,
   historyWindowEnd,
   historyWindowStart,
+  requireNewGrade,
   saoPauloDay,
 } from "../engine/calculate";
 import type { Connection, Transaction } from "./client";
@@ -225,11 +226,15 @@ function pendingBefore(
 /** Each check is also a column CHECK; this one can name what went wrong. */
 function requireEntry(
   entry: NewEntry,
-  activity: { calcMode: string; name: string },
+  activity: { calcMode: string; name: string; qualityGraded: boolean },
   today: string,
 ): NewEntry {
   requireCalendarDay(entry.occurredOn, today);
   requireText(entry.note ?? null, "a note");
+
+  if (activity.qualityGraded && entry.quality != null) {
+    requireNewGrade(activity.name, entry.quality);
+  }
 
   if (activity.calcMode === "duration") {
     const minutes = entry.durationMinutes;

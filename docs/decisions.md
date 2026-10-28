@@ -1,8 +1,8 @@
 # Decisões — Quanto Tempo Vale?
 
 Vinte e cinco ambiguidades da spec, resolvidas e justificadas antes da primeira
-linha de código, mais as que cada fase mediu depois. Hoje são cinquenta e
-nove, D1–D59, mais dezesseis emendas e as duas declarações da Fase 4, uma delas
+linha de código, mais as que cada fase mediu depois. Hoje são sessenta,
+D1–D60, mais dezesseis emendas e as duas declarações da Fase 4, uma delas
 revogada.
 
 **Onde este documento e `spec.md` discordarem, este documento vence.**
@@ -2434,3 +2434,33 @@ tinha desistido de fazer.
 
 **A migration não move saldo.** `0015` reconstrói `spend_requests` (a lista de
 `status` ganha `cancelled`) copiando todas as colunas; `ledger` não é tocado.
+
+### D60 — A nota é um quarto, e se lê em porcentagem
+
+A nota da spec era 0 · 0,3 · 0,5 · 0,7 · 1. Dois defeitos (#112): 0,3 e 0,7 não
+são quartos e arredondam mal, e a tela dizia "0,7" sem dizer de quê.
+
+**Decisão.** Toda entrada nova recebe uma de cinco notas: **0 · 0,25 · 0,5 ·
+0,75 · 1**, mostradas como **0% · 25% · 50% · 75% · 100%**. Decisão do dono
+(27/10/2026).
+
+- **O que já foi congelado não muda (D37, D15).** Entrada com 0,3 ou 0,7 guarda
+  a nota e o `computed_hours` que tem. O CHECK aceita as sete notas; a
+  migration `0016` reconstrói `activity_logs` copiando todas as colunas, sem
+  reescrever nota nem valor, e `ledger` não é tocado.
+- **O motor ainda explica 0,3 e 0,7,** porque o painel recalcula a entrada
+  congelada para dividir regra, desgaste e bônus (D8). A linha diz "nota 70%",
+  sem til: o número é exato.
+- **A escrita recusa 0,3 e 0,7.** Lançar e aprovar com nota de fora dos quartos
+  é recusado no servidor (D33), não só ausente dos botões.
+- **Cada botão mostra as horas que daria,** onde a atividade é conhecida
+  (lançar, fila, calculadora): "75% (1h30)". É a nota × o valor cheio da
+  atividade para a duração escolhida — antes de repetição, desgaste e bônus —,
+  em aritmética exata e arredondado uma vez (D39, D9). Sem atividade, ou numa
+  atividade trocada na correção, só a porcentagem. A ordem do cálculo não muda
+  (D7, D56): base → nota → repetição → desgaste → alternância.
+
+**Por quê.** Um quarto lê-se de cabeça em horas — metade de metade — e a
+porcentagem com as horas ao lado responde "de quanto?" antes da pergunta. Manter
+as notas antigas válidas é a D37 por outra porta: mudar a régua não pode mudar o
+preço do que já foi pago.

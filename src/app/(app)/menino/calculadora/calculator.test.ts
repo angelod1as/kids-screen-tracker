@@ -223,8 +223,8 @@ const CASES = [
   },
   {
     name: "a quality grade",
-    input: { activityId: 23, quality: 0.7 },
-    contains: ["nota 0,7"],
+    input: { activityId: 23, quality: 0.75 },
+    contains: ["nota 75%"],
   },
   {
     name: "a fixed activity, which takes neither a duration nor a grade",

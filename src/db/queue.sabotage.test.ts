@@ -60,8 +60,9 @@ const MUTATIONS: readonly Mutation[] = [
     name: "the calculation reads today instead of the day it happened",
     edits: [
       {
-        find: '  isEarlier,\n} from "../engine/calculate";',
-        replace: '  isEarlier,\n  saoPauloDay,\n} from "../engine/calculate";',
+        find: '  requireNewGrade,\n} from "../engine/calculate";',
+        replace:
+          '  requireNewGrade,\n  saoPauloDay,\n} from "../engine/calculate";',
       },
       {
         find: "    occurredOn: log.occurredOn,\n    durationMinutes: log.durationMinutes,",
@@ -337,6 +338,15 @@ const MUTATIONS: readonly Mutation[] = [
     edits: [
       {
         find: "    requireEditableActivity(tx, edited, edited.activityId);\n",
+        replace: "",
+      },
+    ],
+  },
+  {
+    name: "a retired grade can be stored anew",
+    edits: [
+      {
+        find: "  if (log.quality !== null) requireNewGrade(target.name, log.quality);\n",
         replace: "",
       },
     ],

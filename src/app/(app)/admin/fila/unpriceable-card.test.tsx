@@ -56,6 +56,7 @@ function entry(overrides: Partial<QueueEntry>): QueueEntry {
     calcMode: "free",
     qualityGraded: false,
     quality: null,
+    activityValue: null,
     preview: null,
     unpriceable: ["value"],
     blockedBy: null,
@@ -192,10 +193,24 @@ describe("a missing grade is chosen on the card (D37)", () => {
     await render(GRADED);
 
     expect(button("Aprovar").disabled).toBe(true);
-    await click("0,7");
+    await click("75%");
     await click("Aprovar");
 
-    expect(queue.approveLogAction).toHaveBeenCalledWith(7, { quality: 0.7 });
+    expect(queue.approveLogAction).toHaveBeenCalledWith(7, { quality: 0.75 });
+  });
+
+  it("shows beside each grade the hours it gives, as grade × full (D60)", async () => {
+    await render({ ...GRADED, activityValue: 2 });
+
+    for (const label of [
+      "0% (0 min)",
+      "25% (30 min)",
+      "50% (1h)",
+      "75% (1h30)",
+      "100% (2h)",
+    ]) {
+      expect(button(label).getAttribute("aria-pressed")).toBe("false");
+    }
   });
 
   it("keeps one grade chooser when the correction is open", async () => {

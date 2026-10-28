@@ -5,6 +5,7 @@ import { calculateEarnedHours } from "../../../../engine/calculate";
 import type { Choice } from "../../../../ui/choice";
 import { ChoiceGroup } from "../../../../ui/choice";
 import { Result } from "../../../../ui/explanation";
+import { qualityChoices } from "../../../../ui/grade";
 import { formatDuration } from "../../../../ui/hours";
 import { Select } from "../../../../ui/select";
 import { BORDER_CLASS } from "../../../../ui/style";
@@ -23,13 +24,6 @@ import type { CalculatorData } from "../../../actions/calculator";
 const DURATION_CHOICES: readonly Choice[] = [
   15, 30, 45, 60, 90, 120, 180, 240, 360,
 ].map((minutes) => ({ value: minutes, label: formatDuration(minutes) }));
-
-const QUALITY_CHOICES: readonly Choice[] = [0, 0.3, 0.5, 0.7, 1].map(
-  (grade) => ({
-    value: grade,
-    label: grade.toLocaleString("pt-BR", { minimumFractionDigits: 1 }),
-  }),
-);
 
 const DEFAULT_DURATION_MINUTES = 60;
 const DEFAULT_QUALITY = 1;
@@ -128,7 +122,7 @@ export function Calculator({ data }: { data: CalculatorData }) {
         <ChoiceGroup
           legend="Nota"
           onSelect={setQuality}
-          options={QUALITY_CHOICES}
+          options={qualityChoices(activity, durationMinutes)}
           value={quality}
         />
       ) : null}

@@ -9,9 +9,11 @@ import {
   calculateEarnedHours,
   type EngineActivity,
   type EngineCategory,
+  gradedFullHours,
   historyLookbackDays,
   historyWindowEnd,
   historyWindowStart,
+  requireNewGrade,
   saoPauloDay,
   shiftDate,
 } from "./calculate";
@@ -618,7 +620,7 @@ describe("rounding", () => {
     // one cent short of the 0,10 on the screen above it.
     expect(result.lines).toEqual([
       { step: "base", text: "Estudo para prova, 23min × 1,0", hours: 0.38 },
-      { step: "quality", text: "nota 0,5", hours: -0.19 },
+      { step: "quality", text: "nota 50%", hours: -0.19 },
       {
         step: "cooldown",
         text: "metade, você fez isso outra vez em 7 dias",
@@ -707,7 +709,7 @@ describe("quality, cooldown and the alternation bonus", () => {
     expect(zero.hours).toBe(0);
     expect(zero.lines).toEqual([
       { step: "base", text: "Lavar o carro", hours: 3 },
-      { step: "quality", text: "nota 0,0", hours: -3 },
+      { step: "quality", text: "nota 0%", hours: -3 },
     ]);
   });
 
@@ -1218,7 +1220,7 @@ describe("the contract with the caller", () => {
     ).toThrow(/durationMinutes/);
   });
 
-  it("takes only the five grades the spec allows", () => {
+  it("takes the quarter grades, and still prices the frozen 0,3 and 0,7 (D60)", () => {
     const graded = (quality: number) =>
       calculateEarnedHours({
         userId: KID1,
@@ -1232,7 +1234,7 @@ describe("the contract with the caller", () => {
         history: [],
       });
 
-    for (const quality of [0, 0.3, 0.5, 0.7, 1]) {
+    for (const quality of [0, 0.25, 0.3, 0.5, 0.7, 0.75, 1]) {
       expect(graded(quality).hours).toBe(Math.round(3 * quality * 100) / 100);
     }
 
@@ -1240,6 +1242,56 @@ describe("the contract with the caller", () => {
     for (const quality of [3, -1, 0.4]) {
       expect(() => graded(quality)).toThrow(/quality must be one of/);
     }
+  });
+
+  it("names a legacy grade as the percentage it was (D60)", () => {
+    const line = (quality: number) =>
+      calculateEarnedHours({
+        userId: KID1,
+        activity: lavarOCarro,
+        category: casa,
+        occurredOn: DAY,
+        quality,
+        historyFrom: WINDOW,
+        historyTo: WINDOW_END,
+        participatingCategoryIds: [],
+        history: [],
+      }).lines.find((candidate) => candidate.step === "quality")?.text;
+
+    expect([0.25, 0.7, 0.75].map(line)).toEqual([
+      "nota 25%",
+      "nota 70%",
+      "nota 75%",
+    ]);
+  });
+
+  it("refuses a legacy grade on a new entry (D60)", () => {
+    for (const quality of [0, 0.25, 0.5, 0.75, 1]) {
+      expect(() => requireNewGrade("Lavar o carro", quality)).not.toThrow();
+    }
+    for (const quality of [0.3, 0.7]) {
+      expect(() => requireNewGrade("Lavar o carro", quality)).toThrow(
+        `Lavar o carro: quality must be one of 0 · 0.25 · 0.5 · 0.75 · 1, received ${quality}`,
+      );
+    }
+  });
+
+  it("gives beside each grade the grade times the full value, rounded once (D60)", () => {
+    expect(
+      [0, 0.25, 0.5, 0.75, 1].map((grade) =>
+        gradedFullHours({ calcMode: "fixed", value: 2 }, null, grade),
+      ),
+    ).toEqual([0, 0.5, 1, 1.5, 2]);
+    // 20 minutes at 1,5 h/h is 1/2 h; 0,25 of it is 0,125, rounded once to 0,13.
+    expect(
+      gradedFullHours({ calcMode: "duration", value: 1.5 }, 20, 0.25),
+    ).toBe(0.13);
+    expect(
+      gradedFullHours({ calcMode: "duration", value: 1.5 }, null, 1),
+    ).toBeNull();
+    expect(
+      gradedFullHours({ calcMode: "free", value: null }, null, 1),
+    ).toBeNull();
   });
 
   it("takes the value the admin typed for a free activity", () => {

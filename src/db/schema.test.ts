@@ -767,7 +767,7 @@ describe("a log cannot describe an impossible session or review", () => {
     ).toThrowError(/CHECK constraint failed/);
   });
 
-  it("takes the five grades the spec lists and nothing between them", () => {
+  it("takes the quarter grades and the frozen 0,3 and 0,7, nothing between (D60)", () => {
     const { admin, kid, activity } = seedMinimum();
     const withQuality = (quality: number) =>
       insertLog(
@@ -776,10 +776,10 @@ describe("a log cannot describe an impossible session or review", () => {
         [kid.id, activity.id, quality, admin.id],
       );
 
-    for (const quality of [0, 0.3, 0.5, 0.7, 1.0]) {
+    for (const quality of [0, 0.25, 0.3, 0.5, 0.7, 0.75, 1.0]) {
       expect(() => withQuality(quality)).not.toThrow();
     }
-    for (const quality of [0.4, 0.9, 0.25]) {
+    for (const quality of [0.4, 0.9, 0.2, 0.8]) {
       expect(() => withQuality(quality)).toThrowError(
         /CHECK constraint failed/,
       );

@@ -1011,7 +1011,44 @@ export const ADMIN_CASES: readonly AdminCase[] = [
           LAUNCHED_AT,
         ),
       ),
-    expected: `refused: ${CAR}: quality must be one of 0 · 0.3 · 0.5 · 0.7 · 1, received 3`,
+    expected: `refused: ${CAR}: quality must be one of 0 · 0.25 · 0.5 · 0.75 · 1, received 3`,
+  },
+  {
+    rule: "each mode stores what belongs to it",
+    name: "a retired grade is refused on a new entry (D60)",
+    run: (admin, world) =>
+      refused(() =>
+        admin.launchEntry(
+          world.connection,
+          entry(world, {
+            activityId: world.activityId(CAR),
+            durationMinutes: null,
+            quality: 0.7,
+          }),
+          world.adminId,
+          LAUNCHED_AT,
+        ),
+      ),
+    expected: `refused: ${CAR}: quality must be one of 0 · 0.25 · 0.5 · 0.75 · 1, received 0.7`,
+  },
+  {
+    rule: "each mode stores what belongs to it",
+    name: "a quarter grade is stored as it was chosen (D60)",
+    run: (admin, world) => {
+      const { logId } = admin.launchEntry(
+        world.connection,
+        entry(world, {
+          activityId: world.activityId(CAR),
+          durationMinutes: null,
+          quality: 0.75,
+        }),
+        world.adminId,
+        LAUNCHED_AT,
+      );
+
+      return world.entryText(logId);
+    },
+    expected: `approved admin · 2.25 h · null min · nota 0.75 · avulso null · ${CAR} · ${THAT_DAY} · by 1/1 · no note`,
   },
 
   {

@@ -107,6 +107,7 @@ function entry(overrides: Partial<QueueEntry> = {}): QueueEntry {
     unpriceable: null,
     qualityGraded: false,
     quality: null,
+    activityValue: null,
     blockedBy: null,
     ...overrides,
   };

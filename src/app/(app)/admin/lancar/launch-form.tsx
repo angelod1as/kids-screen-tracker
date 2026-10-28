@@ -10,6 +10,7 @@ import { ErrorNote } from "../../../../ui/error-note";
 import { Result } from "../../../../ui/explanation";
 import { failureText } from "../../../../ui/failure";
 import { Field, TimeFields } from "../../../../ui/field";
+import { qualityChoices } from "../../../../ui/grade";
 import type { TypedTime } from "../../../../ui/hours";
 import {
   EMPTY_TIME,
@@ -40,13 +41,6 @@ import type { Kid } from "../../../actions/people";
 const DURATION_CHOICES: readonly Choice[] = [
   15, 30, 45, 60, 90, 120, 180, 240, 360,
 ].map((minutes) => ({ value: minutes, label: formatDuration(minutes) }));
-
-const QUALITY_CHOICES: readonly Choice[] = [0, 0.3, 0.5, 0.7, 1].map(
-  (grade) => ({
-    value: grade,
-    label: grade.toLocaleString("pt-BR", { minimumFractionDigits: 1 }),
-  }),
-);
 
 const DEFAULT_DURATION_MINUTES = 60;
 const DEFAULT_QUALITY = 1;
@@ -246,7 +240,7 @@ export function LaunchForm({ data, kids }: { data: LaunchData; kids: Kid[] }) {
         <ChoiceGroup
           legend="Nota"
           onSelect={(value) => change(() => setQuality(value))}
-          options={QUALITY_CHOICES}
+          options={qualityChoices(activity, durationMinutes)}
           value={quality}
         />
       ) : null}

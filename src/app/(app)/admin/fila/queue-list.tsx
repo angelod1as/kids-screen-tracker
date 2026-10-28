@@ -6,12 +6,12 @@ import type { Missing, QueueEntry } from "../../../../db/queue";
 import type { Refused } from "../../../../db/refusal";
 import type { TimedActivity } from "../../../../db/timers";
 import { Button } from "../../../../ui/button";
-import type { Choice } from "../../../../ui/choice";
 import { ChoiceGroup } from "../../../../ui/choice";
 import { formatDay } from "../../../../ui/dates";
 import { ErrorNote } from "../../../../ui/error-note";
 import { failureText, RESYNCED_TEXT } from "../../../../ui/failure";
 import { Field, TimeFields } from "../../../../ui/field";
+import { qualityChoices } from "../../../../ui/grade";
 import type { TypedTime } from "../../../../ui/hours";
 import {
   EMPTY_TIME,
@@ -188,13 +188,6 @@ export function unpriceableText(missing: readonly Missing[]): string {
 /** The column's CHECK ceiling, as `requireDuration` enforces it. */
 const MAX_MINUTES = 1_000_000;
 
-const QUALITY_CHOICES: readonly Choice[] = [0, 0.3, 0.5, 0.7, 1].map(
-  (grade) => ({
-    value: grade,
-    label: grade.toLocaleString("pt-BR", { minimumFractionDigits: 1 }),
-  }),
-);
-
 function Card({
   activities,
   busy,
@@ -228,6 +221,13 @@ function Card({
   // Asked on the card, not behind Corrigir: two taps (D49, D37).
   const needsValue = entry.unpriceable?.includes("value") ?? false;
   const needsGrade = entry.unpriceable?.includes("grade") ?? false;
+  // Another activity's value is not on the card, so its grades go without hours.
+  const gradeChoices = qualityChoices(
+    activityId === entry.activityId
+      ? { calcMode: entry.calcMode, value: entry.activityValue }
+      : undefined,
+    editing && timed ? typedMinutes(duration) : entry.durationMinutes,
+  );
 
   return (
     <li className="flex flex-col gap-3 p-3">
@@ -270,7 +270,7 @@ function Card({
         <ChoiceGroup
           legend="Nota"
           onSelect={setGrade}
-          options={QUALITY_CHOICES}
+          options={gradeChoices}
           value={grade ?? -1}
         />
       ) : null}
@@ -291,7 +291,7 @@ function Card({
             <ChoiceGroup
               legend="Nota"
               onSelect={setGrade}
-              options={QUALITY_CHOICES}
+              options={gradeChoices}
               value={grade ?? -1}
             />
           ) : null}
