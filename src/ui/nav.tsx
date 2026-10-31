@@ -18,7 +18,8 @@ import {
 /**
  * Takes items, not a role, so it never imports the guard. No `ENV` here: a
  * `"use client"` file that reads it builds, then kills the server on the first
- * request (see `src/db/index.ts`). The `auto` track assumes short first names.
+ * request (see `src/db/index.ts`). Tracks follow their labels: equal cells split
+ * "Calculadora" on every phone while "Usar" sat half empty.
  */
 export function Nav({
   account,
@@ -32,13 +33,11 @@ export function Nav({
   function cell(item: NavItem, label?: string) {
     const current = isCurrent(item, pathname);
 
-    const sides = label === undefined ? "px-0.5" : "px-4";
-
     return (
       <Link
         aria-current={current ? "page" : undefined}
         aria-label={label}
-        className={`${TOUCH_TARGET_CLASS} ${sides} flex min-w-0 flex-col items-center justify-center gap-1 py-2 lg:flex-row lg:justify-start lg:gap-3 lg:px-4 lg:py-4 ${
+        className={`${TOUCH_TARGET_CLASS} flex min-w-0 flex-col items-center justify-center gap-1 px-0.5 py-2 lg:flex-row lg:justify-start lg:gap-3 lg:px-4 lg:py-4 ${
           current ? `${ACCENT_BG_CLASS} text-white` : "bg-white text-black"
         }`}
         href={item.href}
@@ -55,7 +54,7 @@ export function Nav({
       aria-label="Navegação principal"
       className={`${BORDER_CLASS} ${NAV_SAFE_BOTTOM_CLASS} grid divide-x-2 divide-black border-b-0 border-l-0 border-r-0 bg-white lg:grid-cols-1! lg:divide-x-0 lg:divide-y-2 lg:border-t-0 lg:pb-0`}
       style={{
-        gridTemplateColumns: `minmax(${TOUCH_TARGET_PX}px, auto) repeat(${items.length}, minmax(0, 1fr))`,
+        gridTemplateColumns: `repeat(${items.length + 1}, minmax(${TOUCH_TARGET_PX}px, auto))`,
       }}
     >
       {cell(account, `Conta de ${account.label}`)}

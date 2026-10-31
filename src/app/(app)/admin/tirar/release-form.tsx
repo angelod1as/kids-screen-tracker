@@ -9,10 +9,12 @@ import { DeviceReminder } from "../../../../ui/device-reminder";
 import { ErrorNote } from "../../../../ui/error-note";
 import { failureText, previewFailureText } from "../../../../ui/failure";
 import { Field, TimeFields } from "../../../../ui/field";
+import { Hint } from "../../../../ui/hint";
 import type { TypedTime } from "../../../../ui/hours";
 import {
   formatDuration,
   formatHours,
+  isBlankTime,
   isZeroTime,
   parseTypedTime,
   timeFromMinutes,
@@ -180,6 +182,8 @@ export function ReleaseForm({
           type="text"
           value={destination}
         />
+
+        {isBlankTime(time) ? <Hint>Falta dizer quanto.</Hint> : null}
 
         <Button disabled={busy || typed === null} onClick={ask} type="button">
           Tirar

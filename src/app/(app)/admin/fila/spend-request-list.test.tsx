@@ -1,18 +1,29 @@
+import type { ReactElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 
 import type { PendingSpendRequest } from "../../../../db/spend-requests";
-import { NEGATIVE_CLASS } from "../../../../ui/style";
+import { NEGATIVE_CLASS, PENDING_BG_CLASS } from "../../../../ui/style";
+
+const pendingSpend = vi.hoisted(() => ({ requests: [] as unknown[] }));
+
+vi.mock("../../../actions/queue", () => ({
+  approveLogAction: async () => undefined,
+  fetchQueueAction: async () => ({ activities: [], entries: [] }),
+  rejectLogAction: async () => undefined,
+}));
 
 vi.mock("../../../actions/spend-requests", () => ({
-  previewSpendApprovalAction: async () => undefined,
   approveSpendRequestAction: async () => undefined,
+  fetchSpendRequestsAction: async () => pendingSpend.requests,
+  previewSpendApprovalAction: async () => undefined,
   rejectSpendRequestAction: async () => undefined,
 }));
 
 const { SpendRequestList, correctionInvalid } = await import(
   "./spend-request-list"
 );
+const { default: AdminQueuePage } = await import("./page");
 
 function request(
   overrides: Partial<PendingSpendRequest> = {},
@@ -53,6 +64,36 @@ describe("the spend-request list on the queue (D58)", () => {
     );
 
     expect(markup).toContain(NEGATIVE_CLASS);
+  });
+});
+
+describe("a spend request reads as a pendency of the queue (#115, D58)", () => {
+  it("counts in the queue's own yellow mark", () => {
+    const markup = renderToStaticMarkup(
+      <SpendRequestList initial={[request(), request({ id: 2 })]} />,
+    );
+
+    expect(markup).toContain("2 esperando");
+    expect(markup).toContain(PENDING_BG_CLASS);
+  });
+
+  it("comes before the earn queue, with the screen's one h1", async () => {
+    pendingSpend.requests = [request()];
+
+    const markup = renderToStaticMarkup(await AdminQueuePage());
+
+    expect(markup.indexOf("Pedidos de uso")).toBeLessThan(
+      markup.indexOf("Fila de aprovação"),
+    );
+    expect(markup.match(/<h1/g)).toHaveLength(1);
+  });
+
+  it("leaves the h1 on the earn queue when no one is asking", async () => {
+    pendingSpend.requests = [];
+
+    const page = (await AdminQueuePage()) as ReactElement;
+
+    expect(renderToStaticMarkup(page)).toMatch(/<h1[^>]*>Fila de aprovação/);
   });
 });
 

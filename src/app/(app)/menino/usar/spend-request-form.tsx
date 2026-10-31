@@ -9,9 +9,11 @@ import { ChoiceGroup } from "../../../../ui/choice";
 import { ErrorNote } from "../../../../ui/error-note";
 import { failureText } from "../../../../ui/failure";
 import { Field, TimeFields } from "../../../../ui/field";
+import { Hint } from "../../../../ui/hint";
 import type { TypedTime } from "../../../../ui/hours";
 import {
   formatDuration,
+  isBlankTime,
   isZeroTime,
   parseTypedTime,
   timeFromMinutes,
@@ -118,6 +120,12 @@ export function SpendRequestForm({ userId }: { userId: number }) {
         type="text"
         value={note}
       />
+
+      {isBlankTime(time) ? (
+        <Hint>Falta dizer quanto.</Hint>
+      ) : destination.trim() === "" ? (
+        <Hint>Falta dizer para quê.</Hint>
+      ) : null}
 
       <Button disabled={busy || !ready} onClick={send} type="button">
         Pedir pra usar

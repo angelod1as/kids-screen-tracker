@@ -10,10 +10,12 @@ import { formatDay } from "../../../../ui/dates";
 import { ErrorNote } from "../../../../ui/error-note";
 import { RESYNCED_TEXT, timerFailureText } from "../../../../ui/failure";
 import { Field, TimeFields } from "../../../../ui/field";
+import { Hint } from "../../../../ui/hint";
 import {
   formatClock,
   formatDuration,
   formatRecordedDuration,
+  isBlankTime,
   parseTypedTime,
   timeFromMinutes,
   typedMinutes,
@@ -326,7 +328,13 @@ function Confirm({
         <ErrorNote>{open.observationPrompt ?? NOTE_REQUIRED_TEXT}</ErrorNote>
       ) : null}
 
-      <Button disabled={busy || missingNote} onClick={onConfirm} type="button">
+      {/* Blue is "do this", and under the floor stopping loses the session (D44). */}
+      <Button
+        disabled={busy || missingNote}
+        onClick={onConfirm}
+        type="button"
+        variant={short ? "secondary" : "primary"}
+      >
         {short ? "Encerrar sem enviar" : "Enviar para aprovação"}
       </Button>
 
@@ -334,7 +342,7 @@ function Confirm({
         disabled={busy}
         onClick={onBack}
         type="button"
-        variant="secondary"
+        variant={short ? "primary" : "secondary"}
       >
         Voltar
       </Button>
@@ -540,6 +548,12 @@ function RequestPanel({
             <ErrorNote>
               {activity?.observationPrompt ?? NOTE_REQUIRED_TEXT}
             </ErrorNote>
+          ) : null}
+
+          {occurredOn === "" ? (
+            <Hint>Falta dizer quando.</Hint>
+          ) : timed && isBlankTime(duration) ? (
+            <Hint>Falta dizer por quanto tempo.</Hint>
           ) : null}
 
           <Button

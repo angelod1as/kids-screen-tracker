@@ -12,10 +12,10 @@ describe("the navigation is different per role (#14)", () => {
   it("gives the boy his five screens", () => {
     expect(navigationFor("kid")).toEqual([
       { href: "/menino", label: "Início" },
-      { href: "/menino/cronometro", label: "Cronômetro" },
+      { href: "/menino/cronometro", label: "Cronô\u00ADmetro" },
       { href: "/menino/usar", label: "Usar" },
-      { href: "/menino/calculadora", label: "Calculadora" },
-      { href: "/menino/historico", label: "Histórico" },
+      { href: "/menino/calculadora", label: "Calcu\u00ADladora" },
+      { href: "/menino/historico", label: "Histó\u00ADrico" },
     ]);
   });
 
@@ -53,7 +53,7 @@ describe("the navigation is different per role (#14)", () => {
 
   it("is in Brazilian Portuguese", () => {
     const labels = [...navigationFor("kid"), ...navigationFor("admin")].map(
-      (item) => item.label,
+      (item) => item.label.replaceAll("\u00AD", ""),
     );
 
     expect(labels).toEqual([

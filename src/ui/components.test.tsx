@@ -1,6 +1,6 @@
 import { isValidElement, type ReactNode } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
-
 import type { Session } from "../auth/access";
 import { Button } from "./button";
 import { ErrorNote } from "./error-note";
@@ -23,6 +23,7 @@ vi.mock("next/navigation", () => ({ usePathname: () => "/menino" }));
 
 const { AppShell } = await import("./app-shell");
 const { Nav } = await import("./nav");
+const { HistoryStatement } = await import("./entries");
 
 type Element = { type: unknown; props: Record<string, unknown> };
 
@@ -111,6 +112,22 @@ describe("the frame every authenticated screen sits in (#14)", () => {
     const main = first(shell, "main");
 
     expect(main?.props.children).toBe("conteúdo");
+  });
+});
+
+describe("the history's total (#115)", () => {
+  it("says it adds up the list, so it is not read against the balance", () => {
+    const markup = renderToStaticMarkup(
+      <HistoryStatement
+        basePath="/menino/historico"
+        days={2}
+        emptyText="Nada."
+        entries={[]}
+        tab="geral"
+      />,
+    );
+
+    expect(markup).toContain("Total desta lista");
   });
 });
 

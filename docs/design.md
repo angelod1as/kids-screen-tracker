@@ -83,11 +83,13 @@ corrido não estariam. E ele lê como anotação de máquina, não como frase pa
 parar e ler — que é exatamente o papel de `GANHO · 17/09/2026`. O tracking
 existe porque versal sem espacejamento extra fecha demais.
 
-**A navegação é a única exceção.** Versal é ~15% mais largo, e 15% em cima dos
-72 px do rótulo mais longo estoura os 75 px que uma célula tem a 320 px de
-largura. `CALCULADORA` é palavra única: não quebraria, partiria no meio. O resto
-da interface pode pagar a versal porque nada mais está preso a uma célula de
-79 px.
+**A navegação é a única exceção.** Versal é ~15% mais largo, e a barra do menino
+não tem esse espaço: são seis células, e a soma dos rótulos em caixa baixa já
+passa em 19 px do que 320 px oferecem. Por isso cada coluna segue o seu rótulo,
+com 48 px de piso. De 360 px para cima todo rótulo fica em uma linha; a 320,
+`Cronômetro` e `Calculadora` quebram no hífen suave (`U+00AD`), nunca numa letra
+qualquer. O resto da interface pode pagar a versal porque nada mais está preso a
+uma célula tão estreita.
 
 ### O saldo é o maior elemento, e o teto dele é medido
 
