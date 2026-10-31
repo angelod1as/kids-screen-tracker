@@ -15,8 +15,8 @@ import {
 
 /**
  * The bar at 320 px. No layout engine here, so these hold the two properties
- * that make a word's width stop mattering: a track its contents cannot widen,
- * and a label in a `w-full` span that wraps (see `NAV_LABEL_CLASS`).
+ * that keep it inside the screen: tracks that shrink to the touch target, and a
+ * label in a `w-full` span that wraps (see `NAV_LABEL_CLASS`).
  */
 
 vi.mock("next/navigation", () => ({
@@ -46,24 +46,20 @@ const cells = childrenOf(bar.props.children as ReactNode);
 const links = cells.slice(1);
 
 describe("the bar is exactly as wide as the screen (#14)", () => {
-  it("gives every cell a track that its contents cannot widen", () => {
-    // `1fr` alone has an implicit `auto` minimum: one long label would push the
-    // bar past the viewport.
+  it("sizes every track by its label, down to the touch target", () => {
     expect(
       (bar.props.style as { gridTemplateColumns: string }).gridTemplateColumns,
     ).toBe(
-      `minmax(${TOUCH_TARGET_PX}px, auto) repeat(${items.length}, minmax(0, 1fr))`,
+      `repeat(${items.length + 1}, minmax(${TOUCH_TARGET_PX}px, auto))`,
     );
   });
 
-  it("leaves every cell wider than the touch target at 320 px", () => {
-    // 42.3 px: the widest display name, measured in a browser at 12 px.
-    const widestAccountCell = 42.3 + 2 * 16;
-    const cell =
-      (NARROWEST_PHONE_PX - 2 * BORDER_PX - widestAccountCell) / items.length;
+  it("fits every cell's touch target at 320 px", () => {
+    const dividers = items.length * BORDER_PX;
 
-    expect(Math.round(cell * 10) / 10).toBe(48.3);
-    expect(cell).toBeGreaterThanOrEqual(TOUCH_TARGET_PX);
+    expect((items.length + 1) * TOUCH_TARGET_PX + dividers).toBeLessThanOrEqual(
+      NARROWEST_PHONE_PX,
+    );
   });
 });
 
@@ -114,6 +110,16 @@ describe("a label that does not fit wraps instead of spilling (#14)", () => {
       );
 
       expect(glyph, `item ${index}`).toBeDefined();
+    }
+  });
+
+  it("hyphenates the long labels instead of splitting them at a random letter", () => {
+    for (const label of ["Cronômetro", "Calculadora", "Histórico"]) {
+      const item = items.find(
+        (candidate) => candidate.label.replaceAll("\u00AD", "") === label,
+      );
+
+      expect(item?.label, label).toContain("\u00AD");
     }
   });
 
