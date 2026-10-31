@@ -10,10 +10,12 @@ import { formatDay } from "../../../../ui/dates";
 import { ErrorNote } from "../../../../ui/error-note";
 import { RESYNCED_TEXT, timerFailureText } from "../../../../ui/failure";
 import { Field, TimeFields } from "../../../../ui/field";
+import { Hint } from "../../../../ui/hint";
 import {
   formatClock,
   formatDuration,
   formatRecordedDuration,
+  isBlankTime,
   parseTypedTime,
   timeFromMinutes,
   typedMinutes,
@@ -546,6 +548,12 @@ function RequestPanel({
             <ErrorNote>
               {activity?.observationPrompt ?? NOTE_REQUIRED_TEXT}
             </ErrorNote>
+          ) : null}
+
+          {occurredOn === "" ? (
+            <Hint>Falta dizer quando.</Hint>
+          ) : timed && isBlankTime(duration) ? (
+            <Hint>Falta dizer por quanto tempo.</Hint>
           ) : null}
 
           <Button

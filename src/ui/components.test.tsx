@@ -1,8 +1,7 @@
 import { isValidElement, type ReactNode } from "react";
-import { describe, expect, it, vi } from "vitest";
-
-import type { Session } from "../auth/access";
 import { renderToStaticMarkup } from "react-dom/server";
+import { describe, expect, it, vi } from "vitest";
+import type { Session } from "../auth/access";
 import { Button } from "./button";
 import { ErrorNote } from "./error-note";
 import { Field } from "./field";

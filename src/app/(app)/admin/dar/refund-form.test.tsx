@@ -198,6 +198,34 @@ describe("a typed zero, said before the tap (#56)", () => {
     expect(refundButton().disabled).toBe(true);
     expect(container.textContent).not.toContain(ZERO_TIME_TEXT);
   });
+
+  it("says what a disabled Dar still needs (#115)", async () => {
+    expect(container.textContent).toContain("Falta dizer quanto.");
+
+    await type("#tempo-horas", "1");
+
+    expect(container.textContent).not.toContain("Falta dizer quanto.");
+    expect(refundButton().disabled).toBe(false);
+
+    await type("#motivo", "");
+
+    expect(container.textContent).toContain("Falta o motivo.");
+  });
+
+  it("offers the same shortcuts as Tirar, without choosing for the adult (#115)", async () => {
+    const shortcut = [...container.querySelectorAll("button")].find(
+      (candidate) => candidate.textContent?.trim() === "1h30",
+    );
+
+    expect(refundButton().disabled).toBe(true);
+
+    await act(async () => shortcut?.click());
+
+    expect(
+      container.querySelector<HTMLInputElement>("#tempo-horas")?.value,
+    ).toBe("1");
+    expect(refundButton().disabled).toBe(false);
+  });
 });
 
 describe("the confirmation (D53)", () => {

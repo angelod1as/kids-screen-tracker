@@ -2,16 +2,22 @@
 
 import { useState, useTransition } from "react";
 import { Button } from "../../../../ui/button";
+import type { Choice } from "../../../../ui/choice";
+import { ChoiceGroup } from "../../../../ui/choice";
 import { ConfirmMovement } from "../../../../ui/confirm-movement";
 import { ErrorNote } from "../../../../ui/error-note";
 import { failureText, previewFailureText } from "../../../../ui/failure";
 import { Field, TimeFields } from "../../../../ui/field";
+import { Hint } from "../../../../ui/hint";
 import type { TypedTime } from "../../../../ui/hours";
 import {
   EMPTY_TIME,
+  formatDuration,
   formatHours,
+  isBlankTime,
   isZeroTime,
   parseTypedTime,
+  timeFromMinutes,
   typedMinutes,
   ZERO_TIME_TEXT,
 } from "../../../../ui/hours";
@@ -33,6 +39,10 @@ import type { Kid } from "../../../actions/people";
  * so it is credited to that day (D13). The reason is required: it is the only
  * thing that explains the row.
  */
+
+const MINUTE_CHOICES: readonly Choice[] = [30, 60, 90, 120, 180, 240].map(
+  (minutes) => ({ value: minutes, label: formatDuration(minutes) }),
+);
 
 /** Almost every refund is this one (#106); the field stays editable. */
 export const DEFAULT_REFUND_REASON = "Não usou";
@@ -152,9 +162,16 @@ export function RefundForm({ kids, today }: { kids: Kid[]; today: string }) {
           value={userId}
         />
 
+        <ChoiceGroup
+          legend="Quanto"
+          onSelect={(chosen) => change(() => setTime(timeFromMinutes(chosen)))}
+          options={MINUTE_CHOICES}
+          value={typedMinutes(time) ?? 0}
+        />
+
         <TimeFields
           id="tempo"
-          legend="Quanto"
+          legend="Ou digite"
           onChange={(typed) => change(() => setTime(typed))}
           value={time}
         />
@@ -178,6 +195,12 @@ export function RefundForm({ kids, today }: { kids: Kid[]; today: string }) {
           type="text"
           value={reason}
         />
+
+        {isBlankTime(time) ? (
+          <Hint>Falta dizer quanto.</Hint>
+        ) : reason.trim() === "" ? (
+          <Hint>Falta o motivo.</Hint>
+        ) : null}
 
         <Button
           disabled={busy || !canRefund(time, reason)}

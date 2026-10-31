@@ -49,9 +49,7 @@ describe("the bar is exactly as wide as the screen (#14)", () => {
   it("sizes every track by its label, down to the touch target", () => {
     expect(
       (bar.props.style as { gridTemplateColumns: string }).gridTemplateColumns,
-    ).toBe(
-      `repeat(${items.length + 1}, minmax(${TOUCH_TARGET_PX}px, auto))`,
-    );
+    ).toBe(`repeat(${items.length + 1}, minmax(${TOUCH_TARGET_PX}px, auto))`);
   });
 
   it("fits every cell's touch target at 320 px", () => {
