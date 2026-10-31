@@ -539,19 +539,20 @@ export function CategoryDetail({
                   )
                 }
                 type="button"
+                variant={category.active ? "secondary" : "primary"}
               >
                 {category.active ? "Desativar" : "Ativar de novo"}
               </Button>
             )}
 
-            {/* Never disabled: it cannot fail, and the secondary variant has no disabled look. */}
+            {/* Never disabled: it cannot fail. */}
             <Button
               onClick={() => {
                 setEdited(draftOf(category));
                 setEditing(!editing);
               }}
               type="button"
-              variant="secondary"
+              variant={!editing && category.active ? "primary" : "secondary"}
             >
               {editing ? "Cancelar" : "Editar números"}
             </Button>

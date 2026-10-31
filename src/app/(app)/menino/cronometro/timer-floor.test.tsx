@@ -4,6 +4,7 @@ import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { ACCENT_BG_CLASS } from "../../../../ui/style";
 import type { OpenSessionView, TimerScreenData } from "../../../actions/timer";
 
 /** #86: the confirmation says a session under its floor will not be sent (D44). */
@@ -106,6 +107,18 @@ describe("the confirmation of a session under its floor (#86, D44)", () => {
     expect(buttons()).toContain("Encerrar sem enviar");
     expect(buttons()).not.toContain("Enviar para aprovação");
     expect(buttons()).toContain("Voltar");
+  });
+
+  it("paints the way back blue, not the ending that loses the session", async () => {
+    await confirm(299);
+
+    const painted = (label: string) =>
+      [...container.querySelectorAll("button")]
+        .find((button) => button.textContent?.trim() === label)
+        ?.className.includes(ACCENT_BG_CLASS);
+
+    expect(painted("Voltar")).toBe(true);
+    expect(painted("Encerrar sem enviar")).toBe(false);
   });
 
   it("offers to send at 5min exactly, with no warning", async () => {

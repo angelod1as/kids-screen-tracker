@@ -326,7 +326,13 @@ function Confirm({
         <ErrorNote>{open.observationPrompt ?? NOTE_REQUIRED_TEXT}</ErrorNote>
       ) : null}
 
-      <Button disabled={busy || missingNote} onClick={onConfirm} type="button">
+      {/* Blue is "do this", and under the floor stopping loses the session (D44). */}
+      <Button
+        disabled={busy || missingNote}
+        onClick={onConfirm}
+        type="button"
+        variant={short ? "secondary" : "primary"}
+      >
         {short ? "Encerrar sem enviar" : "Enviar para aprovação"}
       </Button>
 
@@ -334,7 +340,7 @@ function Confirm({
         disabled={busy}
         onClick={onBack}
         type="button"
-        variant="secondary"
+        variant={short ? "primary" : "secondary"}
       >
         Voltar
       </Button>

@@ -2,7 +2,11 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { EntryPreview } from "../../db/admin";
-import { NEGATIVE_CLASS, PENDING_BG_CLASS } from "../../ui/style";
+import {
+  ACCENT_BG_CLASS,
+  NEGATIVE_CLASS,
+  PENDING_BG_CLASS,
+} from "../../ui/style";
 import type { LaunchData } from "../actions/admin";
 
 /** Actions are replaced; what is under test is what the screens draw and the ids they hand over. */
@@ -119,6 +123,23 @@ describe("the admin's home screen (#21)", () => {
 
     expect(drawn).toContain("3 esperando");
     expect(drawn).toContain(PENDING_BG_CLASS);
+  });
+
+  it("spends the home's blue on the queue only while something waits", async () => {
+    const primary = (href: string) =>
+      new RegExp(`class="[^"]*${ACCENT_BG_CLASS}[^"]*" href="${href}"`);
+
+    mocked.pending = 3;
+    const waiting = await markup(AdminHomePage);
+
+    expect(waiting).toMatch(primary("/admin/fila"));
+    expect(waiting).not.toMatch(primary("/admin/lancar"));
+
+    mocked.pending = 0;
+    const clear = await markup(AdminHomePage);
+
+    expect(clear).not.toMatch(primary("/admin/fila"));
+    expect(clear).toMatch(primary("/admin/lancar"));
   });
 
   it("says one, in the singular", async () => {
