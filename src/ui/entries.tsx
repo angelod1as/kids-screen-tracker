@@ -383,7 +383,9 @@ export function HistoryStatement({
           }))}
         />
         <div className="flex items-baseline justify-between gap-3">
-          <span className={`${META_CLASS} text-black`}>Total</span>
+          <span className={`${META_CLASS} text-black`}>
+            Total desta lista
+          </span>
           <span
             className={`${READOUT_CLASS} shrink-0 ${balanceToneClass(total)}`}
           >
