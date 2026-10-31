@@ -12,6 +12,7 @@ import { Field, TimeFields } from "../../../../ui/field";
 import type { TypedTime } from "../../../../ui/hours";
 import { isBlankTime, isZeroTime, parseTypedTime } from "../../../../ui/hours";
 import { Panel } from "../../../../ui/panel";
+import { PendingMark } from "../../../../ui/pending";
 import {
   balanceToneClass,
   META_CLASS,
@@ -116,7 +117,17 @@ export function SpendRequestList({
       ) : null}
 
       {requests.length === 0 ? null : (
-        <Panel note={`${requests.length}`} title="Pedidos de uso">
+        <Panel
+          note={
+            <PendingMark>
+              {requests.length === 1
+                ? "1 esperando"
+                : `${requests.length} esperando`}
+            </PendingMark>
+          }
+          title="Pedidos de uso"
+          top
+        >
           <ul>
             {requests.map((request) => (
               <li className={ROW_CLASS} key={request.id}>

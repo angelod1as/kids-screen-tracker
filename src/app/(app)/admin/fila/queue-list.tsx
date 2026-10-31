@@ -39,7 +39,13 @@ import {
  * entry blocked by one above cannot be approved (D32), so it stays one column.
  */
 
-export function QueueList({ initial }: { initial: QueueData }) {
+export function QueueList({
+  initial,
+  top = true,
+}: {
+  initial: QueueData;
+  top?: boolean;
+}) {
   const [data, setData] = useState(initial);
   const [failed, setFailed] = useState<string | null>(null);
   const [busy, startAction] = useTransition();
@@ -92,7 +98,7 @@ export function QueueList({ initial }: { initial: QueueData }) {
           )
         }
         title="Fila de aprovação"
-        top
+        top={top}
       >
         {data.entries.length === 0 ? (
           <PanelText>
