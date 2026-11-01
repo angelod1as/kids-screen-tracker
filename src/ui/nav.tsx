@@ -18,8 +18,7 @@ import {
 /**
  * Takes items, not a role, so it never imports the guard. No `ENV` here: a
  * `"use client"` file that reads it builds, then kills the server on the first
- * request (see `src/db/index.ts`). Tracks follow their labels: equal cells split
- * "Calculadora" on every phone while "Usar" sat half empty.
+ * request (see `src/db/index.ts`). Tracks follow labels (docs/design.md).
  */
 export function Nav({
   account,

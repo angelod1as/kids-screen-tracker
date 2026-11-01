@@ -267,6 +267,11 @@ sobre cinza que a regra proíbe, e o menino que aperta os olhos para ler não pe
 contraste. Dá para ver na fila: o *Aprovar* da entrada bloqueada pela D32 recua
 para o chão enquanto os outros dois ficam azuis.
 
+Cada tela de adulto tem um azul por vez, no que se veio fazer. Na home ele
+acompanha a fila: com pendência é *Fila de aprovação*; sem pendência é *Lançar
+atividade*, a tarefa que trouxe o adulto até ali, e *Tirar* e *Dar* ficam
+secundários nos dois casos.
+
 ### Cor, os três lugares e nada além
 
 | lugar | como |
