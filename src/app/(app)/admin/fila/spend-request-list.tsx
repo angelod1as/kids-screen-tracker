@@ -126,7 +126,6 @@ export function SpendRequestList({
             </PendingMark>
           }
           title="Pedidos de uso"
-          top
         >
           <ul>
             {requests.map((request) => (

@@ -88,7 +88,8 @@ não tem esse espaço: são seis células, e a soma dos rótulos em caixa baixa 
 passa em 19 px do que 320 px oferecem. Por isso cada coluna segue o seu rótulo,
 com 48 px de piso. De 360 px para cima todo rótulo fica em uma linha; a 320,
 `Cronômetro` e `Calculadora` quebram no hífen suave (`U+00AD`), nunca numa letra
-qualquer. O resto da interface pode pagar a versal porque nada mais está preso a
+qualquer; `Histórico` leva o mesmo hífen de reserva, para um nome mais longo na
+célula de identidade. O resto da interface pode pagar a versal porque nada mais está preso a
 uma célula tão estreita.
 
 ### O saldo é o maior elemento, e o teto dele é medido

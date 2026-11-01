@@ -2,8 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { Button } from "../../../../ui/button";
-import type { Choice } from "../../../../ui/choice";
-import { ChoiceGroup } from "../../../../ui/choice";
+import { ChoiceGroup, MINUTE_CHOICES } from "../../../../ui/choice";
 import { ConfirmMovement } from "../../../../ui/confirm-movement";
 import { ErrorNote } from "../../../../ui/error-note";
 import { failureText, previewFailureText } from "../../../../ui/failure";
@@ -12,7 +11,6 @@ import { Hint } from "../../../../ui/hint";
 import type { TypedTime } from "../../../../ui/hours";
 import {
   EMPTY_TIME,
-  formatDuration,
   formatHours,
   isBlankTime,
   isZeroTime,
@@ -39,10 +37,6 @@ import type { Kid } from "../../../actions/people";
  * so it is credited to that day (D13). The reason is required: it is the only
  * thing that explains the row.
  */
-
-const MINUTE_CHOICES: readonly Choice[] = [30, 60, 90, 120, 180, 240].map(
-  (minutes) => ({ value: minutes, label: formatDuration(minutes) }),
-);
 
 /** Almost every refund is this one (#106); the field stays editable. */
 export const DEFAULT_REFUND_REASON = "Não usou";

@@ -4,15 +4,13 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 
 import { Button } from "../../../../ui/button";
-import type { Choice } from "../../../../ui/choice";
-import { ChoiceGroup } from "../../../../ui/choice";
+import { ChoiceGroup, MINUTE_CHOICES } from "../../../../ui/choice";
 import { ErrorNote } from "../../../../ui/error-note";
 import { failureText } from "../../../../ui/failure";
 import { Field, TimeFields } from "../../../../ui/field";
 import { Hint } from "../../../../ui/hint";
 import type { TypedTime } from "../../../../ui/hours";
 import {
-  formatDuration,
   isBlankTime,
   isZeroTime,
   parseTypedTime,
@@ -28,10 +26,6 @@ import { requestSpendAction } from "../../../actions/spend-requests";
  * adult's Tirar) and an optional comment. No balance check: the request may go
  * past the balance, and the adult is the gate.
  */
-
-const MINUTE_CHOICES: readonly Choice[] = [30, 60, 90, 120, 180, 240].map(
-  (minutes) => ({ value: minutes, label: formatDuration(minutes) }),
-);
 
 const DEFAULT_TIME: TypedTime = { hours: "1", minutes: "" };
 

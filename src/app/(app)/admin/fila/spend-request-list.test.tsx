@@ -1,4 +1,3 @@
-import type { ReactElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 
@@ -77,7 +76,7 @@ describe("a spend request reads as a pendency of the queue (#115, D58)", () => {
     expect(markup).toContain(PENDING_BG_CLASS);
   });
 
-  it("comes before the earn queue, with the screen's one h1", async () => {
+  it("comes before the earn queue", async () => {
     pendingSpend.requests = [request()];
 
     const markup = renderToStaticMarkup(await AdminQueuePage());
@@ -85,15 +84,17 @@ describe("a spend request reads as a pendency of the queue (#115, D58)", () => {
     expect(markup.indexOf("Pedidos de uso")).toBeLessThan(
       markup.indexOf("Fila de aprovação"),
     );
-    expect(markup.match(/<h1/g)).toHaveLength(1);
   });
 
-  it("leaves the h1 on the earn queue when no one is asking", async () => {
-    pendingSpend.requests = [];
+  it("keeps one h1 that neither list can take away", async () => {
+    for (const requests of [[], [request()]]) {
+      pendingSpend.requests = requests;
 
-    const page = (await AdminQueuePage()) as ReactElement;
+      const markup = renderToStaticMarkup(await AdminQueuePage());
 
-    expect(renderToStaticMarkup(page)).toMatch(/<h1[^>]*>Fila de aprovação/);
+      expect(markup.match(/<h1/g)).toHaveLength(1);
+      expect(markup).toMatch(/<h1 class="sr-only">/);
+    }
   });
 });
 

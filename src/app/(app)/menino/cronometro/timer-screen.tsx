@@ -16,9 +16,11 @@ import {
   formatDuration,
   formatRecordedDuration,
   isBlankTime,
+  isZeroTime,
   parseTypedTime,
   timeFromMinutes,
   typedMinutes,
+  ZERO_TIME_TEXT,
 } from "../../../../ui/hours";
 import { Panel, PanelText } from "../../../../ui/panel";
 import { PendingMark } from "../../../../ui/pending";
@@ -548,6 +550,10 @@ function RequestPanel({
             <ErrorNote>
               {activity?.observationPrompt ?? NOTE_REQUIRED_TEXT}
             </ErrorNote>
+          ) : null}
+
+          {timed && isZeroTime(duration) ? (
+            <ErrorNote>{ZERO_TIME_TEXT}</ErrorNote>
           ) : null}
 
           {occurredOn === "" ? (
