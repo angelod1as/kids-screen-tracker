@@ -48,6 +48,7 @@ export function canRefund(time: TypedTime, reason: string): boolean {
 
 export function RefundForm({ kids, today }: { kids: Kid[]; today: string }) {
   const [userId, setUserId] = useState(kids[0]?.id ?? 0);
+  // Blank on purpose, unlike Tirar's 1h: giving hours must never be one stray tap.
   const [time, setTime] = useState(EMPTY_TIME);
   const [occurredOn, setOccurredOn] = useState(today);
   const [reason, setReason] = useState(DEFAULT_REFUND_REASON);
