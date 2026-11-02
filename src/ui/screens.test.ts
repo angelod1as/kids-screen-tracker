@@ -295,6 +295,22 @@ describe("the extract tabs (#78)", () => {
     expect(kinds).toEqual(["spend"]);
   });
 
+  it("moves a refused spend request to Perdas, out of Ganhos", () => {
+    const refusedSpend: RejectedEntry = {
+      ...REJECTED,
+      id: 51,
+      label: "Xbox",
+      durationMinutes: 60,
+      fromSpendRequest: true,
+    };
+    const entries = [refusedSpend, ...MIXED];
+
+    expect(entriesForTab(entries, "perdas")).toContain(refusedSpend);
+    expect(entriesForTab(entries, "ganhos")).not.toContain(refusedSpend);
+    expect(entriesForTab(entries, "ganhos")).toContain(REJECTED);
+    expect(tabTotal(entriesForTab(entries, "perdas"))).toBe(-1.5);
+  });
+
   it("shows a zero only in Geral", () => {
     const hasZero = (tab: Parameters<typeof entriesForTab>[1]) =>
       entriesForTab(MIXED, tab).some((entry) => entry.kind === "zero");

@@ -207,6 +207,7 @@ describe("the admin decision (D58)", () => {
       label: "Xbox",
       reason: "agora não",
       decidedBy: "Admin1",
+      durationMinutes: 120,
       fromSpendRequest: true,
     });
   });

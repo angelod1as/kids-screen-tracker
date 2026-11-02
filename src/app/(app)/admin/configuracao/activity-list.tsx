@@ -267,7 +267,9 @@ export function activitySummary(activity: ActivityRow): string {
   }
 
   if (activity.presumedMinutes != null) {
-    parts.push(`pedido vale ${formatDuration(activity.presumedMinutes)}`);
+    parts.push(
+      `sem cronômetro vale ${formatDuration(activity.presumedMinutes)}`,
+    );
   }
 
   if (activity.noteRequired === true) {
@@ -656,7 +658,7 @@ function ActivityFields({
         {draft.calcMode === "duration" ? (
           <TimeFields
             id={`${prefix}-presumida`}
-            legend="Duração presumida do pedido (vazio: o menino digita)"
+            legend="Duração presumida sem cronômetro (vazio: o menino digita)"
             onChange={(presumed) => onChange({ ...draft, presumed })}
             value={draft.presumed ?? EMPTY_TIME}
           />

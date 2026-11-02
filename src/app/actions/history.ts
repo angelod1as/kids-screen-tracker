@@ -406,6 +406,7 @@ function rejectedSpendEntries(
   const rows = getDb()
     .select({
       id: spendRequests.id,
+      hours: spendRequests.hours,
       destination: spendRequests.destination,
       note: spendRequests.note,
       createdAt: spendRequests.createdAt,
@@ -441,7 +442,8 @@ function rejectedSpendEntries(
           occurredOn,
           at: row.reviewedAt.getTime(),
           label: row.destination,
-          durationMinutes: null,
+          // H3: the amount asked, so the refusal says what was not spent.
+          durationMinutes: Math.round(row.hours * 60),
           // #20: the adult's reason, pulled back out of the note (#72).
           reason: rejectionReason(row.note),
           decidedBy: row.reviewedBy,

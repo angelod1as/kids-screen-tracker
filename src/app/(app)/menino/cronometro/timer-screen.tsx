@@ -10,13 +10,17 @@ import { formatDay } from "../../../../ui/dates";
 import { ErrorNote } from "../../../../ui/error-note";
 import { RESYNCED_TEXT, timerFailureText } from "../../../../ui/failure";
 import { Field, TimeFields } from "../../../../ui/field";
+import { Hint } from "../../../../ui/hint";
 import {
   formatClock,
   formatDuration,
   formatRecordedDuration,
+  isBlankTime,
+  isZeroTime,
   parseTypedTime,
   timeFromMinutes,
   typedMinutes,
+  ZERO_TIME_TEXT,
 } from "../../../../ui/hours";
 import { Panel, PanelText } from "../../../../ui/panel";
 import { PendingMark } from "../../../../ui/pending";
@@ -326,7 +330,13 @@ function Confirm({
         <ErrorNote>{open.observationPrompt ?? NOTE_REQUIRED_TEXT}</ErrorNote>
       ) : null}
 
-      <Button disabled={busy || missingNote} onClick={onConfirm} type="button">
+      {/* Blue is "do this", and under the floor stopping loses the session (D44). */}
+      <Button
+        disabled={busy || missingNote}
+        onClick={onConfirm}
+        type="button"
+        variant={short ? "secondary" : "primary"}
+      >
         {short ? "Encerrar sem enviar" : "Enviar para aprovação"}
       </Button>
 
@@ -334,7 +344,7 @@ function Confirm({
         disabled={busy}
         onClick={onBack}
         type="button"
-        variant="secondary"
+        variant={short ? "primary" : "secondary"}
       >
         Voltar
       </Button>
@@ -473,12 +483,12 @@ function RequestPanel({
     <section className="flex flex-col gap-4">
       {data.requested === null ? null : (
         <Box>
-          Pedido enviado para aprovação: {data.requested.activityName} ·{" "}
+          Enviado para aprovação: {data.requested.activityName} ·{" "}
           {formatDay(data.requested.occurredOn)}.
         </Box>
       )}
 
-      <Panel title="Pedir sem cronômetro">
+      <Panel title="Contar sem cronômetro">
         <div className="flex flex-col gap-3 p-3">
           <Select
             id="pedido-atividade"
@@ -542,6 +552,16 @@ function RequestPanel({
             </ErrorNote>
           ) : null}
 
+          {timed && isZeroTime(duration) ? (
+            <ErrorNote>{ZERO_TIME_TEXT}</ErrorNote>
+          ) : null}
+
+          {occurredOn === "" ? (
+            <Hint>Falta dizer quando.</Hint>
+          ) : timed && isBlankTime(duration) ? (
+            <Hint>Falta dizer por quanto tempo.</Hint>
+          ) : null}
+
           <Button
             disabled={busy || !ready}
             onClick={() =>
@@ -557,7 +577,7 @@ function RequestPanel({
             }
             type="button"
           >
-            Pedir
+            Enviar para aprovação
           </Button>
         </div>
       </Panel>
@@ -609,8 +629,8 @@ function PendingList({ data }: { data: TimerScreenData }) {
     >
       {data.pending.length === 0 ? (
         <PanelText>
-          Nada esperando. Quando você enviar uma sessão ou um pedido, ele
-          aparece aqui até um adulto decidir.
+          Nada esperando. O que você enviar, com ou sem cronômetro, aparece aqui
+          até um adulto decidir.
         </PanelText>
       ) : (
         <ul>

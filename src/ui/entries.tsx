@@ -141,7 +141,8 @@ function RejectedRow({
   nameDecider: boolean;
 }) {
   return (
-    <li className={`${ROW_CLASS} bg-black text-white`}>
+    // `border-t-white`: two refusals in a row would otherwise merge into one black block.
+    <li className={`${ROW_CLASS} border-t-white bg-black text-white`}>
       <span className="flex min-w-0 flex-1 flex-col gap-1">
         <span className="break-words text-base font-bold text-white">
           {entry.label}
@@ -312,8 +313,8 @@ export function historyTab(param: string | string[] | undefined): HistoryTab {
 }
 
 /**
- * #78: Ganhos holds earns, refunds and the refusals that are cancelled gains
- * (0h); Perdas holds only spends; zeros live in Geral alone (owner, 07/10/2026).
+ * #78: Ganhos holds earns, refunds and refused earns; Perdas holds spends and
+ * refused spend requests (owner, 02/11/2026); zeros live in Geral alone.
  */
 export function entriesForTab(
   entries: readonly HistoryEntry[],
@@ -327,10 +328,14 @@ export function entriesForTab(
         (entry) =>
           entry.kind === "earn" ||
           entry.kind === "refund" ||
-          entry.kind === "rejected",
+          (entry.kind === "rejected" && !entry.fromSpendRequest),
       );
     case "perdas":
-      return entries.filter((entry) => entry.kind === "spend");
+      return entries.filter(
+        (entry) =>
+          entry.kind === "spend" ||
+          (entry.kind === "rejected" && entry.fromSpendRequest === true),
+      );
   }
 }
 
@@ -383,7 +388,7 @@ export function HistoryStatement({
           }))}
         />
         <div className="flex items-baseline justify-between gap-3">
-          <span className={`${META_CLASS} text-black`}>Total</span>
+          <span className={`${META_CLASS} text-black`}>Total desta lista</span>
           <span
             className={`${READOUT_CLASS} shrink-0 ${balanceToneClass(total)}`}
           >

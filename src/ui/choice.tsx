@@ -1,5 +1,6 @@
 "use client";
 
+import { formatDuration } from "./hours";
 import {
   ACCENT_BG_CLASS,
   BORDER_CLASS,
@@ -11,6 +12,11 @@ export type Choice = {
   value: number;
   label: string;
 };
+
+/** The amounts every form that moves hours offers (Usar, Tirar, Dar). */
+export const MINUTE_CHOICES: readonly Choice[] = [
+  30, 60, 90, 120, 180, 240,
+].map((minutes) => ({ value: minutes, label: formatDuration(minutes) }));
 
 /**
  * Buttons, not a select: trying combinations on the calculator must be one tap

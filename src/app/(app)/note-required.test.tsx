@@ -190,26 +190,26 @@ async function confirming(open: OpenSessionView) {
 }
 
 describe("the request without a stopwatch (#44)", () => {
-  it("says before the tap that the chosen activity needs a note, and holds Pedir until it has one", async () => {
+  it("says before the tap that the chosen activity needs a note, and holds the send until it has one", async () => {
     await render(<TimerScreen initial={IDLE} />);
 
     expect(container.textContent).toContain(REQUIRED_LABEL);
     expect(container.textContent).toContain(NOTE_REQUIRED_TEXT);
-    expect(button("Pedir").disabled).toBe(true);
+    expect(button("Enviar para aprovação").disabled).toBe(true);
 
     await type("#pedido-nota", "   ");
-    expect(button("Pedir").disabled).toBe(true);
+    expect(button("Enviar para aprovação").disabled).toBe(true);
 
     await type("#pedido-nota", "\u200b\u2060");
     expect(container.textContent).toContain(NOTE_REQUIRED_TEXT);
-    expect(button("Pedir").disabled).toBe(true);
+    expect(button("Enviar para aprovação").disabled).toBe(true);
 
     await type("#pedido-nota", "cinema com a turma");
     expect(container.textContent).not.toContain(NOTE_REQUIRED_TEXT);
-    expect(button("Pedir").disabled).toBe(false);
+    expect(button("Enviar para aprovação").disabled).toBe(false);
 
     vi.mocked(timer.requestLogAction).mockResolvedValue(IDLE);
-    await click("Pedir");
+    await click("Enviar para aprovação");
     expect(timer.requestLogAction).toHaveBeenCalledWith(3, {
       activityId: 15,
       occurredOn: "2026-09-30",
@@ -225,7 +225,7 @@ describe("the request without a stopwatch (#44)", () => {
     expect(container.textContent).toContain(OPTIONAL_LABEL);
     expect(container.textContent).not.toContain(REQUIRED_LABEL);
     expect(container.textContent).not.toContain(NOTE_REQUIRED_TEXT);
-    expect(button("Pedir").disabled).toBe(false);
+    expect(button("Enviar para aprovação").disabled).toBe(false);
   });
 });
 

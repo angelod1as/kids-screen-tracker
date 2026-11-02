@@ -2,17 +2,27 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 
 import type { PendingSpendRequest } from "../../../../db/spend-requests";
-import { NEGATIVE_CLASS } from "../../../../ui/style";
+import { NEGATIVE_CLASS, PENDING_BG_CLASS } from "../../../../ui/style";
+
+const pendingSpend = vi.hoisted(() => ({ requests: [] as unknown[] }));
+
+vi.mock("../../../actions/queue", () => ({
+  approveLogAction: async () => undefined,
+  fetchQueueAction: async () => ({ activities: [], entries: [] }),
+  rejectLogAction: async () => undefined,
+}));
 
 vi.mock("../../../actions/spend-requests", () => ({
-  previewSpendApprovalAction: async () => undefined,
   approveSpendRequestAction: async () => undefined,
+  fetchSpendRequestsAction: async () => pendingSpend.requests,
+  previewSpendApprovalAction: async () => undefined,
   rejectSpendRequestAction: async () => undefined,
 }));
 
 const { SpendRequestList, correctionInvalid } = await import(
   "./spend-request-list"
 );
+const { default: AdminQueuePage } = await import("./page");
 
 function request(
   overrides: Partial<PendingSpendRequest> = {},
@@ -53,6 +63,38 @@ describe("the spend-request list on the queue (D58)", () => {
     );
 
     expect(markup).toContain(NEGATIVE_CLASS);
+  });
+});
+
+describe("a spend request reads as a pendency of the queue (#115, D58)", () => {
+  it("counts in the queue's own yellow mark", () => {
+    const markup = renderToStaticMarkup(
+      <SpendRequestList initial={[request(), request({ id: 2 })]} />,
+    );
+
+    expect(markup).toContain("2 esperando");
+    expect(markup).toContain(PENDING_BG_CLASS);
+  });
+
+  it("comes before the earn queue", async () => {
+    pendingSpend.requests = [request()];
+
+    const markup = renderToStaticMarkup(await AdminQueuePage());
+
+    expect(markup.indexOf("Pedidos de uso")).toBeLessThan(
+      markup.indexOf("Ganhos para aprovar"),
+    );
+  });
+
+  it("keeps one h1 that neither list can take away", async () => {
+    for (const requests of [[], [request()]]) {
+      pendingSpend.requests = requests;
+
+      const markup = renderToStaticMarkup(await AdminQueuePage());
+
+      expect(markup.match(/<h1/g)).toHaveLength(1);
+      expect(markup).toMatch(/<h1 class="sr-only">/);
+    }
   });
 });
 

@@ -91,13 +91,12 @@ export function QueueList({ initial }: { initial: QueueData }) {
             </PendingMark>
           )
         }
-        title="Fila de aprovação"
-        top
+        title="Ganhos para aprovar"
       >
         {data.entries.length === 0 ? (
           <PanelText>
-            Nada esperando. O que os meninos propuserem pelo cronômetro ou
-            pedirem sem ele aparece aqui.
+            Nada esperando. O que os meninos mandarem, com ou sem cronômetro,
+            aparece aqui.
           </PanelText>
         ) : (
           <ul className="divide-y-2 divide-black">
@@ -242,7 +241,7 @@ function Card({
               ? ""
               : ` · ${formatRecordedDuration(entry.durationSeconds)}`}
             {entry.autoStopped ? " · parou sozinha" : ""}
-            {entry.source === "request" ? " · pedido sem cronômetro" : ""}
+            {entry.source === "request" ? " · sem cronômetro" : ""}
           </span>
         </span>
         {entry.preview === null ? null : (

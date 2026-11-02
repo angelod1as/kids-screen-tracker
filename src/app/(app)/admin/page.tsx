@@ -69,8 +69,11 @@ export default async function AdminHomePage() {
           </ul>
         </Panel>
 
-        {/* Yellow only when something waits, or the adult learns to stop seeing it. */}
-        <LinkButton href="/admin/fila" variant="secondary">
+        {/* Yellow and blue only when something waits, or the adult learns to stop seeing them. */}
+        <LinkButton
+          href="/admin/fila"
+          variant={pending === 0 ? "secondary" : "primary"}
+        >
           Fila de aprovação
           {pending === 0 ? (
             <span className={META_CLASS}>nada esperando</span>
@@ -85,9 +88,18 @@ export default async function AdminHomePage() {
       <div className="flex flex-col gap-4 lg:gap-6">
         <Panel title="Do dia a dia">
           <div className="flex flex-col gap-3 p-3">
-            <LinkButton href="/admin/lancar">Lançar atividade</LinkButton>
-            <LinkButton href="/admin/tirar">Tirar horas</LinkButton>
-            <LinkButton href="/admin/dar">Dar horas</LinkButton>
+            <LinkButton
+              href="/admin/lancar"
+              variant={pending === 0 ? "primary" : "secondary"}
+            >
+              Lançar atividade
+            </LinkButton>
+            <LinkButton href="/admin/tirar" variant="secondary">
+              Tirar horas
+            </LinkButton>
+            <LinkButton href="/admin/dar" variant="secondary">
+              Dar horas
+            </LinkButton>
           </div>
         </Panel>
       </div>

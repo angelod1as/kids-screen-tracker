@@ -2,16 +2,20 @@
 
 import { useState, useTransition } from "react";
 import { Button } from "../../../../ui/button";
+import { ChoiceGroup, MINUTE_CHOICES } from "../../../../ui/choice";
 import { ConfirmMovement } from "../../../../ui/confirm-movement";
 import { ErrorNote } from "../../../../ui/error-note";
 import { failureText, previewFailureText } from "../../../../ui/failure";
 import { Field, TimeFields } from "../../../../ui/field";
+import { Hint } from "../../../../ui/hint";
 import type { TypedTime } from "../../../../ui/hours";
 import {
   EMPTY_TIME,
   formatHours,
+  isBlankTime,
   isZeroTime,
   parseTypedTime,
+  timeFromMinutes,
   typedMinutes,
   ZERO_TIME_TEXT,
 } from "../../../../ui/hours";
@@ -44,6 +48,7 @@ export function canRefund(time: TypedTime, reason: string): boolean {
 
 export function RefundForm({ kids, today }: { kids: Kid[]; today: string }) {
   const [userId, setUserId] = useState(kids[0]?.id ?? 0);
+  // Blank on purpose, unlike Tirar's 1h: giving hours must never be one stray tap.
   const [time, setTime] = useState(EMPTY_TIME);
   const [occurredOn, setOccurredOn] = useState(today);
   const [reason, setReason] = useState(DEFAULT_REFUND_REASON);
@@ -152,9 +157,16 @@ export function RefundForm({ kids, today }: { kids: Kid[]; today: string }) {
           value={userId}
         />
 
+        <ChoiceGroup
+          legend="Quanto"
+          onSelect={(chosen) => change(() => setTime(timeFromMinutes(chosen)))}
+          options={MINUTE_CHOICES}
+          value={typedMinutes(time) ?? 0}
+        />
+
         <TimeFields
           id="tempo"
-          legend="Quanto"
+          legend="Ou digite"
           onChange={(typed) => change(() => setTime(typed))}
           value={time}
         />
@@ -178,6 +190,12 @@ export function RefundForm({ kids, today }: { kids: Kid[]; today: string }) {
           type="text"
           value={reason}
         />
+
+        {isBlankTime(time) ? (
+          <Hint>Falta dizer quanto.</Hint>
+        ) : reason.trim() === "" ? (
+          <Hint>Falta o motivo.</Hint>
+        ) : null}
 
         <Button
           disabled={busy || !canRefund(time, reason)}

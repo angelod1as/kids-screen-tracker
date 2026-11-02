@@ -2,17 +2,17 @@
 
 import { useState, useTransition } from "react";
 import { Button } from "../../../../ui/button";
-import type { Choice } from "../../../../ui/choice";
-import { ChoiceGroup } from "../../../../ui/choice";
+import { ChoiceGroup, MINUTE_CHOICES } from "../../../../ui/choice";
 import { ConfirmMovement } from "../../../../ui/confirm-movement";
 import { DeviceReminder } from "../../../../ui/device-reminder";
 import { ErrorNote } from "../../../../ui/error-note";
 import { failureText, previewFailureText } from "../../../../ui/failure";
 import { Field, TimeFields } from "../../../../ui/field";
+import { Hint } from "../../../../ui/hint";
 import type { TypedTime } from "../../../../ui/hours";
 import {
-  formatDuration,
   formatHours,
+  isBlankTime,
   isZeroTime,
   parseTypedTime,
   timeFromMinutes,
@@ -37,10 +37,6 @@ import type { Kid } from "../../../actions/people";
  * release describes something already done on a device. The app turns nothing
  * on, and what is configured there is not its business (D41).
  */
-
-const MINUTE_CHOICES: readonly Choice[] = [30, 60, 90, 120, 180, 240].map(
-  (minutes) => ({ value: minutes, label: formatDuration(minutes) }),
-);
 
 const DEFAULT_TIME: TypedTime = { hours: "1", minutes: "" };
 
@@ -174,12 +170,14 @@ export function ReleaseForm({
 
         <Field
           id="destino"
-          label="Destino (opcional)"
+          label="Para quê (opcional)"
           maxLength={500}
           onChange={(event) => change(() => setDestination(event.target.value))}
           type="text"
           value={destination}
         />
+
+        {isBlankTime(time) ? <Hint>Falta dizer quanto.</Hint> : null}
 
         <Button disabled={busy || typed === null} onClick={ask} type="button">
           Tirar

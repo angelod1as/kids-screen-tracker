@@ -11,15 +11,15 @@ export type NavItem = {
 };
 
 /**
- * Five cells: at 320 px each is 48,3 px, 0,3 px over the 48 px target
- * (`nav.test.tsx`). A sixth would break it — the next kid screen goes elsewhere.
+ * Five cells plus identity, each at least 48 px (`nav.test.tsx`). A seventh would
+ * break it. The soft hyphens only show at 320 px, where the labels cannot fit.
  */
 const KID_NAVIGATION: readonly NavItem[] = [
   { href: "/menino", label: "Início" },
-  { href: "/menino/cronometro", label: "Cronômetro" },
+  { href: "/menino/cronometro", label: "Cronô\u00ADmetro" },
   { href: "/menino/usar", label: "Usar" },
-  { href: "/menino/calculadora", label: "Calculadora" },
-  { href: "/menino/historico", label: "Histórico" },
+  { href: "/menino/calculadora", label: "Calcu\u00ADladora" },
+  { href: "/menino/historico", label: "Histó\u00ADrico" },
 ];
 
 /**

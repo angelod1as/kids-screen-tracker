@@ -1738,6 +1738,13 @@ depois da migration, virou registro como antes.
 - O menino digita os minutos de uma atividade `duration`, e o número chega à
   fila como ele digitou. A conferência é a aprovação.
 
+**Emenda (#115) — "pedido" é só gasto.** Depois da D58, a mesma palavra
+nomeava ganhar e gastar, em telas diferentes. Na tela, esta escrita passa a se
+chamar **contar sem cronômetro**; a fila mostra a origem como "sem cronômetro",
+a faixa de ganhos se chama "Ganhos para aprovar", e o campo de Tirar diz "Para
+quê", como em Usar. "Pedido" fica para o pedido de gasto (D58). O código e o
+`source = 'request'` não mudam. Decisão do dono, 02/11/2026.
+
 ---
 
 ## A decisão que veio da #21

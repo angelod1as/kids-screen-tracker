@@ -180,6 +180,15 @@ describe("the category's page reads its numbers (#41)", () => {
     expect(markup).not.toContain("<input");
   });
 
+  it("paints Editar números blue and leaves Desativar secondary (#115)", () => {
+    const markup = renderToStaticMarkup(
+      <CategoryDetail activities={[]} initial={MENTE} initialLocks={LOCKS} />,
+    );
+
+    expect(markup).toMatch(/bg-blue-800[^>]*>Editar números</);
+    expect(markup).not.toMatch(/bg-blue-800[^>]*>Desativar</);
+  });
+
   it("explains each number, after the activities on a phone (#41)", () => {
     const markup = renderToStaticMarkup(
       <CategoryDetail activities={[]} initial={MENTE} initialLocks={LOCKS} />,
