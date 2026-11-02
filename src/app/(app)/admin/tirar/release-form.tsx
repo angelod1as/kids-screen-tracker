@@ -170,7 +170,7 @@ export function ReleaseForm({
 
         <Field
           id="destino"
-          label="Destino (opcional)"
+          label="Para quê (opcional)"
           maxLength={500}
           onChange={(event) => change(() => setDestination(event.target.value))}
           type="text"

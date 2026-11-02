@@ -82,7 +82,7 @@ describe("a spend request reads as a pendency of the queue (#115, D58)", () => {
     const markup = renderToStaticMarkup(await AdminQueuePage());
 
     expect(markup.indexOf("Pedidos de uso")).toBeLessThan(
-      markup.indexOf("Fila de aprovação"),
+      markup.indexOf("Ganhos para aprovar"),
     );
   });
 

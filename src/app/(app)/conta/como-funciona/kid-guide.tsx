@@ -37,7 +37,7 @@ export function KidGuide({ data }: { data: HowItWorksData }) {
       <Panel title="Como funciona" top>
         <Paragraph>
           Você ganha tempo de tela fazendo coisas longe da tela. Você marca no
-          cronômetro, ou pede o que não deu para cronometrar, um adulto aprova,
+          cronômetro, ou conta o que não deu para cronometrar, um adulto aprova,
           e o tempo entra no seu saldo.
         </Paragraph>
         <Paragraph>

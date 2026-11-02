@@ -208,7 +208,7 @@ describe("releasing hours (#23)", () => {
 
     expect(drawn).toContain("Tirar horas");
     expect(drawn).toContain("Quanto");
-    expect(drawn).toContain("Destino (opcional)");
+    expect(drawn).toContain("Para quê (opcional)");
     expect(drawn).toContain(">Tirar<");
   });
 

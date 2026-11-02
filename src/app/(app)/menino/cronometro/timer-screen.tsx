@@ -483,12 +483,12 @@ function RequestPanel({
     <section className="flex flex-col gap-4">
       {data.requested === null ? null : (
         <Box>
-          Pedido enviado para aprovação: {data.requested.activityName} ·{" "}
+          Enviado para aprovação: {data.requested.activityName} ·{" "}
           {formatDay(data.requested.occurredOn)}.
         </Box>
       )}
 
-      <Panel title="Pedir sem cronômetro">
+      <Panel title="Contar sem cronômetro">
         <div className="flex flex-col gap-3 p-3">
           <Select
             id="pedido-atividade"
@@ -577,7 +577,7 @@ function RequestPanel({
             }
             type="button"
           >
-            Pedir
+            Enviar para aprovação
           </Button>
         </div>
       </Panel>
@@ -629,8 +629,8 @@ function PendingList({ data }: { data: TimerScreenData }) {
     >
       {data.pending.length === 0 ? (
         <PanelText>
-          Nada esperando. Quando você enviar uma sessão ou um pedido, ele
-          aparece aqui até um adulto decidir.
+          Nada esperando. O que você enviar, com ou sem cronômetro, aparece aqui
+          até um adulto decidir.
         </PanelText>
       ) : (
         <ul>

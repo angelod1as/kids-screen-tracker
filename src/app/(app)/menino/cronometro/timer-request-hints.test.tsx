@@ -7,7 +7,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ZERO_TIME_TEXT } from "../../../../ui/hours";
 import type { TimerScreenData } from "../../../actions/timer";
 
-/** #115: a disabled Pedir says what it still needs (D55's pattern). */
+/** #115: a disabled send says what it still needs (D55's pattern). */
 
 vi.mock("../../../actions/timer", () => ({
   fetchTimerScreenAction: vi.fn(),
@@ -75,11 +75,11 @@ async function type(selector: string, value: string) {
 
 function pedir() {
   return [...container.querySelectorAll("button")].find(
-    (button) => button.textContent?.trim() === "Pedir",
+    (button) => button.textContent?.trim() === "Enviar para aprovação",
   );
 }
 
-describe("what a disabled Pedir still needs", () => {
+describe("what a disabled send without a stopwatch still needs", () => {
   it("asks how long while the time is blank", () => {
     expect(pedir()?.disabled).toBe(true);
     expect(container.textContent).toContain("Falta dizer por quanto tempo.");
