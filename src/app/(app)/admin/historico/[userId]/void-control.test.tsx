@@ -80,6 +80,17 @@ describe("voiding an entry (D52)", () => {
     expect(buttons()).toEqual(["Confirmar anulação", "Voltar"]);
   });
 
+  it("offers Anular as a quiet text button, never a blue or framed box (D42)", async () => {
+    await draw();
+
+    const anular = container.querySelector("button");
+
+    expect(anular?.className).toContain("underline");
+    expect(anular?.className).toContain("min-h-[48px]");
+    expect(anular?.className).not.toContain("bg-blue-800");
+    expect(anular?.className).not.toContain("border-2");
+  });
+
   it("writes on the second tap and redraws the screen", async () => {
     mocked.voidEntryAction.mockResolvedValue({ balance: 0.5 });
     await draw();
