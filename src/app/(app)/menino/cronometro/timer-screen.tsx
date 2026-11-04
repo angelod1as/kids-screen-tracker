@@ -59,11 +59,23 @@ export function noteLabel(required: boolean): string {
     : "Quer contar alguma coisa? (opcional)";
 }
 
-export function TimerScreen({ initial }: { initial: TimerScreenData }) {
+export function TimerScreen({
+  initial,
+  initialActivityId,
+}: {
+  initial: TimerScreenData;
+  /** From the calculator (#126); an id the picker does not offer is ignored. */
+  initialActivityId?: number;
+}) {
   const [data, setData] = useState(initial);
   const [confirming, setConfirming] = useState(false);
   const [note, setNote] = useState("");
-  const [chosen, setChosen] = useState(initial.activities[0]?.id ?? 0);
+  const [chosen, setChosen] = useState(
+    initial.activities.find((activity) => activity.id === initialActivityId)
+      ?.id ??
+      initial.activities[0]?.id ??
+      0,
+  );
   const [failed, setFailed] = useState<string | null>(null);
   const [busy, startAction] = useTransition();
 
@@ -139,6 +151,7 @@ export function TimerScreen({ initial }: { initial: TimerScreenData }) {
           <RequestPanel
             busy={busy}
             data={data}
+            initialActivityId={initialActivityId}
             onRequest={(request, done) =>
               act(() => requestLogAction(data.userId, request), done)
             }
@@ -449,18 +462,31 @@ function Description({ text }: { text: string | null }) {
 function RequestPanel({
   busy,
   data,
+  initialActivityId,
   onRequest,
 }: {
   busy: boolean;
   data: TimerScreenData;
+  initialActivityId?: number;
   onRequest: (request: RequestEntry, done: () => void) => void;
 }) {
-  const [chosen, setChosen] = useState(data.requestable[0]?.id ?? 0);
+  // A timed activity from the calculator lands on Começar, not here.
+  const asked = data.activities.some(
+    (activity) => activity.id === initialActivityId,
+  )
+    ? undefined
+    : data.requestable.find((item) => item.id === initialActivityId);
+  const first = asked ?? data.requestable[0];
+  const [chosen, setChosen] = useState(first?.id ?? 0);
   const [occurredOn, setOccurredOn] = useState(data.today);
   const [duration, setDuration] = useState(
-    timeFromMinutes(data.requestable[0]?.presumedMinutes ?? null),
+    timeFromMinutes(first?.presumedMinutes ?? null),
   );
   const [note, setNote] = useState("");
+  // Closed under Começar, so the second task does not push the pending list down (C4).
+  const [shown, setShown] = useState(
+    data.activities.length === 0 || asked !== undefined,
+  );
 
   const activity = data.requestable.find((item) => item.id === chosen);
   const timed = activity?.calcMode === "duration";
@@ -478,6 +504,14 @@ function RequestPanel({
   ];
 
   if (data.requestable.length === 0) return null;
+
+  if (!shown) {
+    return (
+      <Button onClick={() => setShown(true)} type="button" variant="secondary">
+        Contar sem cronômetro
+      </Button>
+    );
+  }
 
   return (
     <section className="flex flex-col gap-4">

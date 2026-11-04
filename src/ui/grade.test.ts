@@ -3,7 +3,11 @@ import { describe, expect, it } from "vitest";
 import { qualityChoices } from "./grade";
 
 const labels = (...args: Parameters<typeof qualityChoices>) =>
-  qualityChoices(...args).map((choice) => choice.label);
+  qualityChoices(...args).map((choice) =>
+    choice.detail === undefined
+      ? choice.label
+      : `${choice.label} ${choice.detail}`,
+  );
 
 describe("the grade buttons (D60)", () => {
   it("are the five quarters, as percentages, before an activity is known", () => {

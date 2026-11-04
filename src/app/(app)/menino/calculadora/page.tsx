@@ -16,7 +16,7 @@ export default async function KidCalculatorPage() {
         aberta.
       </p>
 
-      <Calculator data={data} />
+      <Calculator data={data} toTimer />
     </section>
   );
 }

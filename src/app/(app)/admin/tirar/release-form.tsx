@@ -56,12 +56,14 @@ export function ReleaseForm({
     request: ReleaseRequest;
     preview: MovementPreview;
   } | null>(null);
-  const [done, setDone] = useState<Movement | null>(null);
+  /** Named as written, so clearing the form does not rewrite the sentence (#126). */
+  const [done, setDone] = useState<
+    (Movement & { displayName: string; destination: string | null }) | null
+  >(null);
   const [failed, setFailed] = useState<string | null>(null);
   const [busy, startAction] = useTransition();
 
   const typed = isZeroTime(time) ? null : parseTypedTime(time);
-  const kid = kids.find((candidate) => candidate.id === userId);
 
   function change(apply: () => void) {
     apply();
@@ -94,7 +96,13 @@ export function ReleaseForm({
 
     startAction(async () => {
       try {
-        setDone(await releaseHoursAction(asked.request));
+        setDone({
+          ...(await releaseHoursAction(asked.request)),
+          displayName: asked.preview.displayName,
+          destination: asked.request.destination ?? null,
+        });
+        setTime(DEFAULT_TIME);
+        setDestination("");
         setFailed(null);
       } catch (error) {
         setFailed(failureText(error));
@@ -134,8 +142,8 @@ export function ReleaseForm({
             className={`${BORDER_CLASS} flex flex-col gap-3 bg-white p-4`}
           >
             <p className="text-lg font-bold text-black">
-              Tirado {formatHours(done.hours)} de {kid?.displayName}
-              {destination.trim() === "" ? "" : ` em ${destination.trim()}`}.
+              Tirado {formatHours(done.hours)} de {done.displayName}
+              {done.destination === null ? "" : ` em ${done.destination}`}.
             </p>
             <p
               className={`${balanceToneClass(done.balance)} text-2xl font-bold tabular-nums`}

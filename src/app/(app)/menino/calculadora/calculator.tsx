@@ -7,6 +7,7 @@ import { ChoiceGroup } from "../../../../ui/choice";
 import { Result } from "../../../../ui/explanation";
 import { qualityChoices } from "../../../../ui/grade";
 import { formatDuration } from "../../../../ui/hours";
+import { LinkButton } from "../../../../ui/link-button";
 import { Select } from "../../../../ui/select";
 import { BORDER_CLASS } from "../../../../ui/style";
 import type { CalculatorData } from "../../../actions/calculator";
@@ -28,7 +29,14 @@ const DURATION_CHOICES: readonly Choice[] = [
 const DEFAULT_DURATION_MINUTES = 60;
 const DEFAULT_QUALITY = 1;
 
-export function Calculator({ data }: { data: CalculatorData }) {
+export function Calculator({
+  data,
+  toTimer = false,
+}: {
+  data: CalculatorData;
+  /** The boy's calculator ends on doing it (CA1); the admin's has no timer. */
+  toTimer?: boolean;
+}) {
   const first = data.activities[0];
 
   const [activityId, setActivityId] = useState(first?.id ?? 0);
@@ -128,6 +136,14 @@ export function Calculator({ data }: { data: CalculatorData }) {
       ) : null}
 
       {calculation === undefined ? null : <Result calculation={calculation} />}
+
+      {toTimer ? (
+        <LinkButton href={`/menino/cronometro?atividade=${activity.id}`}>
+          {activity.calcMode === "duration"
+            ? "Começar no cronômetro"
+            : "Contar sem cronômetro"}
+        </LinkButton>
+      ) : null}
     </div>
   );
 }

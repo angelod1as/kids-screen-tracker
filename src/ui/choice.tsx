@@ -11,6 +11,8 @@ import {
 export type Choice = {
   value: number;
   label: string;
+  /** Always on a line of its own, so a row of buttons breaks alike (#126). */
+  detail?: string;
 };
 
 /** The amounts every form that moves hours offers (Usar, Tirar, Dar). */
@@ -54,6 +56,12 @@ export function ChoiceGroup({
               type="button"
             >
               {option.label}
+              {option.detail === undefined ? null : (
+                <>
+                  {" "}
+                  <span className="block">{option.detail}</span>
+                </>
+              )}
             </button>
           );
         })}

@@ -445,6 +445,19 @@ describe("the controls the boy actually touches", () => {
     expect(rendered).not.toContain("flex flex-wrap");
   });
 
+  it("ends on the timer, with the activity already chosen (CA1)", () => {
+    const data = calculatorData();
+    const rendered = renderToStaticMarkup(
+      createElement(Calculator, { data, toTimer: true }),
+    );
+
+    expect(rendered).toContain(
+      `href="/menino/cronometro?atividade=${data.activities[0]?.id}"`,
+    );
+    expect(rendered).toContain("Começar no cronômetro");
+    expect(markup()).not.toContain("/menino/cronometro");
+  });
+
   it("draws no category heading with nothing under it", () => {
     // Curinga's only activity is `free`, which the action leaves out (D12).
     const rendered = markup();

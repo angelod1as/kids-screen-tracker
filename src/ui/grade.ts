@@ -20,10 +20,8 @@ export function qualityChoices(
 
     return {
       value: grade,
-      label:
-        hours === null
-          ? formatGrade(grade)
-          : `${formatGrade(grade)} (${formatHours(hours)})`,
+      label: formatGrade(grade),
+      ...(hours === null ? {} : { detail: `(${formatHours(hours)})` }),
     };
   });
 }
