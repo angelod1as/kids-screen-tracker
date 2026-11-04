@@ -2,7 +2,7 @@
 
 Vinte e cinco ambiguidades da spec, resolvidas e justificadas antes da primeira
 linha de código, mais as que cada fase mediu depois. Hoje são sessenta,
-D1–D60, mais dezesseis emendas e as duas declarações da Fase 4, uma delas
+D1–D60, mais dezessete emendas e as duas declarações da Fase 4, uma delas
 revogada.
 
 **Onde este documento e `spec.md` discordarem, este documento vence.**
@@ -1328,6 +1328,13 @@ Configuração é um `CardLink` (um `<Link>`, que nunca recebe o atributo
 `disabled`), então ganhou `DISABLED_SURFACE_CLASS` — as mesmas utilidades
 (`slate-100`, `border-dashed`, preto) sem o prefixo. Mesmo recuo, mesma régua,
 nenhuma cor nova; só o gancho muda. O dono aprovou dentro da D42.
+
+**Emenda (#118) — o controle discreto.** Ação rara que se repete em toda linha
+(hoje só *Anular*, D52) usa o variant `quiet` do `Button`: texto preto
+sublinhado, sem fundo, sem moldura visível e sem caixa alta, com os 48 px
+mantidos. Não é cor nova: é o par preto sobre branco (21:1). Desativado, a
+moldura transparente de 2 px fica preta e tracejada, como em todo controle
+(#86). O dono aprovou dentro da D42.
 
 **Emenda (#105) — o vermelho-tinta vale qualquer valor negativo, não só o
 saldo.** O `red-700` como tinta passa a pintar todo número negativo exibido,
