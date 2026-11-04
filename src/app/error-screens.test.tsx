@@ -122,9 +122,9 @@ describe("the page a crash in the root layout gets (#14)", () => {
     vi.stubGlobal("window", { location: { assign } });
     const body = (screen as { props: { children: ReactNode } }).props.children;
     const panel = (body as { props: { children: ReactNode } }).props.children;
-    const buttons = (panel as { props: { children: ReactNode[] } }).props
+    const panelChildren = (panel as { props: { children: ReactNode[] } }).props
       .children;
-    const home = buttons.find(
+    const home = panelChildren.find(
       (child) =>
         isValidElement(child) && textOf(child) === "Ir para a tela inicial",
     ) as { props: { onClick: () => void } } | undefined;
