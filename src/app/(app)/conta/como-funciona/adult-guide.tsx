@@ -18,7 +18,13 @@ import {
   formatPercent,
   SHORT_SESSION_MINUTES,
 } from "./explainer";
-import { ActivityValues, DecayTable, Paragraph, Points } from "./parts";
+import {
+  ActivityValues,
+  DecayTable,
+  GuideIndex,
+  Paragraph,
+  Points,
+} from "./parts";
 
 /** The adults' version (#107): the same model, plus where each number lives. */
 export function AdultGuide({ data }: { data: HowItWorksData }) {
@@ -40,9 +46,22 @@ export function AdultGuide({ data }: { data: HowItWorksData }) {
           Todo número desta página é lido da Configuração agora, e os exemplos
           são calculados pelo mesmo motor que aprova as entradas.
         </Paragraph>
+        <GuideIndex
+          sections={[
+            { id: "a-conta", title: "A conta de uma entrada" },
+            ...(example === null
+              ? []
+              : [{ id: "exemplo", title: "Exemplo, calculado agora" }]),
+            { id: "onde-mudar", title: "Onde mudar cada número" },
+            { id: "cronometro", title: "Cronômetro" },
+            { id: "a-fila", title: "A fila" },
+            { id: "o-que-nao-faz", title: "O que o app não faz" },
+            { id: "quanto-vale", title: "Quanto vale cada coisa" },
+          ]}
+        />
       </Panel>
 
-      <Panel title="A conta de uma entrada">
+      <Panel id="a-conta" title="A conta de uma entrada">
         <Points>
           <li>
             Na ordem: valor da atividade, nota, repetição e desgaste
@@ -147,7 +166,7 @@ export function AdultGuide({ data }: { data: HowItWorksData }) {
       </Panel>
 
       {example === null ? null : (
-        <Panel title="Exemplo, calculado agora">
+        <Panel id="exemplo" title="Exemplo, calculado agora">
           <DecayTable
             example={example}
             rows={decayRows(example, data.occurredOn)}
@@ -171,7 +190,7 @@ export function AdultGuide({ data }: { data: HowItWorksData }) {
         </Panel>
       )}
 
-      <Panel title="Onde mudar cada número">
+      <Panel id="onde-mudar" title="Onde mudar cada número">
         <Points>
           <li>
             <strong>Taxa ou valor de uma atividade:</strong> Configuração,
@@ -215,7 +234,7 @@ export function AdultGuide({ data }: { data: HowItWorksData }) {
         </div>
       </Panel>
 
-      <Panel title="Cronômetro">
+      <Panel id="cronometro" title="Cronômetro">
         <Points>
           <li>Mede só o tempo ativo. Pausa não conta.</li>
           <li>
@@ -234,7 +253,7 @@ export function AdultGuide({ data }: { data: HowItWorksData }) {
         </Points>
       </Panel>
 
-      <Panel title="A fila">
+      <Panel id="a-fila" title="A fila">
         <Points>
           <li>
             O que o cronômetro manda, e o que o menino conta sem cronômetro,
@@ -272,7 +291,7 @@ export function AdultGuide({ data }: { data: HowItWorksData }) {
         </Points>
       </Panel>
 
-      <Panel title="O que o app não faz">
+      <Panel id="o-que-nao-faz" title="O que o app não faz">
         <Points>
           <li>
             Não liga nem desliga aparelho, e não guarda o que está configurado

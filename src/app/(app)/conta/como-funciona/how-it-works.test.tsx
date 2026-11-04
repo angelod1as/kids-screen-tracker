@@ -302,3 +302,51 @@ describe("the numbers come from the configuration (#107)", () => {
     }
   });
 });
+
+describe("a guide that can be skimmed (GU1)", () => {
+  it("opens with an index whose every link lands on a section of the page", async () => {
+    for (const username of ["kid2", "admin1"]) {
+      const markup = await markupFor(username);
+      const targets = [...markup.matchAll(/href="#([^"]+)"/g)].map(
+        (match) => match[1],
+      );
+
+      expect(markup).toContain('aria-label="Nesta página"');
+      expect(targets.length).toBeGreaterThan(3);
+      for (const target of targets) {
+        expect(markup, target).toContain(`id="${target}"`);
+      }
+    }
+  });
+
+  it("says once what activities worth the same are worth", async () => {
+    const line = `cada hora vale ${formatHours(1.5)} de tela`;
+    const markup = await markupFor("kid2");
+    const corpo = markup.slice(
+      markup.lastIndexOf("Futebol"),
+      markup.indexOf("Academia"),
+    );
+
+    expect(corpo).toContain("Bicicleta");
+    expect(corpo).toContain("Corrida ou caminhada");
+    expect(corpo.split(line)).toHaveLength(2);
+  });
+
+  it("gives an activity its own line again once it differs", async () => {
+    connection.db
+      .update(activities)
+      .set({ minSessionMinutes: 17 })
+      .where(eq(activities.id, FOOTBALL))
+      .run();
+
+    const markup = await markupFor("kid2");
+    const corpo = markup.slice(
+      markup.lastIndexOf("Futebol"),
+      markup.indexOf("Academia"),
+    );
+
+    expect(
+      corpo.split(`cada hora vale ${formatHours(1.5)} de tela`),
+    ).toHaveLength(3);
+  });
+});

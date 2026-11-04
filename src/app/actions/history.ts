@@ -105,6 +105,9 @@ type Placed<Entry> = {
 /** Last resort after activity, destination and a refund's note: an empty cell reads as a rendering bug. */
 const NO_LABEL = "Sem descrição";
 
+/** H5: the destination is optional (D53), and every spend is screen time. */
+const SPEND_LABEL = "Tempo de tela";
+
 /**
  * D8 read backwards, so same-day rows never swap between visits. `requireAccess`
  * refuses the brother's id before the query runs.
@@ -322,7 +325,11 @@ function ledgerEntries(
       ).getTime(),
       // Activity first (D14 keeps a deactivated one readable), then the
       // destination, then the note that names a refund (#24).
-      label: row.activityName ?? row.destination ?? row.note ?? NO_LABEL,
+      label:
+        row.activityName ??
+        row.destination ??
+        row.note ??
+        (row.kind === "spend" ? SPEND_LABEL : NO_LABEL),
       // #101, D58: an earn carries its log note; a requested spend the boy's comment.
       observation:
         row.kind === "earn"

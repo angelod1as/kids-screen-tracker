@@ -247,7 +247,7 @@ describe("what the boy sees afterwards (#23, #24)", () => {
     ).resolves.toMatchObject([{ kind: "spend", label: "PlayStation" }]);
   });
 
-  it("says a release with no destination has none, rather than showing nothing", async () => {
+  it("names a release with no destination as screen time, rather than showing nothing", async () => {
     await releaseHoursAction({
       userId: world.kidId,
       time: { hours: 1, minutes: 0 },
@@ -257,7 +257,7 @@ describe("what the boy sees afterwards (#23, #24)", () => {
 
     await expect(
       fetchLedgerEntriesAction(world.kidId, 5),
-    ).resolves.toMatchObject([{ kind: "spend", label: "Sem descrição" }]);
+    ).resolves.toMatchObject([{ kind: "spend", label: "Tempo de tela" }]);
   });
 
   it("never puts one boy's movement on the other one's extract", async () => {

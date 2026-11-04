@@ -167,7 +167,7 @@ describe("the refusal the boy used to watch vanish (#72)", () => {
 
     expect(markup).toContain("Ler livro");
     expect(markup).toContain("Recusado");
-    expect(markup).toContain("02/09/2026");
+    expect(markup).toContain("02/09");
     expect(markup).toContain("1h30");
     expect(markup).toContain("Você estava no celular");
   });

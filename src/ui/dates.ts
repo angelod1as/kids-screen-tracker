@@ -14,6 +14,13 @@ export function formatDay(day: string): string {
   return `${match[3]}/${match[2]}/${match[1]}`;
 }
 
+/** H6: the year only when it is not this one, so a row does not repeat it. */
+export function formatShortDay(day: string, today: string): string {
+  const full = formatDay(day);
+
+  return day.slice(0, 4) === today.slice(0, 4) ? full.slice(0, 5) : full;
+}
+
 /** #77: the time of a real audit instant, in São Paulo. The day still comes from occurred_on (D13). */
 export function formatTime(instant: number): string {
   return new Intl.DateTimeFormat("pt-BR", {

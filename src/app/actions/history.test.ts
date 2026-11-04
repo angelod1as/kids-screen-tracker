@@ -254,7 +254,7 @@ describe("a kid reading his own history (#16)", () => {
 
     const [first] = await fetchLedgerEntriesAction(idOf("kid1"), 10);
 
-    expect(first?.label).toBe("Sem descrição");
+    expect(first?.label).toBe("Tempo de tela");
   });
 
   it("returns nothing at all when he has nothing", async () => {
