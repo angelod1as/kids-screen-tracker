@@ -1,7 +1,8 @@
 import { isValidElement, type ReactNode } from "react";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { Button } from "../ui/button";
+import { LinkButton } from "../ui/link-button";
 import AppError from "./error";
 import GlobalError from "./global-error";
 import NotFound from "./not-found";
@@ -50,6 +51,11 @@ function find(node: ReactNode, type: unknown): ReactNode | undefined {
   return find((node.props as { children?: ReactNode }).children, type);
 }
 
+function homeHref(node: ReactNode): string | undefined {
+  return (find(node, LinkButton) as { props: { href: string } } | undefined)
+    ?.props.href;
+}
+
 const ENGLISH = /this page could not be found|something went wrong|try again/i;
 
 describe("the page a wrong address gets (#14)", () => {
@@ -57,6 +63,10 @@ describe("the page a wrong address gets (#14)", () => {
 
   it("is in Brazilian Portuguese", () => {
     expect(textOf(screen)).toContain("Página não encontrada");
+  });
+
+  it("links to the home screen, since the installed app has no back button (D46)", () => {
+    expect(homeHref(screen)).toBe("/");
   });
 
   it("is not Next's English default", () => {
@@ -90,6 +100,10 @@ describe("the page a crash gets (#14)", () => {
     onClick?.();
     expect(reset).toBe(1);
   });
+
+  it("links to the home screen", () => {
+    expect(homeHref(screen)).toBe("/");
+  });
 });
 
 describe("the page a crash in the root layout gets (#14)", () => {
@@ -101,6 +115,24 @@ describe("the page a crash in the root layout gets (#14)", () => {
 
   it("is in Brazilian Portuguese", () => {
     expect(textOf(screen)).toContain("Algo deu errado");
+  });
+
+  it("loads the home screen in full, since a client navigation keeps it up", () => {
+    const assign = vi.fn();
+    vi.stubGlobal("window", { location: { assign } });
+    const body = (screen as { props: { children: ReactNode } }).props.children;
+    const panel = (body as { props: { children: ReactNode } }).props.children;
+    const panelChildren = (panel as { props: { children: ReactNode[] } }).props
+      .children;
+    const home = panelChildren.find(
+      (child) =>
+        isValidElement(child) && textOf(child) === "Ir para a tela inicial",
+    ) as { props: { onClick: () => void } } | undefined;
+
+    home?.props.onClick();
+    vi.unstubAllGlobals();
+
+    expect(assign).toHaveBeenCalledWith("/");
   });
 });
 
