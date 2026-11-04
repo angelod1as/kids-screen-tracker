@@ -172,7 +172,7 @@ export function asymptoteText(draft: CategoryDraft): string {
     return "Preencha a taxa sugerida para ver quanto a categoria rende por dia.";
   }
 
-  return `Rende no máximo ${formatDecimalHours(asymptote)} por dia (taxa × passo × 2).`;
+  return `Rende no máximo ${formatHours(asymptote)} por dia (taxa × passo × 2).`;
 }
 
 /** A concrete halving in numbers, always beside the field (#79, owner 2026-10-07). */
@@ -303,7 +303,7 @@ export function categorySummary(category: CategoryRow): string {
       ? "sem desgaste"
       : asymptote === null
         ? `passo de ${formatHours(category.decayStepHours)}`
-        : `até ${formatDecimalHours(asymptote)} por dia`;
+        : `até ${formatHours(asymptote)} por dia`;
   // D57: while the bonus is off, the summary says nothing about it.
   if (!BONUS_ENABLED) return decay;
 
