@@ -245,12 +245,36 @@ describe("releasing hours (#23)", () => {
 
 describe("refunding hours (#24)", () => {
   it("asks for a boy, an amount, a day and a reason", async () => {
-    const drawn = await markup(AdminRefundPage);
+    const drawn = await markup(() =>
+      AdminRefundPage({ searchParams: Promise.resolve({}) }),
+    );
 
     expect(drawn).toContain("Dar horas");
     expect(drawn).toContain("Horas");
     expect(drawn).toContain("Motivo");
     expect(drawn).toContain('type="date"');
     expect(drawn).toContain(">Dar<");
+  });
+
+  /** A button carries its boy's name and `aria-pressed` tells which is chosen. */
+  const chosen = (markup: string, name: string): boolean =>
+    new RegExp(`aria-pressed="true"[^>]*>${name}</button>`).test(markup);
+
+  it("opens on the boy named in the shortcut from his history", async () => {
+    const drawn = await markup(() =>
+      AdminRefundPage({ searchParams: Promise.resolve({ menino: "4" }) }),
+    );
+
+    expect(chosen(drawn, "Kid2")).toBe(true);
+    expect(chosen(drawn, "Kid1")).toBe(false);
+  });
+
+  it("falls back to the first boy when the shortcut names nobody", async () => {
+    const drawn = await markup(() =>
+      AdminRefundPage({ searchParams: Promise.resolve({ menino: "999" }) }),
+    );
+
+    expect(chosen(drawn, "Kid1")).toBe(true);
+    expect(chosen(drawn, "Kid2")).toBe(false);
   });
 });
