@@ -88,7 +88,7 @@ describe("voiding an entry (D52)", () => {
     expect(anular?.className).toContain("underline");
     expect(anular?.className).toContain("min-h-[48px]");
     expect(anular?.className).not.toContain("bg-blue-800");
-    expect(anular?.className).not.toContain("border-2");
+    expect(anular?.className).toContain("border-transparent");
   });
 
   it("writes on the second tap and redraws the screen", async () => {

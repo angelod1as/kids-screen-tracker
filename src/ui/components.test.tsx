@@ -189,7 +189,18 @@ describe("the only button in the app (#14)", () => {
     expect(className).toContain(TOUCH_TARGET_CLASS);
     expect(className).toContain("underline");
     expect(className).not.toContain(ACCENT_BG_CLASS);
-    expect(className).not.toContain("border-2");
+    expect(className).toContain("border-transparent");
+  });
+
+  it("gives a disabled quiet button the dashed edge too (#86)", () => {
+    const className = String(
+      Button({ children: "Anular", variant: "quiet", disabled: true }).props
+        .className,
+    );
+
+    expect(className).toContain(DISABLED_CONTROL_CLASS);
+    expect(className).toContain("border-2");
+    expect(className).toContain("disabled:border-black");
   });
 
   it("renders four distinct states, disabled unlike the secondary (#86)", () => {

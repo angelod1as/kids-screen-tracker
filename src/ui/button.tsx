@@ -23,7 +23,7 @@ export function Button({ variant = "primary", ...props }: ButtonProps) {
     return (
       <button
         {...props}
-        className={`${TOUCH_TARGET_CLASS} ${DISABLED_CONTROL_CLASS} self-start text-left text-base text-black underline`}
+        className={`${TOUCH_TARGET_CLASS} border-2 border-transparent ${DISABLED_CONTROL_CLASS} disabled:border-black self-start text-left text-base text-black underline`}
       />
     );
   }
