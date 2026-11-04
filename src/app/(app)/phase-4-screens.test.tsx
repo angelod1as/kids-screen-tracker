@@ -342,10 +342,28 @@ describe("what the admin sees (#20)", () => {
       }),
     ]);
 
-    expect(markup).toContain("Aprove antes");
+    expect(markup).toContain("Decida antes");
     expect(markup).toContain("10/09/2026");
     // D19: refusing clears the way too.
+    expect(markup).toContain("Aprovar ou recusar aquela libera esta");
     expect(markup).toContain(">Recusar<");
     expect(markup).toMatch(/disabled=""[^>]*>Aprovar</);
+  });
+
+  it("says one thing on a blocked card that also waits for a grade", async () => {
+    const markup = await queueMarkup([
+      entry({
+        id: 2,
+        unpriceable: ["grade"],
+        blockedBy: {
+          id: 1,
+          activityName: "Ler livro",
+          occurredOn: "2026-09-10",
+        },
+      }),
+    ]);
+
+    expect(markup).toContain("Decida antes");
+    expect(markup).not.toContain("Escolha a nota e aprove");
   });
 });
