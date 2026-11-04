@@ -147,11 +147,17 @@ describe("the history an adult opens is the boy's own (#73)", () => {
     expect(await historyMarkup("4")).toContain("Histórico de Kid2");
   });
 
-  it("offers a shortcut to take hours from the boy being read", async () => {
+  it("offers Tirar and Dar side by side for the boy being read, neither blue", async () => {
     const markup = await historyMarkup("4");
+    const shortcuts = markup.slice(
+      markup.indexOf('href="/admin/tirar?menino=4"'),
+      markup.indexOf("Dar horas") + "Dar horas".length,
+    );
 
-    expect(markup).toContain('href="/admin/tirar?menino=4"');
-    expect(markup).toContain("Tirar horas");
+    expect(shortcuts).toContain("Tirar horas");
+    expect(shortcuts).toContain('href="/admin/dar?menino=4"');
+    expect(shortcuts).toContain("Dar horas");
+    expect(shortcuts).not.toContain("bg-blue-800");
   });
 
   it("is a 404 for an address that names nobody, and asks nothing", async () => {

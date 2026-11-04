@@ -61,10 +61,15 @@ export default async function AdminKidHistoryPage({
         </Panel>
       )}
 
-      {/* Shortcut for the common case: the adult spots a wrong entry here and debits at once. */}
-      <LinkButton href={`/admin/tirar?menino=${kid.id}`}>
-        Tirar horas
-      </LinkButton>
+      {/* Shortcuts for the adult who spots a wrong entry here; a reading screen, so neither is blue (D42). */}
+      <div className="grid grid-cols-2 gap-3">
+        <LinkButton href={`/admin/tirar?menino=${kid.id}`} variant="secondary">
+          Tirar horas
+        </LinkButton>
+        <LinkButton href={`/admin/dar?menino=${kid.id}`} variant="secondary">
+          Dar horas
+        </LinkButton>
+      </div>
 
       <Panel
         note={

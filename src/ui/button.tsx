@@ -14,10 +14,20 @@ import {
  * variant here. Disabled has a look of its own, over every variant (D42, #86).
  */
 type ButtonProps = Omit<ComponentProps<"button">, "className"> & {
-  variant?: "primary" | "secondary" | "destructive";
+  variant?: "primary" | "secondary" | "destructive" | "quiet";
 };
 
 export function Button({ variant = "primary", ...props }: ButtonProps) {
+  // A rare action under every row (#118): text weight, not a box, the 48 px kept.
+  if (variant === "quiet") {
+    return (
+      <button
+        {...props}
+        className={`${TOUCH_TARGET_CLASS} border-2 border-transparent ${DISABLED_CONTROL_CLASS} disabled:border-black self-start text-left text-base text-black underline`}
+      />
+    );
+  }
+
   const colors =
     variant === "primary"
       ? `${ACCENT_BG_CLASS} text-white`

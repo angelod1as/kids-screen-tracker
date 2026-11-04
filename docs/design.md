@@ -267,6 +267,12 @@ sobre cinza que a regra proíbe, e o menino que aperta os olhos para ler não pe
 contraste. Dá para ver na fila: o *Aprovar* da entrada bloqueada pela D32 recua
 para o chão enquanto os outros dois ficam azuis.
 
+Há um terceiro peso, o **discreto** (`quiet`, #118): texto preto sublinhado, sem
+fundo nem moldura, ainda com 48 px. É para a ação rara que se repete em toda
+linha, como *Anular* no histórico do adulto, que como caixa dobraria a altura da
+lista e pesaria como ação permanente. Primário é o que se veio fazer; secundário,
+o atalho ao lado; discreto, o que quase nunca se faz.
+
 Na home do adulto há um azul por vez, no que se veio fazer, e ele acompanha a
 fila: com pendência é *Fila de aprovação*; sem pendência é *Lançar atividade*, a
 tarefa que trouxe o adulto até ali, e *Tirar* e *Dar* ficam secundários nos dois
