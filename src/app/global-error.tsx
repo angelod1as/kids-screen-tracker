@@ -3,7 +3,10 @@
 import { Button } from "../ui/button";
 import { BORDER_CLASS, SHELL_CLASS } from "../ui/style";
 
-/** Next replaces the root layout here, so `lang="pt-BR"` must be repeated (#14). */
+/**
+ * Next replaces the root layout here, so `lang="pt-BR"` must be repeated (#14).
+ * Home is a full load: a `<Link>` changes the URL but leaves this screen up.
+ */
 export default function GlobalError({ reset }: { reset: () => void }) {
   return (
     <html lang="pt-BR">
@@ -18,6 +21,13 @@ export default function GlobalError({ reset }: { reset: () => void }) {
           </p>
           <Button onClick={reset} type="button">
             Tentar de novo
+          </Button>
+          <Button
+            onClick={() => window.location.assign("/")}
+            type="button"
+            variant="secondary"
+          >
+            Ir para a tela inicial
           </Button>
         </div>
       </body>

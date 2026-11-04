@@ -1,8 +1,9 @@
+import { LinkButton } from "../ui/link-button";
 import { BORDER_CLASS, SHELL_CLASS } from "../ui/style";
 
 /**
- * Without it Next answers in English (#14). No link back: `design.test.ts`
- * refuses a raw `<a>` outside `src/ui/`, and the bottom bar is still there.
+ * Without it Next answers in English (#14). The installed app has no browser
+ * back button (D46), so the way out is on the page.
  */
 export default function NotFound() {
   return (
@@ -11,9 +12,9 @@ export default function NotFound() {
     >
       <h1 className="text-3xl font-bold">Página não encontrada</h1>
       <p className={`${BORDER_CLASS} bg-white p-4 text-lg`}>
-        Esse endereço não existe no app. Volte pelo botão do navegador ou pelo
-        menu no rodapé da tela anterior.
+        Esse endereço não existe no app.
       </p>
+      <LinkButton href="/">Ir para a tela inicial</LinkButton>
     </div>
   );
 }

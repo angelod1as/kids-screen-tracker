@@ -1,6 +1,7 @@
 "use client";
 
 import { Button } from "../ui/button";
+import { LinkButton } from "../ui/link-button";
 import { BORDER_CLASS, SHELL_CLASS } from "../ui/style";
 
 /**
@@ -20,6 +21,9 @@ export default function AppError({ reset }: { reset: () => void }) {
       <Button onClick={reset} type="button">
         Tentar de novo
       </Button>
+      <LinkButton href="/" variant="secondary">
+        Ir para a tela inicial
+      </LinkButton>
     </div>
   );
 }
