@@ -7,9 +7,10 @@ import { logoutAction } from "../../actions/session";
 import { PushToggle } from "./push-toggle";
 
 /**
- * Configuração lives here, not in the bar: not a daily operation, and still two
- * taps away. The band names the person and role, since four people share four
- * phones. `requireSession` is navigation; the guards are behind each link.
+ * Configuração and Calculadora live here, not in the bar: not daily operations,
+ * and still two taps away (#76, #119). The band names the person and role,
+ * since four people share four phones. `requireSession` is navigation; the
+ * guards are behind each link.
  */
 export default async function AccountPage() {
   const session = await requireSession();
@@ -31,6 +32,9 @@ export default async function AccountPage() {
               </LinkButton>
               <LinkButton href="/admin/numeros" variant="secondary">
                 Números
+              </LinkButton>
+              <LinkButton href="/admin/calculadora" variant="secondary">
+                Calculadora
               </LinkButton>
             </>
           ) : null}
