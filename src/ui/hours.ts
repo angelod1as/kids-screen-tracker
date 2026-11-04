@@ -11,14 +11,14 @@ export function formatHours(hours: number): string {
   return `${hours < 0 && minutes > 0 ? "−" : ""}${formatDuration(minutes)}`;
 }
 
-/** Rate and asymptote: per-hour quantities, not durations, so D9's two decimals. */
+/** Rate: a ratio, not a duration, so D9's two decimals and no unit (#48). */
 export function formatDecimalHours(hours: number): string {
   return `${hours
     .toLocaleString("pt-BR", {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
     })
-    .replace("-", "−")} h`;
+    .replace("-", "−")}`;
 }
 
 const MINUTES_PER_HOUR = 60;

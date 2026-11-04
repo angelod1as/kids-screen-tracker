@@ -174,7 +174,7 @@ describe("the category's page reads its numbers (#41)", () => {
       />,
     );
 
-    expect(markup).toContain("Rende no máximo 4,00 h por dia");
+    expect(markup).toContain("Rende no máximo 4h por dia");
     expect(markup).toContain("+50% ao alternar");
     expect(markup).toContain("Editar números");
     expect(markup).not.toContain("<input");
@@ -343,7 +343,7 @@ describe("the activity's page, tapped into (#41)", () => {
       sortOrder: 2,
     });
     expect(container.querySelector("#categoria-2-passo-horas")).toBeNull();
-    expect(container.textContent).toContain("Rende no máximo 8,00 h por dia");
+    expect(container.textContent).toContain("Rende no máximo 8h por dia");
   });
 
   it("creates a category and goes back to the list", async () => {

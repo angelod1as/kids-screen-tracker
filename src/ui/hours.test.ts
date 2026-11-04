@@ -61,10 +61,10 @@ describe("an amount of screen time, in hours and minutes (#105)", () => {
 });
 
 describe("a per-hour quantity of the Configuration (#105)", () => {
-  it("keeps two decimals, a comma and the unit", () => {
-    expect(formatDecimalHours(2.5)).toBe("2,50 h");
-    expect(formatDecimalHours(0.25)).toBe("0,25 h");
-    expect(formatDecimalHours(-3)).toBe("\u22123,00 h");
+  it("keeps two decimals and a comma, with no unit", () => {
+    expect(formatDecimalHours(2.5)).toBe("2,50");
+    expect(formatDecimalHours(0.25)).toBe("0,25");
+    expect(formatDecimalHours(-3)).toBe("\u22123,00");
   });
 });
 

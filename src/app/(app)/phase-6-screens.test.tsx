@@ -88,19 +88,19 @@ const DRAFT = {
 describe("the asymptote, while the category is being edited (#26)", () => {
   it("says what the category would pay in a day", () => {
     expect(asymptoteText(DRAFT)).toBe(
-      "Rende no máximo 4,00 h por dia (taxa × passo × 2).",
+      "Rende no máximo 4h por dia (taxa × passo × 2).",
     );
   });
 
   it("follows the step as it is typed, without a round trip", () => {
     expect(
       asymptoteText({ ...DRAFT, decayStep: { hours: "2", minutes: "" } }),
-    ).toBe("Rende no máximo 8,00 h por dia (taxa × passo × 2).");
+    ).toBe("Rende no máximo 8h por dia (taxa × passo × 2).");
   });
 
   it("always shows a concrete numeric halving beside the field (#79)", () => {
     expect(decayExampleText(DRAFT)).toBe(
-      "Ex.: as primeiras 1h valem 2,00 h por hora; depois disso, 1,00 h por hora.",
+      "Ex.: as primeiras 1h valem 2,00 por hora; depois disso, 1,00 por hora.",
     );
     // No rate, nothing to multiply: no example instead of a wrong one.
     expect(decayExampleText({ ...DRAFT, baseRate: "" })).toBe("");
@@ -118,11 +118,11 @@ describe("the asymptote, while the category is being edited (#26)", () => {
     };
 
     expect(asymptoteText(saved)).toBe(
-      "Rende no máximo 4,04 h por dia (taxa × passo × 2).",
+      "Rende no máximo 4h02 por dia (taxa × passo × 2).",
     );
     expect(
       asymptoteText({ ...saved, decayStep: { hours: "1", minutes: "2" } }),
-    ).toBe("Rende no máximo 4,12 h por dia (taxa × passo × 2).");
+    ).toBe("Rende no máximo 4h07 por dia (taxa × passo × 2).");
   });
 
   it("says there is no asymptote when there is no decay (D2)", () => {
@@ -145,7 +145,7 @@ describe("the asymptote, while the category is being edited (#26)", () => {
         baseRate: "3",
         decayStep: { hours: "0", minutes: "6" },
       }),
-    ).toBe("Rende no máximo 0,60 h por dia (taxa × passo × 2).");
+    ).toBe("Rende no máximo 36 min por dia (taxa × passo × 2).");
   });
 });
 
@@ -296,9 +296,7 @@ describe("the form the endpoint is handed (#26)", () => {
 
 describe("what a category says about itself in the list (#26)", () => {
   it("names the ceiling it converges on and the bonus", () => {
-    expect(categorySummary(MENTE)).toBe(
-      "até 4,00 h por dia · +50% ao alternar",
-    );
+    expect(categorySummary(MENTE)).toBe("até 4h por dia · +50% ao alternar");
   });
 
   it("says a category with no decay and no bonus has neither", () => {
@@ -314,7 +312,7 @@ describe("what a category says about itself in the list (#26)", () => {
   it("writes a fractional percentage the way the form does, with a comma", () => {
     // The card sits right above the field: "+13%" over "12,5" is two numbers for one bonus.
     expect(categorySummary({ ...MENTE, alternationBonusPct: 0.125 })).toBe(
-      "até 4,00 h por dia · +12,5% ao alternar",
+      "até 4h por dia · +12,5% ao alternar",
     );
   });
 });
@@ -336,7 +334,7 @@ describe("the screen itself (#26)", () => {
     const markup = renderToStaticMarkup(await ConfigurationPage());
 
     expect(markup).toContain("Mente");
-    expect(markup).toContain("até 4,00 h por dia · +50% ao alternar");
+    expect(markup).toContain("até 4h por dia · +50% ao alternar");
     expect(markup).toContain("7 atividades");
     expect(markup).toContain("Casa");
     expect(markup).toContain("sem desgaste · sem bônus");
@@ -580,7 +578,7 @@ describe("the activity form the endpoint is handed (#27)", () => {
 describe("what an activity says about itself in the list (#27)", () => {
   it("says the rate, the session limit and the cooldown", () => {
     expect(activitySummary(BOOK)).toBe(
-      "2,00 h por hora · mínimo de 5 min · até 2h por sessão",
+      "2,00 por hora · mínimo de 5 min · até 2h por sessão",
     );
   });
 
@@ -626,7 +624,7 @@ describe("what an activity says about itself in the list (#27)", () => {
         maxSessionMinutes: null,
         repeatCooldownDays: 1,
       }),
-    ).toBe("2,00 h por hora · mínimo de 5 min · repete a cada 1 dia");
+    ).toBe("2,00 por hora · mínimo de 5 min · repete a cada 1 dia");
   });
 });
 
