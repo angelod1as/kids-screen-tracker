@@ -5,7 +5,6 @@ import type { HoursMinutes } from "../../../../db/input";
 import type { PendingSpendRequest } from "../../../../db/spend-requests";
 import { Button } from "../../../../ui/button";
 import { formatSignedHours } from "../../../../ui/dates";
-import { DeviceReminder } from "../../../../ui/device-reminder";
 import { ErrorNote } from "../../../../ui/error-note";
 import { failureText } from "../../../../ui/failure";
 import { Field, TimeFields } from "../../../../ui/field";
@@ -51,11 +50,10 @@ export function SpendRequestList({
   const [requests, setRequests] = useState(initial);
   const [edits, setEdits] = useState<Record<number, TypedTime>>({});
   const [reasons, setReasons] = useState<Record<number, string>>({});
-  const [reminded, setReminded] = useState(false);
   const [failed, setFailed] = useState<string | null>(null);
   const [busy, startAction] = useTransition();
 
-  if (requests.length === 0 && !reminded) {
+  if (requests.length === 0) {
     return null;
   }
 
@@ -82,7 +80,6 @@ export function SpendRequestList({
           time === undefined ? {} : { time },
         );
         drop(requestId);
-        setReminded(true);
         setFailed(null);
       } catch (error) {
         setFailed(failureText(error));
@@ -107,14 +104,6 @@ export function SpendRequestList({
   return (
     <div className="flex flex-col gap-6">
       {failed === null ? null : <ErrorNote>{failed}</ErrorNote>}
-
-      {reminded ? (
-        <Panel title="Pedido aprovado">
-          <div className="px-3 py-4">
-            <DeviceReminder />
-          </div>
-        </Panel>
-      ) : null}
 
       {requests.length === 0 ? null : (
         <Panel

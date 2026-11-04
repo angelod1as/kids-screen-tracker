@@ -212,14 +212,6 @@ describe("releasing hours (#23)", () => {
     expect(drawn).toContain(">Tirar<");
   });
 
-  it("says nothing about the devices until something has been released", async () => {
-    expect(
-      await markup(() =>
-        AdminReleasePage({ searchParams: Promise.resolve({}) }),
-      ),
-    ).not.toContain("Agora ligue o aparelho");
-  });
-
   /** A button carries its boy's name and `aria-pressed` tells which is chosen. */
   const chosen = (markup: string, name: string): boolean =>
     new RegExp(`aria-pressed="true"[^>]*>${name}</button>`).test(markup);

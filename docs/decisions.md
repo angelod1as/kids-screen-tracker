@@ -1215,6 +1215,8 @@ ajustar o aparelho à mão depois de tirar, e agora é só um lembrete: o app n�
 sabe se ele fez. Isso é o ponto — o aparelho é a fonte de verdade sobre o
 aparelho, e o app é a fonte de verdade sobre o saldo.
 
+*Emenda (#125): o lembrete saiu; ver a emenda à D58.*
+
 ---
 
 ## A decisão que veio da #74
@@ -2405,6 +2407,10 @@ nos aparelhos: …") vira uma linha curta — "Pronto. Agora ligue o aparelho." 
 mostrada ao adulto que aprovou (ou que tirou), sem push. A mesma linha serve aos
 dois caminhos. O app continua sem saber o que foi feito no aparelho (D41); o
 lembrete é só lembrete.
+
+**Emenda (#125): o lembrete sai.** A linha aparecia a cada aprovação e a cada
+Tirar, e os adultos deixaram de lê-la de tanto vê-la. Some dos dois caminhos; a
+D41 não muda: o app continua sem saber do aparelho, só não lembra mais.
 
 **A migration não move saldo.** A estrutura do pedido pendente de gasto é nova e
 não toca `ledger`, `activity_logs` nem `timers`; na aprovação, o `ledger spend`

@@ -84,7 +84,6 @@ describe("approving a spend request in one tap (#107, D58)", () => {
     expect(actions.approveSpendRequestAction).toHaveBeenCalledWith(1, {});
     expect(actions.previewSpendApprovalAction).not.toHaveBeenCalled();
     expect(container.querySelector('[role="dialog"]')).toBeNull();
-    expect(container.textContent).toContain("Pedido aprovado");
     expect(container.textContent).not.toContain("Usar Xbox");
   });
 
@@ -107,7 +106,6 @@ describe("approving a spend request in one tap (#107, D58)", () => {
 
     expect(container.textContent).toContain(UNCERTAIN_TEXT);
     expect(container.textContent).toContain("Usar Xbox");
-    expect(container.textContent).not.toContain("Pedido aprovado");
   });
 
   it("keeps Aprovar off for an unparseable correction", async () => {

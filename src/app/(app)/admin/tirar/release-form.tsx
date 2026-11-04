@@ -4,7 +4,6 @@ import { useState, useTransition } from "react";
 import { Button } from "../../../../ui/button";
 import { ChoiceGroup, MINUTE_CHOICES } from "../../../../ui/choice";
 import { ConfirmMovement } from "../../../../ui/confirm-movement";
-import { DeviceReminder } from "../../../../ui/device-reminder";
 import { ErrorNote } from "../../../../ui/error-note";
 import { failureText, previewFailureText } from "../../../../ui/failure";
 import { Field, TimeFields } from "../../../../ui/field";
@@ -142,7 +141,6 @@ export function ReleaseForm({
             >
               {formatHours(done.balance)}
             </p>
-            <DeviceReminder />
           </section>
         )}
 

@@ -255,7 +255,8 @@ function Card({
         <span className="break-words text-base text-black">{entry.note}</span>
       )}
 
-      {entry.unpriceable === null ? null : (
+      {/* One sentence on a blocked card: D32's wait comes before what unlocks it. */}
+      {entry.unpriceable === null || entry.blockedBy !== null ? null : (
         /*
           An entry the engine cannot price is a row with a sentence, not a
           queue-wide 500 (D19). No colour: not a pendency.
@@ -378,13 +379,13 @@ function Card({
 
       {entry.blockedBy === null ? null : (
         <p className="text-base font-bold text-black">
-          Aprove antes: {entry.blockedBy.activityName} ·{" "}
-          {formatDay(entry.blockedBy.occurredOn)}. O valor deste depende do que
-          for decidido lá.
+          Decida antes: {entry.blockedBy.activityName} ·{" "}
+          {formatDay(entry.blockedBy.occurredOn)}. Aprovar ou recusar aquela
+          libera esta, e o valor deste depende do que for decidido lá.
         </p>
       )}
 
-      {/* Stacked on a phone: three in a row would fall under 48 px at 320. */}
+      {/* Aprovar alone, the other two paired: three in a row would fall under 48 px at 320. */}
       <div className="flex flex-col gap-2 lg:flex-row lg:gap-3">
         <div className="lg:flex-1">
           <Button
@@ -441,26 +442,28 @@ function Card({
           </div>
         ) : null}
 
-        <div className="lg:flex-1">
-          <Button
-            disabled={busy}
-            onClick={() => setEditing(!editing)}
-            type="button"
-            variant="secondary"
-          >
-            {editing ? "Cancelar correção" : "Corrigir"}
-          </Button>
-        </div>
+        <div className="flex gap-2 lg:flex-[2] lg:gap-3">
+          <div className="flex flex-1">
+            <Button
+              disabled={busy}
+              onClick={() => setEditing(!editing)}
+              type="button"
+              variant="secondary"
+            >
+              {editing ? "Cancelar correção" : "Corrigir"}
+            </Button>
+          </div>
 
-        <div className="lg:flex-1">
-          <Button
-            disabled={busy}
-            onClick={() => setRejecting(!rejecting)}
-            type="button"
-            variant="secondary"
-          >
-            {rejecting ? "Cancelar recusa" : "Recusar"}
-          </Button>
+          <div className="flex flex-1">
+            <Button
+              disabled={busy}
+              onClick={() => setRejecting(!rejecting)}
+              type="button"
+              variant="secondary"
+            >
+              {rejecting ? "Cancelar recusa" : "Recusar"}
+            </Button>
+          </div>
         </div>
       </div>
     </li>
