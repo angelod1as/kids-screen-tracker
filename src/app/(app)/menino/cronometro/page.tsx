@@ -7,9 +7,23 @@ import { TimerScreen } from "./timer-screen";
  * fetch is where D16's reconciliation happens. No heading: the panel band names
  * what the screen is doing (#74).
  */
-export default async function KidTimerPage() {
+export default async function KidTimerPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ atividade?: string | string[] }>;
+}) {
   const session = await requireSession();
-  const data = await fetchTimerScreenAction(session.userId);
+  const [data, { atividade }] = await Promise.all([
+    fetchTimerScreenAction(session.userId),
+    searchParams,
+  ]);
 
-  return <TimerScreen initial={data} />;
+  return (
+    <TimerScreen
+      initial={data}
+      initialActivityId={
+        atividade === undefined ? undefined : Number(atividade)
+      }
+    />
+  );
 }

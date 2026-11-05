@@ -192,6 +192,7 @@ async function confirming(open: OpenSessionView) {
 describe("the request without a stopwatch (#44)", () => {
   it("says before the tap that the chosen activity needs a note, and holds the send until it has one", async () => {
     await render(<TimerScreen initial={IDLE} />);
+    await click("Contar sem cronômetro");
 
     expect(container.textContent).toContain(REQUIRED_LABEL);
     expect(container.textContent).toContain(NOTE_REQUIRED_TEXT);
@@ -220,6 +221,7 @@ describe("the request without a stopwatch (#44)", () => {
 
   it("lets an activity that does not need one go without", async () => {
     await render(<TimerScreen initial={IDLE} />);
+    await click("Contar sem cronômetro");
     await choose("pedido-atividade", 20);
 
     expect(container.textContent).toContain(OPTIONAL_LABEL);
@@ -374,6 +376,7 @@ describe("Configuração (#44)", () => {
           }}
         />,
       );
+      await click("Contar sem cronômetro");
 
       expect(container.textContent).toContain(PROMPT);
       expect(container.textContent).not.toContain(NOTE_REQUIRED_TEXT);

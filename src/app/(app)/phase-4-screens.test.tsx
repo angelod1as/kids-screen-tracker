@@ -117,7 +117,9 @@ async function timerMarkup(data: TimerScreenData): Promise<string> {
   mocked.session = KID1;
   mocked.timer = data;
 
-  return renderToStaticMarkup(await KidTimerPage());
+  return renderToStaticMarkup(
+    await KidTimerPage({ searchParams: Promise.resolve({}) }),
+  );
 }
 
 async function queueMarkup(entries: QueueEntry[]): Promise<string> {
@@ -133,7 +135,7 @@ describe("the timer asks about the boy who is logged in (#13)", () => {
       mocked.timer = screen(null);
       mocked.timerFor = [];
 
-      await KidTimerPage();
+      await KidTimerPage({ searchParams: Promise.resolve({}) });
 
       expect(mocked.timerFor).toStrictEqual([session.userId]);
     }

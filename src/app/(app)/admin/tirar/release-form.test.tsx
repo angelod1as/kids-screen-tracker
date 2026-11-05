@@ -159,6 +159,29 @@ describe("the confirmation (D53)", () => {
     expect(container.textContent).toContain("Tirado 1h de Kid2.");
   });
 
+  it("clears the form once written, and the sentence keeps what was written (#126)", async () => {
+    const destination = container.querySelector<HTMLInputElement>("#destino");
+
+    if (destination === null) throw new Error("no #destino");
+
+    await act(async () => {
+      Object.getOwnPropertyDescriptor(
+        HTMLInputElement.prototype,
+        "value",
+      )?.set?.call(destination, "Xbox");
+      destination.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    await act(async () => button("2h").click());
+    await releaseAndConfirm();
+
+    expect(container.textContent).toContain("Tirado 1h de Kid2 em Xbox.");
+    expect(destination.value).toBe("");
+    expect(
+      container.querySelector<HTMLInputElement>("#tempo-horas")?.value,
+    ).toBe("1");
+    expect(button("2h").getAttribute("aria-pressed")).toBe("false");
+  });
+
   it("closes when the form behind it changes, so nothing stale is confirmed", async () => {
     await act(async () => button("Tirar").click());
     await act(async () => button("2h").click());

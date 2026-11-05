@@ -75,6 +75,14 @@ async function choose(selectId: string, value: number) {
 }
 
 /** The node right after the picker's wrapper: the description, or the next control. */
+async function openRequest() {
+  await act(async () =>
+    [...container.querySelectorAll("button")]
+      .find((button) => button.textContent === "Contar sem cronômetro")
+      ?.click(),
+  );
+}
+
 function afterPicker(selectId: string): Element | null {
   return (
     container.querySelector(`#${selectId}`)?.parentElement
@@ -169,6 +177,7 @@ describe("the stopwatch picker (#40)", () => {
 describe("the request picker (#40)", () => {
   it("follows the choice, so two neighbouring names can be told apart", async () => {
     await render(<TimerScreen initial={DATA} />);
+    await openRequest();
 
     expect(afterPicker("pedido-atividade")?.textContent).toBe(OUTSIDE);
 
@@ -180,6 +189,7 @@ describe("the request picker (#40)", () => {
 
   it("shows nothing, not an empty box, for one without a description", async () => {
     await render(<TimerScreen initial={DATA} />);
+    await openRequest();
     await choose("pedido-atividade", 20);
 
     expect(

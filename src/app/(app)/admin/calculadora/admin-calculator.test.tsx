@@ -121,6 +121,10 @@ describe("the admin calculator picks a boy (#76)", () => {
     expect(labels).toContain("Kid2");
   });
 
+  it("has no link to the timer, which only the boy uses (CA1)", () => {
+    expect(container.innerHTML).not.toContain("/menino/cronometro");
+  });
+
   it("simulates against the first boy's day until another is chosen", () => {
     const options = [...container.querySelectorAll("option")].map(
       (option) => option.textContent,

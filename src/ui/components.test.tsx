@@ -3,6 +3,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 import type { Session } from "../auth/access";
 import { Button } from "./button";
+import { ChoiceGroup } from "./choice";
 import { ErrorNote } from "./error-note";
 import { Field } from "./field";
 import { accountItemFor, navigationFor } from "./navigation";
@@ -243,5 +244,20 @@ describe("an error reads as ERRO, not a stray sentence (#86)", () => {
     expect(
       parts.some((element) => element.props.children === "Algo falhou."),
     ).toBe(true);
+  });
+});
+
+describe("a choice with a detail (#126)", () => {
+  it("puts the detail on a line of its own, and still reads as one label", () => {
+    const markup = renderToStaticMarkup(
+      <ChoiceGroup
+        legend="Nota"
+        onSelect={() => {}}
+        options={[{ value: 0.75, label: "75%", detail: "(1h30)" }]}
+        value={0.75}
+      />,
+    );
+
+    expect(markup).toContain('75% <span class="block">(1h30)</span>');
   });
 });
