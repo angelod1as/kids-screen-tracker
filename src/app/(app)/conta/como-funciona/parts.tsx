@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 
 import { formatDuration, formatHours } from "../../../../ui/hours";
+import { LinkButton } from "../../../../ui/link-button";
 import { Panel } from "../../../../ui/panel";
 import { META_CLASS, READOUT_CLASS } from "../../../../ui/style";
 import type {
@@ -65,6 +66,43 @@ function extras(activity: HowItWorksActivity): string[] {
   return lines;
 }
 
+/** GU1: a long guide says at the top what it holds, and jumps there. */
+export function GuideIndex({
+  sections,
+}: {
+  sections: { id: string; title: string }[];
+}) {
+  return (
+    <nav aria-label="Nesta página" className="mt-4 border-t-2 border-black">
+      <h2 className={`${META_CLASS} px-3 pt-3 text-black`}>Nesta página</h2>
+      <ul className="flex flex-col px-3 pb-2">
+        {sections.map((section) => (
+          <li key={section.id}>
+            <LinkButton href={`#${section.id}`} variant="quiet">
+              {section.title}
+            </LinkButton>
+          </li>
+        ))}
+      </ul>
+    </nav>
+  );
+}
+
+/** GU1: activities worth the same, said once under all their names, in first-seen order. */
+function sameWorth(
+  activities: HowItWorksActivity[],
+  audience: "kid" | "adult",
+): { text: string; activities: HowItWorksActivity[] }[] {
+  const groups = new Map<string, HowItWorksActivity[]>();
+
+  for (const activity of activities) {
+    const text = [worth(activity, audience), ...extras(activity)].join(" · ");
+    groups.set(text, [...(groups.get(text) ?? []), activity]);
+  }
+
+  return [...groups].map(([text, members]) => ({ text, activities: members }));
+}
+
 /** Every activity, by category, with what it is worth today. */
 export function ActivityValues({
   audience,
@@ -74,24 +112,27 @@ export function ActivityValues({
   data: HowItWorksData;
 }) {
   return (
-    <Panel title="Quanto vale cada coisa">
+    <Panel id="quanto-vale" title="Quanto vale cada coisa">
       {data.categories.map((category) => (
         <section className="border-t-2 border-black" key={category.id}>
           <h3 className={`${META_CLASS} px-3 pt-3 text-black`}>
             {category.name}
           </h3>
           <ul className="flex flex-col">
-            {activitiesOf(data, category).map((activity) => (
+            {sameWorth(activitiesOf(data, category), audience).map((group) => (
               <li
                 className="flex flex-col gap-1 border-t border-black px-3 py-3 first:border-t-0"
-                key={activity.id}
+                key={group.activities[0]?.id}
               >
-                <span className="break-words text-base font-bold text-black">
-                  {activity.name}
-                </span>
-                <span className="text-base text-black">
-                  {[worth(activity, audience), ...extras(activity)].join(" · ")}
-                </span>
+                {group.activities.map((activity) => (
+                  <span
+                    className="break-words text-base font-bold text-black"
+                    key={activity.id}
+                  >
+                    {activity.name}
+                  </span>
+                ))}
+                <span className="text-base text-black">{group.text}</span>
               </li>
             ))}
           </ul>

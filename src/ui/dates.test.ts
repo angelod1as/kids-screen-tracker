@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 
-import { formatDay, formatSignedHours, formatTime } from "./dates";
+import {
+  formatDay,
+  formatShortDay,
+  formatSignedHours,
+  formatTime,
+} from "./dates";
 
 describe("a calendar date on screen (D13)", () => {
   it("is written the way a Brazilian reader writes it", () => {
@@ -17,6 +22,16 @@ describe("a calendar date on screen (D13)", () => {
     expect(() => formatDay("02/09/2026")).toThrow();
     expect(() => formatDay("2026-9-2")).toThrow();
     expect(() => formatDay("")).toThrow();
+  });
+});
+
+describe("a calendar date on a history row (H6)", () => {
+  it("drops the year when it is this one", () => {
+    expect(formatShortDay("2026-09-02", "2026-11-04")).toBe("02/09");
+  });
+
+  it("keeps the year when it is another one", () => {
+    expect(formatShortDay("2025-12-28", "2026-01-03")).toBe("28/12/2025");
   });
 });
 

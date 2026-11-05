@@ -8,6 +8,7 @@ import type {
   RejectedEntry,
   ZeroEntry,
 } from "../app/actions/history";
+import { saoPauloDay } from "../engine/day";
 import {
   EntryList,
   entriesForTab,
@@ -155,15 +156,15 @@ describe("the extract (#16)", () => {
     for (const fragment of [
       "Xbox",
       "Tirado",
-      "02/09/2026",
+      "02/09",
       "−1h30",
       "Ler livro",
       "Ganho",
-      "01/09/2026",
+      "01/09",
       "+2h",
       "Não usou",
       "Dado",
-      "31/08/2026",
+      "31/08",
       "+15 min",
     ]) {
       expect(rendered, fragment).toContain(fragment);
@@ -274,6 +275,48 @@ const REJECTED: RejectedEntry = {
 };
 
 const MIXED: HistoryEntry[] = [REJECTED, ZERO, ...ENTRIES];
+
+describe("the history row, without repeating itself (H6)", () => {
+  const year = Number(saoPauloDay(new Date()).slice(0, 4));
+  const history = (entries: HistoryEntry[]) =>
+    renderToStaticMarkup(
+      EntryList({ emptyText: "vazio", entries, nameDecider: true }),
+    );
+
+  it("leaves this year out of the date, and keeps another year's", () => {
+    const markup = history([
+      { ...ENTRIES[0], occurredOn: `${year}-09-02` } as LedgerEntry,
+      { ...ENTRIES[1], occurredOn: `${year - 1}-12-28` } as LedgerEntry,
+    ]);
+
+    expect(markup).toContain("02/09 às");
+    expect(markup).not.toContain(`02/09/${year}`);
+    expect(markup).toContain(`28/12/${year - 1}`);
+  });
+
+  it("names who took or gave on the date line, once", () => {
+    const markup = history([ENTRIES[0], ENTRIES[2]] as LedgerEntry[]);
+
+    expect(markup).toContain("Tirado por Admin1 · ");
+    expect(markup).toContain("Dado por Admin1 · ");
+    expect(markup.match(/Tirado/g)).toHaveLength(1);
+    expect(markup.match(/Dado/g)).toHaveLength(1);
+  });
+
+  it("names who refused on the date line, once", () => {
+    const markup = history([REJECTED]);
+
+    expect(markup).toContain("Recusado por Admin1 · ");
+    expect(markup.match(/Recusado/g)).toHaveLength(1);
+  });
+
+  it("keeps an earn's kind and its approver apart, since they say different things", () => {
+    const markup = history([ENTRIES[1]] as LedgerEntry[]);
+
+    expect(markup).toContain("Ganho · ");
+    expect(markup).toContain("Aprovado por Admin1");
+  });
+});
 
 describe("the extract tabs (#78)", () => {
   it("defaults an unknown tab to the whole extract", () => {

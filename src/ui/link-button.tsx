@@ -24,8 +24,21 @@ export function LinkButton({
   href: string;
   /** False keeps the reader where they were, as "Ver mais" (#64) needs. */
   scroll?: boolean;
-  variant?: "primary" | "secondary";
+  variant?: "primary" | "secondary" | "quiet";
 }) {
+  // Button's quiet weight (#118), for a link repeated down a list, as the guide's index (GU1).
+  if (variant === "quiet") {
+    return (
+      <Link
+        className={`${TOUCH_TARGET_CLASS} flex items-center self-start text-left text-base text-black underline`}
+        href={href}
+        scroll={scroll}
+      >
+        {children}
+      </Link>
+    );
+  }
+
   const colors =
     variant === "primary"
       ? `${ACCENT_BG_CLASS} text-white`

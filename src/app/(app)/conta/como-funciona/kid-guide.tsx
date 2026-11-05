@@ -15,7 +15,13 @@ import {
   formatPercent,
   SHORT_SESSION_MINUTES,
 } from "./explainer";
-import { ActivityValues, DecayTable, Paragraph, Points } from "./parts";
+import {
+  ActivityValues,
+  DecayTable,
+  GuideIndex,
+  Paragraph,
+  Points,
+} from "./parts";
 
 /** The boy's version (#107): no jargon, every number from `data` or the engine. */
 export function KidGuide({ data }: { data: HowItWorksData }) {
@@ -44,10 +50,23 @@ export function KidGuide({ data }: { data: HowItWorksData }) {
           Os números desta página vêm da configuração de agora. Se um adulto
           mudar alguma coisa, eles mudam aqui também.
         </Paragraph>
+        <GuideIndex
+          sections={[
+            ...(decaying.length === 0
+              ? []
+              : [{ id: "desgaste", title: "Quanto mais, menos vale" }]),
+            ...(!BONUS_ENABLED || withBonus.length === 0
+              ? []
+              : [{ id: "bonus", title: "Bônus de alternância" }]),
+            { id: "cronometro", title: "Cronômetro" },
+            { id: "depois-de-enviar", title: "Depois de enviar" },
+            { id: "quanto-vale", title: "Quanto vale cada coisa" },
+          ]}
+        />
       </Panel>
 
       {decaying.length === 0 ? null : (
-        <Panel title="Quanto mais, menos vale">
+        <Panel id="desgaste" title="Quanto mais, menos vale">
           <Points>
             {decaying.map((category) => {
               const timed = activitiesOf(data, category)
@@ -96,7 +115,7 @@ export function KidGuide({ data }: { data: HowItWorksData }) {
       )}
 
       {!BONUS_ENABLED || withBonus.length === 0 ? null : (
-        <Panel title="Bônus de alternância">
+        <Panel id="bonus" title="Bônus de alternância">
           <Points>
             {withBonus.map((category) => (
               <li key={category.id}>
@@ -127,7 +146,7 @@ export function KidGuide({ data }: { data: HowItWorksData }) {
         </Panel>
       )}
 
-      <Panel title="Cronômetro">
+      <Panel id="cronometro" title="Cronômetro">
         <Points>
           <li>Conta só o tempo que você fez. Pausa não conta.</li>
           <li>
@@ -150,7 +169,7 @@ export function KidGuide({ data }: { data: HowItWorksData }) {
         </Points>
       </Panel>
 
-      <Panel title="Depois de enviar">
+      <Panel id="depois-de-enviar" title="Depois de enviar">
         <Points>
           <li>
             A sessão vai para um adulto e aparece como Pendente. Ainda não está

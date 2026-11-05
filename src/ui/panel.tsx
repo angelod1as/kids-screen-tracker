@@ -8,11 +8,14 @@ import { HEADING_CLASS, PANEL_CLASS, PANEL_HEAD_CLASS } from "./style";
  */
 export function Panel({
   children,
+  id,
   note,
   title,
   top = false,
 }: {
   children: ReactNode;
+  /** An anchor for a page's own index (GU1). */
+  id?: string;
   note?: ReactNode;
   title: string;
   top?: boolean;
@@ -20,7 +23,7 @@ export function Panel({
   const Heading = top ? "h1" : "h2";
 
   return (
-    <section className={PANEL_CLASS}>
+    <section className={PANEL_CLASS} id={id}>
       <div className={PANEL_HEAD_CLASS}>
         <Heading className={HEADING_CLASS}>{title}</Heading>
         {note === undefined ? null : (

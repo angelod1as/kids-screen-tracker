@@ -8,8 +8,14 @@ import type {
   VoidMark,
   ZeroEntry,
 } from "../app/actions/history";
+import { saoPauloDay } from "../engine/day";
 import { ChoiceLinks } from "./choice-links";
-import { formatDay, formatSignedHours, formatTime } from "./dates";
+import {
+  formatDay,
+  formatShortDay,
+  formatSignedHours,
+  formatTime,
+} from "./dates";
 import { formatDuration, formatHours } from "./hours";
 import { PanelText } from "./panel";
 import {
@@ -62,6 +68,8 @@ export function EntryList({
     return <PanelText>{emptyText}</PanelText>;
   }
 
+  const today = saoPauloDay(new Date());
+
   return (
     <ul>
       {entries.map((entry) =>
@@ -70,6 +78,7 @@ export function EntryList({
             entry={entry}
             key={`rejected-${entry.fromSpendRequest ? "spend-" : ""}${entry.id}`}
             nameDecider={nameDecider}
+            today={today}
           />
         ) : entry.kind === "zero" ? (
           <ZeroRow
@@ -77,6 +86,7 @@ export function EntryList({
             entry={entry}
             key={`zero-${entry.id}`}
             nameDecider={nameDecider}
+            today={today}
           />
         ) : (
           <li className={ROW_CLASS} key={`ledger-${entry.id}`}>
@@ -85,8 +95,10 @@ export function EntryList({
                 {entry.label}
               </span>
               <span className={`${META_CLASS} text-black`}>
-                {entry.requestedBy ? "Usado" : kindLabel(entry.kind)} ·{" "}
-                {formatDay(entry.occurredOn)} às {formatTime(entry.at)}
+                {mergedByline(entry, nameDecider) ??
+                  (entry.requestedBy ? "Usado" : kindLabel(entry.kind))}{" "}
+                · {formatShortDay(entry.occurredOn, today)} às{" "}
+                {formatTime(entry.at)}
                 {nameDecider && entry.override !== null
                   ? ` · ${overriddenText(entry.decidedBy)}`
                   : ""}
@@ -104,7 +116,8 @@ export function EntryList({
                 </span>
               ) : nameDecider &&
                 entry.override === null &&
-                entry.decidedBy !== null ? (
+                entry.decidedBy !== null &&
+                mergedByline(entry, nameDecider) === null ? (
                 <ReviewerLine
                   by={entry.decidedBy}
                   className="text-black"
@@ -136,9 +149,11 @@ export function EntryList({
 function RejectedRow({
   entry,
   nameDecider,
+  today,
 }: {
   entry: RejectedEntry;
   nameDecider: boolean;
+  today: string;
 }) {
   return (
     // `border-t-white`: two refusals in a row would otherwise merge into one black block.
@@ -148,7 +163,10 @@ function RejectedRow({
           {entry.label}
         </span>
         <span className={`${META_CLASS} text-white`}>
-          Recusado · {formatDay(entry.occurredOn)} às {formatTime(entry.at)}
+          {nameDecider && entry.decidedBy !== null
+            ? `Recusado por ${entry.decidedBy}`
+            : "Recusado"}{" "}
+          · {formatShortDay(entry.occurredOn, today)} às {formatTime(entry.at)}
           {entry.durationMinutes === null
             ? ""
             : ` · ${formatDuration(entry.durationMinutes)}`}
@@ -158,13 +176,6 @@ function RejectedRow({
             Motivo: {entry.reason}
           </span>
         )}
-        {nameDecider && entry.decidedBy !== null ? (
-          <ReviewerLine
-            by={entry.decidedBy}
-            className="text-white"
-            verb="Recusado"
-          />
-        ) : null}
       </span>
       <span className={`${READOUT_CLASS} shrink-0 text-white`}>
         {formatHours(0)}
@@ -188,6 +199,14 @@ function ledgerVerb(kind: LedgerEntry["kind"]): string {
     case "refund":
       return "Dado";
   }
+}
+
+/** H6: where the kind and the author's verb are one word, the author joins the date line. */
+function mergedByline(entry: LedgerEntry, nameDecider: boolean): string | null {
+  if (!nameDecider || entry.requestedBy || entry.kind === "earn") return null;
+  if (entry.override !== null || entry.decidedBy === null) return null;
+
+  return `${ledgerVerb(entry.kind)} por ${entry.decidedBy}`;
 }
 
 /** Who decided the entry (emenda à D50): named on both screens, under the kind and date. */
@@ -247,10 +266,12 @@ function ZeroRow({
   entry,
   action,
   nameDecider,
+  today,
 }: {
   entry: ZeroEntry;
   action: ReactNode;
   nameDecider: boolean;
+  today: string;
 }) {
   return (
     <li className={ROW_CLASS}>
@@ -259,7 +280,7 @@ function ZeroRow({
           {entry.label}
         </span>
         <span className={`${META_CLASS} text-black`}>
-          {kindLabel("earn")} · {formatDay(entry.occurredOn)} às{" "}
+          {kindLabel("earn")} · {formatShortDay(entry.occurredOn, today)} às{" "}
           {formatTime(entry.at)}
           {nameDecider && entry.override !== null
             ? ` · ${overriddenText(entry.decidedBy)}`
