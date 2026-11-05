@@ -105,7 +105,7 @@ type Placed<Entry> = {
 /** Last resort after activity, destination and a refund's note: an empty cell reads as a rendering bug. */
 const NO_LABEL = "Sem descrição";
 
-/** H5: the destination is optional (D53), and every spend is screen time. */
+/** H5: the Tirar form leaves the destination optional, and every spend is screen time. */
 const SPEND_LABEL = "Tempo de tela";
 
 /**
