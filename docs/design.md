@@ -270,7 +270,10 @@ para o chão enquanto os outros dois ficam azuis.
 Há um terceiro peso, o **discreto** (`quiet`, #118): texto preto sublinhado, sem
 fundo nem moldura, ainda com 48 px. É para a ação rara que se repete em toda
 linha, como *Anular* no histórico do adulto, que como caixa dobraria a altura da
-lista e pesaria como ação permanente. Primário é o que se veio fazer; secundário,
+lista e pesaria como ação permanente. O mesmo peso serve à lista de links que
+pula para cada seção de uma página longa, como o "Nesta página" do guia (GU1,
+#127): como caixas, sete atalhos empilhados empurrariam o conteúdo para baixo da
+dobra. Primário é o que se veio fazer; secundário,
 o atalho ao lado; discreto, o que quase nunca se faz.
 
 Na home do adulto há um azul por vez, no que se veio fazer, e ele acompanha a
