@@ -70,3 +70,6 @@ yarn-error.log*
 *.keystore
 *.jks
 *.apk
+
+# default output of `pnpm usage:audit --familylink` (#131): real usage, public repo
+usage-card.html

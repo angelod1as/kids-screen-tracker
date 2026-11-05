@@ -15,7 +15,7 @@ clone do repositório no servidor:
 
 ```sh
 docker exec -i kids-screen-tracker \
-  node --input-type=module - --kid lucas --since 2026-10-29 \
+  node --input-type=module - --kid kid1 --since 2026-10-29 \
   < scripts/usage-audit.mjs
 ```
 
@@ -33,16 +33,21 @@ em minúsculas (`Zap` e `ZAP` viram `zap`).
 ### O card precisa do template, então gere-o com uma cópia do banco
 
 O card lê `scripts/usage-card.template.html` ao lado do script, e pelo stdin
-não há "ao lado". Copie o banco para a sua máquina e rode localmente:
+não há "ao lado". Copie o banco para a sua máquina e rode localmente.
+
+**Tudo fora do repositório.** O repositório é público (D45), e o JSON e o card
+carregam o nome do filho e o uso real dia a dia. Trabalhe em `~/kst-audit/`; o
+`.gitignore` só cobre o nome padrão, `usage-card.html`.
 
 ```sh
-docker cp kids-screen-tracker:/data/kids.db ./kids-audit.db
-DATABASE_PATH=./kids-audit.db pnpm usage:audit \
-  --kid lucas --familylink lucas.json --out lucas.html
-rm ./kids-audit.db
+mkdir -p ~/kst-audit
+docker cp kids-screen-tracker:/data/kids.db ~/kst-audit/kids.db
+DATABASE_PATH=~/kst-audit/kids.db pnpm usage:audit \
+  --kid kid1 --familylink ~/kst-audit/kid1.json --out ~/kst-audit/kid1.html
+rm ~/kst-audit/kids.db
 ```
 
-Abra o `lucas.html` no celular, tire um print e mande no WhatsApp.
+Abra o `kid1.html` no celular, tire um print e mande no WhatsApp.
 
 ## Coletar o uso real no Family Link
 
