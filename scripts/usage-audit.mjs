@@ -88,6 +88,8 @@ const days = daysBetween(since, today);
 const db = new Database(databasePath, { readonly: true, fileMustExist: true });
 
 // An earn voided on its activity log keeps `ledger.voided_at` null (D52).
+// Group by position: a bare `destination` is the raw column, so `ZAP` and `Zap`
+// would land in separate groups.
 const LIVE_LEDGER = `
   from ledger l
   left join activity_logs a on a.id = l.activity_log_id
@@ -100,7 +102,7 @@ function auditKid(kid) {
          lower(trim(coalesce(l.destination, ''))) as destination,
          sum(l.hours) as hours
        ${LIVE_LEDGER} and l.occurred_on >= ? and l.occurred_on <= ?
-       group by day, l.kind, destination
+       group by day, l.kind, 3
        order by day, l.kind, destination`,
     )
     .all(kid.id, since, today);
@@ -165,7 +167,7 @@ function renderCard(kid, familyLink) {
            sum(l.hours) as hours
          ${LIVE_LEDGER} and l.kind = 'spend'
            and l.occurred_on in (select value from json_each(?))
-         group by destination`,
+         group by 1`,
       )
       .all(kid.id, JSON.stringify(usageDays))
       .map((row) => [row.destination, row.hours]),

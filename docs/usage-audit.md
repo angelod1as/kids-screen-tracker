@@ -74,6 +74,7 @@ nesses dias, independentemente do `--since`. App ausente num dia conta 0.
   como "não declarou".
 - Por app: **em dia** se usou ≤ permitido; senão **+Xh**, o quanto passou.
 - O número grande é a soma do que passou nos três apps.
+- Cores: só as da D42; "passou" em vermelho é a emenda #131 à D42.
 
 ## Mapa de destinos
 

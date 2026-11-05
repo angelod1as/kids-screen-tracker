@@ -1353,6 +1353,16 @@ pintado contra botão cheio. Um valor anulado (riscado, "não conta no saldo")
 fica preto: ele já não conta, então não grita vermelho. O dono pediu: todo
 negativo em vermelho.
 
+**Emenda (#131) — o card de auditoria pinta "passou do combinado" em
+vermelho.** O card de `scripts/usage-card.template.html` é HTML solto, fora do
+app e do Tailwind, para print no WhatsApp ([`usage-audit.md`](usage-audit.md)).
+Nele, "em dia" é fundo `blue-800` e "passou" é fundo `red-700`, ambos com texto
+branco; a barra do permitido é `slate-100`. Nenhuma cor nova: os literais do
+template são conferidos contra `src/ui/style.ts` e `design.md` por
+`scripts/usage-audit.test.ts`. O significado é o da #105, "é perda": minutos
+usados além do permitido. Verde foi considerado e descartado por ser sétima cor.
+O dono aprovou dentro da D42.
+
 ---
 
 ### D43 — Produção só recebe o que passou pelo CI
