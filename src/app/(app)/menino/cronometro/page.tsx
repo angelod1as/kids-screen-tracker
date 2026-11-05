@@ -18,5 +18,12 @@ export default async function KidTimerPage({
     searchParams,
   ]);
 
-  return <TimerScreen initial={data} initialActivityId={Number(atividade)} />;
+  return (
+    <TimerScreen
+      initial={data}
+      initialActivityId={
+        atividade === undefined ? undefined : Number(atividade)
+      }
+    />
+  );
 }
