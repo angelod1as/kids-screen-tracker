@@ -1,6 +1,12 @@
 import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import {
+  existsSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -127,6 +133,44 @@ describe("pnpm usage:audit", () => {
     expect(card).toContain('<span class="num over">+1h</span>');
     expect(card).toContain("SM-TEST");
     expect(card).not.toMatch(/__[A-Z_]+__/);
+  });
+
+  it("refuses a Family Link day that is not YYYY-MM-DD", () => {
+    const familyLink = join(dir, "bad-day.json");
+    writeFileSync(
+      familyLink,
+      JSON.stringify({ days: { "2026-1-10": { whatsapp: 60 } } }),
+    );
+
+    const result = run([
+      "--kid",
+      "kid1",
+      "--familylink",
+      familyLink,
+      "--out",
+      join(dir, "never.html"),
+    ]);
+
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain('"2026-1-10" must be YYYY-MM-DD');
+    expect(existsSync(join(dir, "never.html"))).toBe(false);
+  });
+
+  // The production path in docs/usage-audit.md: the script arrives on stdin.
+  it("runs from stdin as an ES module", () => {
+    const result = spawnSync(
+      "node",
+      ["--input-type=module", "-", "--kid", "kid1", "--since", "2026-01-10"],
+      {
+        cwd: root,
+        env: { ...process.env, DATABASE_PATH: databasePath },
+        input: readFileSync(join(root, "scripts", "usage-audit.mjs")),
+        encoding: "utf8",
+      },
+    );
+
+    expect(result.status).toBe(0);
+    expect(result.stdout).toContain("saldo atual:     4h\n");
   });
 
   it("never writes to the database", () => {

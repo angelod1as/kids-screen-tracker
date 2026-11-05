@@ -157,6 +157,9 @@ function auditKid(kid) {
 function renderCard(kid, familyLink) {
   const usageDays = Object.keys(familyLink.days ?? {}).sort();
   if (usageDays.length === 0) fail("Family Link JSON has no days.");
+  // A malformed day matches no `occurred_on` and silently undercounts "declarado".
+  const badDay = usageDays.find((day) => !/^\d{4}-\d{2}-\d{2}$/.test(day));
+  if (badDay) fail(`Family Link day "${badDay}" must be YYYY-MM-DD.`);
   const from = usageDays[0];
   const to = usageDays[usageDays.length - 1];
   // The card's window is the Family Link days, not `--since`.
