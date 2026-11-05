@@ -304,7 +304,7 @@ describe("the numbers come from the configuration (#107)", () => {
 });
 
 describe("a guide that can be skimmed (GU1)", () => {
-  it("opens with an index whose every link lands on a section of the page", async () => {
+  it("opens with an index that matches the page's sections, both ways", async () => {
     for (const username of ["kid2", "admin1"]) {
       const markup = await markupFor(username);
       const targets = [...markup.matchAll(/href="#([^"]+)"/g)].map(
@@ -315,6 +315,11 @@ describe("a guide that can be skimmed (GU1)", () => {
       expect(targets.length).toBeGreaterThan(3);
       for (const target of targets) {
         expect(markup, target).toContain(`id="${target}"`);
+      }
+      for (const [, section] of markup.matchAll(
+        /<section[^>]*\sid="([^"]+)"/g,
+      )) {
+        expect(targets, section).toContain(section);
       }
     }
   });
