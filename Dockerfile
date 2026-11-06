@@ -1,14 +1,14 @@
 # syntax=docker/dockerfile:1
 
-# D20: Node 22 LTS. The .nvmrc pins the host and `engines` pins the install;
+# D20: Node 24 LTS. The .nvmrc pins the host and `engines` pins the install;
 # this pins every machine that runs the image. Alpine is what keeps it small.
 # Pinned by digest for the same reason the workflow actions were in #37: a
 # floating tag makes two builds on different days resolve to different
 # binaries. The tag stays in the comment because the digest does not say which
 # version it is. This is the multi-arch index digest, so arm64 and amd64 both
 # keep resolving. Bump the two together.
-# node:22.23-alpine
-FROM node@sha256:c610fcdfb1d5b4740dd70c284ed3cb16bb857e0f7166196e36a5501df7a3aa32 AS base
+# node:24.22-alpine
+FROM node@sha256:8a32c8cf649a49915a66e81e7a609223c708d0adabf288ee3f4077d765542f85 AS base
 # Every `next build` reports usage to Vercel unless this is set, and CLAUDE.md
 # says no external services. Declared here so the build stages inherit it.
 ENV NEXT_TELEMETRY_DISABLED=1

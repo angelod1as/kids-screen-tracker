@@ -63,7 +63,7 @@ jobs:
           cache: pnpm
 
       # engineStrict in pnpm-workspace.yaml makes this fail outright if the Node
-      # major above ever drifts away from 22.
+      # major above ever drifts away from 24.
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
