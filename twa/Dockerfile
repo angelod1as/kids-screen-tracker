@@ -1,7 +1,7 @@
 # D54: everything the APK build needs, so the owner's machine only needs Docker.
 # apk.sh builds it as linux/amd64: the Android build tools ship no Linux arm64
 # binaries.
-FROM node:22-bookworm
+FROM node:24-bookworm
 
 RUN apt-get update \
   && apt-get install -y --no-install-recommends openjdk-17-jdk-headless unzip \
