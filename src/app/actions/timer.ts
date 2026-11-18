@@ -66,6 +66,8 @@ export type PendingProposal = {
   /** The seconds measured, which is what the screen shows (D17). */
   durationSeconds: number | null;
   autoStopped: boolean;
+  /** #137: when the boy sent it; display only (D13). */
+  createdAt: Date;
 };
 
 export type TimerScreenData = {
@@ -289,6 +291,7 @@ function pendingProposals(userId: number): PendingProposal[] {
         durationMinutes: activityLogs.durationMinutes,
         durationSeconds: activityLogs.durationSeconds,
         autoStopped: activityLogs.autoStopped,
+        createdAt: activityLogs.createdAt,
       })
       .from(activityLogs)
       .innerJoin(activities, eq(activityLogs.activityId, activities.id))

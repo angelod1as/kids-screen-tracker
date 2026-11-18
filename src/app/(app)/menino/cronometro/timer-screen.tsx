@@ -6,7 +6,7 @@ import { isBlankNote } from "../../../../db/input";
 import type { TimerSettlement } from "../../../../db/timers";
 import { reachesMinimum } from "../../../../engine/timer";
 import { Button } from "../../../../ui/button";
-import { formatDay } from "../../../../ui/dates";
+import { formatDay, formatInstant } from "../../../../ui/dates";
 import { ErrorNote } from "../../../../ui/error-note";
 import { RESYNCED_TEXT, timerFailureText } from "../../../../ui/failure";
 import { Field, TimeFields } from "../../../../ui/field";
@@ -686,6 +686,9 @@ function PendingList({ data }: { data: TimerScreenData }) {
                   ? ""
                   : ` · ${formatRecordedDuration(proposal.durationSeconds)}`}
                 {proposal.autoStopped ? " · parou sozinha" : ""}
+              </span>
+              <span className={`${META_CLASS} mt-1 text-black`}>
+                Enviado em {formatInstant(proposal.createdAt)}
               </span>
             </li>
           ))}

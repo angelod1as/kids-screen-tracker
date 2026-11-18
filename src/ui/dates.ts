@@ -1,3 +1,4 @@
+import { saoPauloDay } from "../engine/day";
 import { formatHours } from "./hours";
 
 /**
@@ -29,6 +30,11 @@ export function formatTime(instant: number): string {
     minute: "2-digit",
     hourCycle: "h23",
   }).format(instant);
+}
+
+/** #137: when a boy sent a request, apart from the day it is about (D13). */
+export function formatInstant(instant: Date): string {
+  return `${formatDay(saoPauloDay(instant))} às ${formatTime(instant.getTime())}`;
 }
 
 /** U+2212, not a hyphen: at row size a hyphen beside a digit nearly vanishes. */

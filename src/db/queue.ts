@@ -46,6 +46,8 @@ export type QueueEntry = {
   quality: number | null;
   /** Beside each grade, the hours it would give (D60). */
   activityValue: number | null;
+  /** #137: when the boy sent it; display only (D13). */
+  createdAt: Date;
   /**
    * Null when the engine cannot price the entry: one such entry is one row with
    * a sentence on it, never a queue page that fails (D19).
@@ -328,6 +330,7 @@ export function listPendingLogs(connection: Connection): QueueEntry[] {
     durationSeconds: row.durationSeconds,
     note: row.note,
     autoStopped: row.autoStopped,
+    createdAt: row.createdAt,
     source: row.source,
     calcMode: row.calcMode,
     qualityGraded: row.qualityGraded,

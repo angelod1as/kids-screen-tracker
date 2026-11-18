@@ -108,6 +108,7 @@ function entry(overrides: Partial<QueueEntry> = {}): QueueEntry {
     qualityGraded: false,
     quality: null,
     activityValue: null,
+    createdAt: new Date("2026-09-10T15:00:00Z"),
     blockedBy: null,
     ...overrides,
   };
@@ -285,6 +286,7 @@ describe("what the boy sees (#18)", () => {
           durationMinutes: 60,
           durationSeconds: 60 * 60,
           autoStopped: true,
+          createdAt: new Date("2026-09-10T15:00:00Z"),
         },
       ],
     });

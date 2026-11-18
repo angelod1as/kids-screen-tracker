@@ -4,7 +4,7 @@ import { useState, useTransition } from "react";
 import type { HoursMinutes } from "../../../../db/input";
 import type { PendingSpendRequest } from "../../../../db/spend-requests";
 import { Button } from "../../../../ui/button";
-import { formatSignedHours } from "../../../../ui/dates";
+import { formatInstant, formatSignedHours } from "../../../../ui/dates";
 import { ErrorNote } from "../../../../ui/error-note";
 import { failureText } from "../../../../ui/failure";
 import { Field, TimeFields } from "../../../../ui/field";
@@ -126,6 +126,9 @@ export function SpendRequestList({
                     </span>
                     <span className={`${META_CLASS} text-black`}>
                       Usar {request.destination}
+                    </span>
+                    <span className={`${META_CLASS} text-black`}>
+                      Enviado em {formatInstant(request.createdAt)}
                     </span>
                     {request.note === null ? null : (
                       <span className={`${META_CLASS} text-black`}>
