@@ -153,7 +153,7 @@ mergeia com bypass. Não mexa no filtro do `ci.yml`.
 ## Rodar localmente
 
 ```sh
-nvm use              # Node 22
+nvm use              # Node 24
 pnpm install
 pnpm db:migrate
 pnpm db:seed         # categorias e atividades; pessoas não (D45)

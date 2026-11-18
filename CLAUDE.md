@@ -52,7 +52,7 @@ semanal. Se você encontrar esses nomes em algum lugar que não seja `spec.md`,
 - Tailwind CSS
 - Varlock para `.env.schema` e validação das variáveis
 - Vitest
-- pnpm, Node 22 LTS
+- pnpm, Node 24 LTS
 - Docker multi-stage, volume persistente para o arquivo do banco
 
 Sem serviços externos, sem fila, sem cache, sem Redis.

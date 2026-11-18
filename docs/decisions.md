@@ -2,7 +2,7 @@
 
 Vinte e cinco ambiguidades da spec, resolvidas e justificadas antes da primeira
 linha de código, mais as que cada fase mediu depois. Hoje são sessenta,
-D1–D60, mais dezessete emendas e as duas declarações da Fase 4, uma delas
+D1–D60, mais dezoito emendas e as duas declarações da Fase 4, uma delas
 revogada.
 
 **Onde este documento e `spec.md` discordarem, este documento vence.**
@@ -455,6 +455,18 @@ Dockerfile.
 **Por quê.** O hook de setup do Orca já roda `pnpm install` em todo worktree novo.
 Travar o Node importa porque `better-sqlite3` é binário nativo e quebra em troca
 de major.
+
+**Emenda (#133) — a trava passa para o Node 24 LTS.** O Dependabot instala com
+o Node que ele traz, hoje só o 24.22.2. Com `engines` em `>=22 <23` e o
+`engineStrict` da D28, toda atualização de segurança dele falhava: o `next` com
+`tool_version_not_supported`, e `undici` e `@vitest/mocker` com
+`security_update_not_possible`, porque o pnpm recusava instalar. A trava
+continua sendo uma só, agora no 24, em `.nvmrc`, `engines`, `Dockerfile` e
+`twa/Dockerfile`. Antes da troca, rodaram no Node 24 o CI inteiro e os 14
+passos do `docker-smoke.sh`, com o `better-sqlite3` carregando o mesmo SQLite.
+
+**Resíduo aceito.** Quando o Dependabot passar para o Node 26, as atualizações
+dele voltam a falhar do mesmo jeito, e a saída é outra troca como esta.
 
 ### D21 — Vitest, com o motor isolado
 
@@ -2198,7 +2210,7 @@ Chrome bloqueado é a resposta.
 - O `apk.sh` não roda no CI. Uma atualização do Bubblewrap ou do SDK que
   quebre a build só aparece quando o dono gerar o APK de novo; as versões do
   SDK Android e do Bubblewrap estão fixadas no `twa/Dockerfile` por isso. A
-  imagem `node:22-bookworm` e o JDK do `apt` não estão, e podem mudar entre uma
+  imagem `node:24-bookworm` e o JDK do `apt` não estão, e podem mudar entre uma
   build e a seguinte.
 - A imagem é `linux/amd64`, emulada num Mac ARM: as ferramentas Android não
   têm binário Linux ARM. Mais lenta, e só roda uma vez.

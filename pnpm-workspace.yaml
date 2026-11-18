@@ -1,4 +1,4 @@
-# D20: Node 22 LTS is a lock, not a suggestion. Without engineStrict, the
+# D20: Node 24 LTS is a lock, not a suggestion. Without engineStrict, the
 # engines field in package.json only prints a warning and the install goes
 # through anyway — which is exactly the major-version bump that breaks
 # better-sqlite3.

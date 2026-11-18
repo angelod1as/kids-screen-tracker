@@ -4,7 +4,7 @@
   "private": true,
   "packageManager": "pnpm@11.0.5",
   "engines": {
-    "node": ">=22.0.0 <23.0.0"
+    "node": ">=24.0.0 <25.0.0"
   },
   "scripts": {
     "dev": "next dev",
@@ -18,7 +18,7 @@
     "check:secrets": "varlock run -- node scripts/check-build-secrets.mjs",
     "auth:hash": "tsx scripts/hash-password.ts",
     "db:generate": "drizzle-kit generate",
-    "db:bundle": "esbuild scripts/db-migrate.ts scripts/db-seed.ts scripts/db-backup.ts scripts/db-demo.ts scripts/db-audit-activities.ts --bundle --platform=node --format=esm --target=node22 --external:varlock/env --external:better-sqlite3 --outdir=dist/db --out-extension:.js=.mjs",
+    "db:bundle": "esbuild scripts/db-migrate.ts scripts/db-seed.ts scripts/db-backup.ts scripts/db-demo.ts scripts/db-audit-activities.ts --bundle --platform=node --format=esm --target=node24 --external:varlock/env --external:better-sqlite3 --outdir=dist/db --out-extension:.js=.mjs",
     "db:migrate": "varlock run -- tsx scripts/db-migrate.ts",
     "db:seed": "varlock run -- tsx scripts/db-seed.ts",
     "db:backup": "varlock run -- tsx scripts/db-backup.ts",
@@ -32,7 +32,7 @@
     "@varlock/nextjs-integration": "^1.2.2",
     "better-sqlite3": "^13.0.3",
     "drizzle-orm": "^0.45.2",
-    "next": "^16.3.4",
+    "next": "^16.4.5",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
     "tsx": "^4.23.13",
@@ -43,7 +43,7 @@
     "@biomejs/biome": "^2.5.11",
     "@tailwindcss/postcss": "^4.3.3",
     "@types/better-sqlite3": "^9.6.0",
-    "@types/node": "^22.18.13",
+    "@types/node": "^24.19.2",
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.4",
     "@types/web-push": "^3.6.4",
@@ -52,6 +52,6 @@
     "jsdom": "^30.0.1",
     "tailwindcss": "^4.3.3",
     "typescript": "^7.0.2",
-    "vitest": "^4.1.11"
+    "vitest": "^4.1.12"
   }
 }
