@@ -57,6 +57,7 @@ function entry(overrides: Partial<QueueEntry>): QueueEntry {
     qualityGraded: false,
     quality: null,
     activityValue: null,
+    createdAt: new Date("2026-09-13T15:00:00Z"),
     preview: null,
     unpriceable: ["value"],
     blockedBy: null,

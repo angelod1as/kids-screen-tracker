@@ -242,6 +242,7 @@ describe("the stopwatch after a failed request (#29)", () => {
           durationMinutes: 30,
           durationSeconds: 30 * 60,
           autoStopped: false,
+          createdAt: new Date("2026-09-01T15:00:00Z"),
         },
       ]),
     );
@@ -289,6 +290,7 @@ describe("the queue after a failed request (#29)", () => {
       autoStopped: false,
       qualityGraded: false,
       quality: null,
+      createdAt: new Date("2026-09-01T15:00:00Z"),
       preview: null,
       unpriceable: [] as Missing[],
       blockedBy: null,

@@ -112,6 +112,7 @@ describe("the queue says D32's refusal as the server wrote it", () => {
       autoStopped: false,
       qualityGraded: false,
       quality: null,
+      createdAt: new Date("2026-09-01T15:00:00Z"),
       preview: null,
       unpriceable: [] as Missing[],
       blockedBy: null,

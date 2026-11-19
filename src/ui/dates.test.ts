@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   formatDay,
+  formatInstant,
   formatShortDay,
   formatSignedHours,
   formatTime,
@@ -47,6 +48,21 @@ describe("the time of an action on screen (#77)", () => {
 
   it("writes the hour in two digits on a 24-hour clock", () => {
     expect(formatTime(Date.parse("2026-08-30T12:05:00Z"))).toBe("09:05");
+  });
+});
+
+describe("the instant a boy sent something (#137)", () => {
+  it("writes the São Paulo day and clock", () => {
+    expect(formatInstant(new Date("2026-11-18T17:30:00Z"))).toBe(
+      "18/11/2026 às 14:30",
+    );
+  });
+
+  it("keeps the São Paulo day when UTC has crossed midnight", () => {
+    // 02:30 UTC is 23:30 the previous day in São Paulo (UTC−3).
+    expect(formatInstant(new Date("2026-11-18T02:30:00Z"))).toBe(
+      "17/11/2026 às 23:30",
+    );
   });
 });
 

@@ -7,7 +7,7 @@ import type { Refused } from "../../../../db/refusal";
 import type { TimedActivity } from "../../../../db/timers";
 import { Button } from "../../../../ui/button";
 import { ChoiceGroup } from "../../../../ui/choice";
-import { formatDay } from "../../../../ui/dates";
+import { formatDay, formatInstant } from "../../../../ui/dates";
 import { ErrorNote } from "../../../../ui/error-note";
 import { failureText, RESYNCED_TEXT } from "../../../../ui/failure";
 import { Field, TimeFields } from "../../../../ui/field";
@@ -242,6 +242,9 @@ function Card({
               : ` · ${formatRecordedDuration(entry.durationSeconds)}`}
             {entry.autoStopped ? " · parou sozinha" : ""}
             {entry.source === "request" ? " · sem cronômetro" : ""}
+          </span>
+          <span className={`${META_CLASS} text-black`}>
+            Enviado em {formatInstant(entry.createdAt)}
           </span>
         </span>
         {entry.preview === null ? null : (
