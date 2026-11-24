@@ -12,6 +12,7 @@ import { saoPauloDay } from "../engine/day";
 import { ChoiceLinks } from "./choice-links";
 import {
   formatDay,
+  formatInstant,
   formatShortDay,
   formatSignedHours,
   formatTime,
@@ -97,8 +98,10 @@ export function EntryList({
               <span className={`${META_CLASS} text-black`}>
                 {mergedByline(entry, nameDecider) ??
                   (entry.requestedBy ? "Usado" : kindLabel(entry.kind))}{" "}
-                · {formatShortDay(entry.occurredOn, today)} às{" "}
-                {formatTime(entry.at)}
+                · {formatShortDay(entry.occurredOn, today)}
+                {instantsBelow(entry, nameDecider)
+                  ? ""
+                  : ` às ${formatTime(entry.at)}`}
                 {nameDecider && entry.override !== null
                   ? ` · ${overriddenText(entry.decidedBy)}`
                   : ""}
@@ -109,19 +112,16 @@ export function EntryList({
               )}
               {nameDecider && entry.requestedBy ? (
                 <span className={`${META_CLASS} text-black`}>
-                  Pedido por {entry.requestedBy}
-                  {entry.decidedBy === null
-                    ? ""
-                    : `, aprovado por ${entry.decidedBy}`}
+                  {`Pedido por ${entry.requestedBy}${entry.sentAt == null ? "" : ` em ${formatInstant(new Date(entry.sentAt))}`}, aprovado${entry.decidedBy === null ? "" : ` por ${entry.decidedBy}`} em ${formatInstant(new Date(entry.at))}`}
                 </span>
-              ) : nameDecider &&
-                entry.override === null &&
-                entry.decidedBy !== null &&
-                mergedByline(entry, nameDecider) === null ? (
-                <ReviewerLine
-                  by={entry.decidedBy}
+              ) : instantsBelow(entry, nameDecider) ? (
+                <DecisionLines
+                  at={entry.at}
+                  // D50: an overridden value already names the adult on the date line.
+                  by={entry.override === null ? entry.decidedBy : null}
                   className="text-black"
-                  verb={ledgerVerb(entry.kind)}
+                  sentAt={entry.sentAt ?? null}
+                  verb="Aprovado"
                 />
               ) : null}
               {entry.voided === null ? (
@@ -166,11 +166,22 @@ function RejectedRow({
           {nameDecider && entry.decidedBy !== null
             ? `Recusado por ${entry.decidedBy}`
             : "Recusado"}{" "}
-          · {formatShortDay(entry.occurredOn, today)} às {formatTime(entry.at)}
+          · {formatShortDay(entry.occurredOn, today)}
+          {nameDecider ? "" : ` às ${formatTime(entry.at)}`}
           {entry.durationMinutes === null
             ? ""
             : ` · ${formatDuration(entry.durationMinutes)}`}
         </span>
+        {nameDecider ? (
+          <DecisionLines
+            at={entry.at}
+            // H6: the date line already says who refused it.
+            by={null}
+            className="text-white"
+            sentAt={entry.sentAt ?? null}
+            verb="Decidido"
+          />
+        ) : null}
         {entry.reason === null ? null : (
           <span className="break-words text-base text-white">
             Motivo: {entry.reason}
@@ -209,20 +220,40 @@ function mergedByline(entry: LedgerEntry, nameDecider: boolean): string | null {
   return `${ledgerVerb(entry.kind)} por ${entry.decidedBy}`;
 }
 
-/** Who decided the entry (emenda à D50): named on both screens, under the kind and date. */
-function ReviewerLine({
-  by,
+/**
+ * #140: the date line is the entry's day (D13); the send and the decision may
+ * fall on other days, so their times move to lines of their own, dated in full.
+ */
+function instantsBelow(entry: LedgerEntry, nameDecider: boolean): boolean {
+  return nameDecider && (entry.kind === "earn" || Boolean(entry.requestedBy));
+}
+
+/** #140: when the boy sent it and when, and by whom (emenda à D50), it was decided. */
+function DecisionLines({
+  sentAt,
   verb,
+  by,
+  at,
   className,
 }: {
-  by: string;
+  sentAt: number | null;
   verb: string;
+  by: string | null;
+  at: number;
   className: string;
 }) {
   return (
-    <span className={`${META_CLASS} ${className}`}>
-      {verb} por {by}
-    </span>
+    <>
+      {sentAt === null ? null : (
+        <span className={`${META_CLASS} ${className}`}>
+          Enviado em {formatInstant(new Date(sentAt))}
+        </span>
+      )}
+      <span className={`${META_CLASS} ${className}`}>
+        {verb}
+        {by === null ? "" : ` por ${by}`} em {formatInstant(new Date(at))}
+      </span>
+    </>
   );
 }
 
@@ -280,8 +311,8 @@ function ZeroRow({
           {entry.label}
         </span>
         <span className={`${META_CLASS} text-black`}>
-          {kindLabel("earn")} · {formatShortDay(entry.occurredOn, today)} às{" "}
-          {formatTime(entry.at)}
+          {kindLabel("earn")} · {formatShortDay(entry.occurredOn, today)}
+          {nameDecider ? "" : ` às ${formatTime(entry.at)}`}
           {nameDecider && entry.override !== null
             ? ` · ${overriddenText(entry.decidedBy)}`
             : ""}
@@ -290,10 +321,12 @@ function ZeroRow({
         {entry.override === null ? null : (
           <AdultValueText override={entry.override} />
         )}
-        {nameDecider && entry.override === null && entry.decidedBy !== null ? (
-          <ReviewerLine
-            by={entry.decidedBy}
+        {nameDecider ? (
+          <DecisionLines
+            at={entry.at}
+            by={entry.override === null ? entry.decidedBy : null}
             className="text-black"
+            sentAt={entry.sentAt ?? null}
             verb="Aprovado"
           />
         ) : null}

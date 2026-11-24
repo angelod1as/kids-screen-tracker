@@ -25,6 +25,8 @@ export type LedgerEntry = {
   occurredOn: string;
   /** #77: the action's real instant — reviewed_at on an earn, created_at on a spend or refund (D13). */
   at: number;
+  /** #140: when the boy sent it; null on an adult's own entry, which nobody sent. Optional like `requestedBy`. */
+  sentAt?: number | null;
   label: string;
   /** #101: the boy's own note from the approved log; null on a spend or refund (no log). */
   observation: string | null;
@@ -65,6 +67,8 @@ export type RejectedEntry = {
   occurredOn: string;
   /** #77: reviewed_at, the instant the adult refused it (D13). */
   at: number;
+  /** #140: when the boy sent it; null on an adult's own entry. */
+  sentAt?: number | null;
   /** The activity, which D14 keeps readable even after it is switched off. */
   label: string;
   durationMinutes: number | null;
@@ -83,6 +87,8 @@ export type ZeroEntry = {
   occurredOn: string;
   /** #77: reviewed_at, the instant the adult approved it (D13). */
   at: number;
+  /** #140: when the boy sent it; null on an adult's own entry. */
+  sentAt?: number | null;
   label: string;
   /** #101: the boy's own note from the approved log. */
   observation: string | null;
@@ -269,6 +275,8 @@ function ledgerEntries(
       // #101: the boy's own note, surfaced on an earn; the refund's note is already the label (#24).
       logNote: activityLogs.note,
       createdAt: ledger.createdAt,
+      logCreatedAt: activityLogs.createdAt,
+      logSource: activityLogs.source,
       activityName: activities.name,
       ...ADULT_VALUE_COLUMNS,
       // D52: an activity is voided on its log, a movement on its own row.
@@ -282,6 +290,7 @@ function ledgerEntries(
       // D58: a spend linked from a request carries the boy's ask and comment.
       requestedBy: requester.displayName,
       requestNote: spendRequests.note,
+      requestCreatedAt: spendRequests.createdAt,
     })
     .from(ledger)
     // Left joins: `activity_log_id` is null on every `spend` and `refund` (D10).
@@ -323,6 +332,11 @@ function ledgerEntries(
         ? (row.reviewedAt ?? row.createdAt)
         : row.createdAt
       ).getTime(),
+      sentAt:
+        (row.kind === "earn"
+          ? sentBy(row.logSource, row.logCreatedAt)
+          : row.requestCreatedAt
+        )?.getTime() ?? null,
       // Activity first (D14 keeps a deactivated one readable), then the
       // destination, then the note that names a refund (#24).
       label:
@@ -361,6 +375,7 @@ function rejectedEntries(
       note: activityLogs.note,
       createdAt: activityLogs.createdAt,
       reviewedAt: activityLogs.reviewedAt,
+      source: activityLogs.source,
       activityName: activities.name,
       reviewedBy: reviewer.displayName,
     })
@@ -391,6 +406,7 @@ function rejectedEntries(
       kind: "rejected" as const,
       occurredOn: row.occurredOn,
       at: (row.reviewedAt ?? row.createdAt).getTime(),
+      sentAt: sentBy(row.source, row.createdAt)?.getTime() ?? null,
       label: row.activityName,
       durationMinutes: row.durationMinutes,
       // The boy's own note stays out: #72 asks for the adult's sentence.
@@ -448,6 +464,7 @@ function rejectedSpendEntries(
           kind: "rejected" as const,
           occurredOn,
           at: row.reviewedAt.getTime(),
+          sentAt: row.createdAt.getTime(),
           label: row.destination,
           // H3: the amount asked, so the refusal says what was not spent.
           durationMinutes: Math.round(row.hours * 60),
@@ -459,6 +476,11 @@ function rejectedSpendEntries(
       },
     ];
   });
+}
+
+/** #140: an adult's own entry (D18) was never sent; its created_at is the approval itself. */
+function sentBy(source: string | null, createdAt: Date | null): Date | null {
+  return source === null || source === "admin" ? null : createdAt;
 }
 
 const voider = alias(users, "voider");
@@ -501,6 +523,7 @@ function zeroEntries(
       occurredOn: activityLogs.occurredOn,
       createdAt: activityLogs.createdAt,
       reviewedAt: activityLogs.reviewedAt,
+      source: activityLogs.source,
       activityName: activities.name,
       // #101: the boy's own note on an approved zero.
       note: activityLogs.note,
@@ -538,6 +561,7 @@ function zeroEntries(
       kind: "zero" as const,
       occurredOn: row.occurredOn,
       at: (row.reviewedAt ?? row.createdAt).getTime(),
+      sentAt: sentBy(row.source, row.createdAt)?.getTime() ?? null,
       label: row.activityName,
       observation: row.note,
       override: adultValue(row),
