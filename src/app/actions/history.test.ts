@@ -10,7 +10,11 @@ import { migrateDatabase } from "../../db/migrate";
 import { approveLog, rejectionNote, rejectLog } from "../../db/queue";
 import { requestLog } from "../../db/requests";
 import { activityLogs, ledger, users } from "../../db/schema";
-import { approveSpendRequest, requestSpend } from "../../db/spend-requests";
+import {
+  approveSpendRequest,
+  rejectSpendRequest,
+  requestSpend,
+} from "../../db/spend-requests";
 import { seedWithTestUsers } from "../../db/test-users";
 import {
   HISTORY_LIMIT,
@@ -1167,6 +1171,48 @@ describe("an entry approved on a later day keeps its own day (#140)", () => {
     expect(entries[0]).toMatchObject({
       kind: "rejected",
       occurredOn: "2026-11-23",
+      sentAt: SENT.getTime(),
+      at: APPROVED.getTime(),
+    });
+  });
+
+  it("carries when a zeroed entry was sent", async () => {
+    mocked.username = "kid1";
+    const { logId } = requestLog(
+      connection,
+      idOf("kid1"),
+      { activityId: 5, occurredOn: "2026-11-23", durationMinutes: 60 },
+      SENT,
+    );
+    approveLog(
+      connection,
+      logId,
+      idOf("admin1"),
+      { overrideHours: 0 },
+      APPROVED,
+    );
+
+    const { entries } = await fetchHistoryDaysAction(idOf("kid1"), 1);
+    expect(entries[0]).toMatchObject({
+      kind: "zero",
+      occurredOn: "2026-11-23",
+      sentAt: SENT.getTime(),
+      at: APPROVED.getTime(),
+    });
+  });
+
+  it("carries when a refused spend request was sent", async () => {
+    mocked.username = "kid1";
+    const { requestId } = requestSpend(
+      connection,
+      idOf("kid1"),
+      { hours: 1, destination: "Xbox", note: null },
+      SENT,
+    );
+    rejectSpendRequest(connection, requestId, idOf("admin1"), null, APPROVED);
+
+    const entries = await fetchHistoryAction(idOf("kid1"), 10);
+    expect(entries.find((entry) => entry.kind === "rejected")).toMatchObject({
       sentAt: SENT.getTime(),
       at: APPROVED.getTime(),
     });
