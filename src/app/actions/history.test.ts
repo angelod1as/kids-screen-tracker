@@ -7,8 +7,14 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { openDatabase } from "../../db/client";
 import { migrateDatabase } from "../../db/migrate";
-import { approveLog, rejectionNote } from "../../db/queue";
+import { approveLog, rejectionNote, rejectLog } from "../../db/queue";
+import { requestLog } from "../../db/requests";
 import { activityLogs, ledger, users } from "../../db/schema";
+import {
+  approveSpendRequest,
+  rejectSpendRequest,
+  requestSpend,
+} from "../../db/spend-requests";
 import { seedWithTestUsers } from "../../db/test-users";
 import {
   HISTORY_LIMIT,
@@ -1076,5 +1082,139 @@ describe("the history carries the time of each action (#77)", () => {
     for (const entry of await fetchHistoryAction(idOf("kid1"), HISTORY_LIMIT)) {
       expect(entry.occurredOn, entry.kind).toMatch(DATE);
     }
+  });
+});
+
+describe("an entry approved on a later day keeps its own day (#140)", () => {
+  // 23/11 22:00 and 24/11 09:00 in São Paulo (UTC−3).
+  const SENT = new Date("2026-11-24T01:00:00Z");
+  const APPROVED = new Date("2026-11-24T12:00:00Z");
+
+  it("stays on the activity's day, carrying when it was sent and when approved", async () => {
+    mocked.username = "kid1";
+    const before = await fetchBalanceAction(idOf("kid1"));
+    const { logId } = requestLog(
+      connection,
+      idOf("kid1"),
+      { activityId: 5, occurredOn: "2026-11-23", durationMinutes: 60 },
+      SENT,
+    );
+    const { hours } = approveLog(
+      connection,
+      logId,
+      idOf("admin1"),
+      {},
+      APPROVED,
+    );
+
+    const log = connection.db
+      .select({ occurredOn: activityLogs.occurredOn })
+      .from(activityLogs)
+      .where(eq(activityLogs.id, logId))
+      .get();
+    const credit = connection.db
+      .select({ occurredOn: ledger.occurredOn })
+      .from(ledger)
+      .where(eq(ledger.activityLogId, logId))
+      .get();
+    expect(log?.occurredOn).toBe("2026-11-23");
+    expect(credit?.occurredOn).toBe("2026-11-23");
+
+    const { entries } = await fetchHistoryDaysAction(idOf("kid1"), 2);
+    expect(entries[0]).toMatchObject({
+      kind: "earn",
+      occurredOn: "2026-11-23",
+      sentAt: SENT.getTime(),
+      at: APPROVED.getTime(),
+    });
+    expect(await fetchBalanceAction(idOf("kid1"))).toBe(before + hours);
+  });
+
+  it("says nobody sent an adult's own entry (D18)", async () => {
+    mocked.username = "kid1";
+    const entries = await fetchHistoryAction(idOf("kid1"), 10);
+    const earn = entries.find((entry) => entry.kind === "earn");
+
+    expect(earn?.sentAt).toBeNull();
+  });
+
+  it("carries the boy's ask on a spend request, which stays on the approval day (D58)", async () => {
+    mocked.username = "kid1";
+    const { requestId } = requestSpend(
+      connection,
+      idOf("kid1"),
+      { hours: 1, destination: "Xbox", note: null },
+      SENT,
+    );
+    approveSpendRequest(connection, requestId, idOf("admin1"), {}, APPROVED);
+
+    const { entries } = await fetchHistoryDaysAction(idOf("kid1"), 1);
+    expect(entries[0]).toMatchObject({
+      kind: "spend",
+      occurredOn: "2026-11-24",
+      sentAt: SENT.getTime(),
+      at: APPROVED.getTime(),
+    });
+  });
+
+  it("carries when a refused entry was sent", async () => {
+    mocked.username = "kid1";
+    const { logId } = requestLog(
+      connection,
+      idOf("kid1"),
+      { activityId: 5, occurredOn: "2026-11-23", durationMinutes: 60 },
+      SENT,
+    );
+    rejectLog(connection, logId, idOf("admin1"), null, APPROVED);
+
+    const { entries } = await fetchHistoryDaysAction(idOf("kid1"), 1);
+    expect(entries[0]).toMatchObject({
+      kind: "rejected",
+      occurredOn: "2026-11-23",
+      sentAt: SENT.getTime(),
+      at: APPROVED.getTime(),
+    });
+  });
+
+  it("carries when a zeroed entry was sent", async () => {
+    mocked.username = "kid1";
+    const { logId } = requestLog(
+      connection,
+      idOf("kid1"),
+      { activityId: 5, occurredOn: "2026-11-23", durationMinutes: 60 },
+      SENT,
+    );
+    approveLog(
+      connection,
+      logId,
+      idOf("admin1"),
+      { overrideHours: 0 },
+      APPROVED,
+    );
+
+    const { entries } = await fetchHistoryDaysAction(idOf("kid1"), 1);
+    expect(entries[0]).toMatchObject({
+      kind: "zero",
+      occurredOn: "2026-11-23",
+      sentAt: SENT.getTime(),
+      at: APPROVED.getTime(),
+    });
+  });
+
+  it("carries when a refused spend request was sent", async () => {
+    mocked.username = "kid1";
+    const { requestId } = requestSpend(
+      connection,
+      idOf("kid1"),
+      { hours: 1, destination: "Xbox", note: null },
+      SENT,
+    );
+    rejectSpendRequest(connection, requestId, idOf("admin1"), null, APPROVED);
+
+    const entries = await fetchHistoryAction(idOf("kid1"), 10);
+    expect(entries.find((entry) => entry.kind === "rejected")).toMatchObject({
+      sentAt: SENT.getTime(),
+      at: APPROVED.getTime(),
+    });
   });
 });

@@ -535,3 +535,92 @@ describe("every negative value shown in a row reads red (#105, D42 emenda)", () 
     expect(readoutFor("−2h30")).toContain("line-through");
   });
 });
+
+describe("the history dates the send and the decision apart from the day (#140)", () => {
+  // 23/11 22:00 and 24/11 09:00 in São Paulo, a day apart in UTC too.
+  const SENT = Date.parse("2026-11-24T01:00:00Z");
+  const DECIDED = Date.parse("2026-11-24T12:00:00Z");
+  const EARN: LedgerEntry = {
+    id: 60,
+    kind: "earn",
+    hours: 1.5,
+    occurredOn: "2026-11-23",
+    at: DECIDED,
+    sentAt: SENT,
+    label: "Ler livro",
+    observation: null,
+    override: null,
+    voided: null,
+    decidedBy: "Admin1",
+  };
+  const text = (entries: HistoryEntry[], nameDecider = true) =>
+    renderToStaticMarkup(
+      EntryList({ emptyText: "vazio", entries, nameDecider }),
+    )
+      .replace(/<[^>]+>/g, "|")
+      .replace(/\|+/g, "|");
+
+  it("keeps the approval's clock off the activity's day", () => {
+    const markup = text([EARN]);
+
+    expect(markup).toContain("|Ganho · 23/11|");
+    expect(markup).not.toContain("23/11 às 09:00");
+  });
+
+  it("writes both instants in São Paulo, each with its own date", () => {
+    const markup = text([EARN]);
+
+    expect(markup).toContain("Enviado em 23/11/2026 às 22:00");
+    expect(markup).toContain("Aprovado por Admin1 em 24/11/2026 às 09:00");
+  });
+
+  it("writes no send on an adult's own entry", () => {
+    const markup = text([{ ...EARN, sentAt: null }]);
+
+    expect(markup).not.toContain("Enviado");
+    expect(markup).toContain("Aprovado por Admin1 em 24/11/2026 às 09:00");
+  });
+
+  it("dates the ask and the approval of a spend the boy requested (D58)", () => {
+    const markup = text([
+      {
+        ...EARN,
+        kind: "spend",
+        occurredOn: "2026-11-24",
+        label: "Xbox",
+        observation: null,
+        requestedBy: "Kid1",
+      },
+    ]);
+
+    expect(markup).toContain(
+      "Pedido por Kid1 em 23/11/2026 às 22:00, aprovado por Admin1 em 24/11/2026 às 09:00",
+    );
+    expect(markup).not.toContain("24/11 às");
+  });
+
+  it("dates a refusal's send and decision, naming the adult once (H6)", () => {
+    const markup = text([
+      { ...REJECTED, occurredOn: "2026-11-23", at: DECIDED, sentAt: SENT },
+    ]);
+
+    expect(markup).toContain("Recusado por Admin1 · 23/11");
+    expect(markup).toContain("Enviado em 23/11/2026 às 22:00");
+    expect(markup).toContain("Decidido em 24/11/2026 às 09:00");
+    expect(markup.match(/Recusado/g)).toHaveLength(1);
+  });
+
+  it("dates an approved zero the same way as an earn", () => {
+    const markup = text([
+      { ...ZERO, occurredOn: "2026-11-23", at: DECIDED, sentAt: SENT },
+    ]);
+
+    expect(markup).toContain("|Ganho · 23/11|");
+    expect(markup).toContain("Enviado em 23/11/2026 às 22:00");
+    expect(markup).toContain("Aprovado por Admin1 em 24/11/2026 às 09:00");
+  });
+
+  it("leaves the home screen's short row as it was", () => {
+    expect(text([EARN], false)).toContain("Ganho · 23/11 às 09:00");
+  });
+});
